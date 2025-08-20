@@ -1,13 +1,10 @@
-from pydantic import BaseSettings
+import os
 
-class Settings(BaseSettings):
-    database_url: str = "sqlite:///data/vialmcp.db"
-    github_client_id: str = ""
-    github_client_secret: str = ""
-    api_port: int = 8000
+class Config:
+    SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+    SQLALCHEMY_DATABASE_URI = "sqlite:///vial_mcp.db"
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "your-github-token-here")
+    API_PORT = 8000
+    DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
-settings = Settings()
+config = Config()
