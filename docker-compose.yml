@@ -6,39 +6,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///data/vialmcp.db}
-    depends_on:
-      - db
+    env_file:
+      - .env
     volumes:
       - ./server/data:/app/data
-      - ./web:/app/web
-
-  web-app:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    depends_on:
-      - mcp-server
-    volumes:
-      - ./web:/app
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=vialmcp
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "user", "-d", "vialmcp"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./public:/app/public
 
 volumes:
-  postgres_data:
   data:
