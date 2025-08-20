@@ -2,15 +2,7 @@ FROM python:3.11-slim AS base
 
 WORKDIR /app
 
-COPY server/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-RUN pip install octokit.py emscripten sqlalchemy fastmcp qiskit pymongo gitpython psycopg2-binary
-
-COPY server/ .
-COPY public/ ./public
-COPY web/ ./web
-
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -19,15 +11,29 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     mongodb-clients \
     postgresql-client \
-    openjdk-11-jdk \
-    nodejs \
-    npm \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy and install Python dependencies
+COPY server/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+RUN pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt] pymongo redis sqlalchemy qiskit octokit.py emscripten gitpython psycopg2-binary python-dotenv
+
+# Copy application code
+COPY server/ .
+COPY public/ ./public
+
+# Initialize database and alchemist
 RUN python -c "from server.services.database import init_db; init_db()"
 RUN python -c "from server.models.mcp_alchemist import mcp_alchemist; mcp_alchemist.setup_local_db()"
 
+# Expose port
 EXPOSE 8000
 
-CMD ["python", "-m", "server.mcp_server"]
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run FastAPI with uvicorn
+CMD ["uvicorn", "server.mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]
