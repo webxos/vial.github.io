@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+.pypirc
+
+# Environment
+.env
+vial.db
+*.db
+
+# SSL
+ssl/
+*.pem
+
+# Docker
+*.log
+*.pid
+*.seed
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+*.egg
+*.eggs/
+*.egg-info/
+
+# Testing
+.coverage
+coverage.xml
+*.cover
+*.pytest_cache/
