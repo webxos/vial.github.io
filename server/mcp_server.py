@@ -1,16 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from jose import jwt
-from server.security import verify_token, generate_credentials, get_password_hash, verify_password, SECRET_KEY, ALGORITHM
+from server.security import verify_token, generate_credentials
+from server.api.auth import router as auth_router
 import os
-from datetime import datetime, timedelta
 
 app = FastAPI(title="Vial MCP Controller")
 
 # Mount static files
 app.mount("/public", StaticFiles(directory="public"), name="public")
+
+# Include auth router
+app.include_router(auth_router)
 
 # JSON-RPC Request Model
 class JsonRpcRequest(BaseModel):
@@ -43,19 +44,6 @@ async def jsonrpc_endpoint(request: JsonRpcRequest, token: str = Depends(verify_
         }
     else:
         raise HTTPException(status_code=400, detail="Method not found")
-
-# OAuth token endpoint
-@app.post("/auth/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    # Placeholder: Replace with actual user validation
-    if form_data.username == "admin" and verify_password(form_data.password, get_password_hash("admin")):
-        token = jwt.encode(
-            {"sub": form_data.username, "exp": datetime.utcnow() + timedelta(hours=1)},
-            SECRET_KEY,
-            algorithm=ALGORITHM
-        )
-        return {"access_token": token, "token_type": "bearer"}
-    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 # Generate API credentials
 @app.post("/auth/generate-credentials")
