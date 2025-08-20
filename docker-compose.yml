@@ -11,6 +11,11 @@ services:
     volumes:
       - ./server/data:/app/data
       - ./public:/app/public
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
 
 volumes:
   data:
