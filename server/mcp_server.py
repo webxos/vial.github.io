@@ -6,6 +6,7 @@ from server.api.auth import router as auth_router
 from server.api.endpoints import router as endpoints_router
 from server.api.quantum_endpoints import router as quantum_router
 from server.api.alchemist_endpoints import router as alchemist_router
+from server.api.copilot_integration import router as copilot_router
 import os
 
 app = FastAPI(title="Vial MCP Controller")
@@ -18,6 +19,7 @@ app.include_router(auth_router)
 app.include_router(endpoints_router)
 app.include_router(quantum_router)
 app.include_router(alchemist_router)
+app.include_router(copilot_router)
 
 # JSON-RPC Request Model
 class JsonRpcRequest(BaseModel):
@@ -44,7 +46,7 @@ async def jsonrpc_endpoint(request: JsonRpcRequest, token: str = Depends(verify_
         return {
             "jsonrpc": "2.0",
             "result": {
-                "commands": ["/login", "/train", "/translate", "/diagnose", "/sync", "/status", "/wallet", "/deploy"]
+                "commands": ["/login", "/train", "/translate", "/diagnose", "/sync", "/status", "/wallet", "/deploy", "/copilot"]
             },
             "id": request.id
         }
