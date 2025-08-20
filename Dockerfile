@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY server/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+RUN pip install octokit.py emscripten
 
 COPY server/ .
 COPY public/ ./public
@@ -16,7 +18,6 @@ RUN apt-get update && apt-get install -y \
     openjdk-11-jdk \
     nodejs \
     npm \
-    emscripten \
     && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8000
