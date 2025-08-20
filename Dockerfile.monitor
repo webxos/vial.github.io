@@ -1,0 +1,35 @@
+FROM python:3.11-slim AS base
+
+WORKDIR /app
+
+COPY server/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+RUN pip install octokit.py emscripten sqlalchemy fastmcp qiskit pymongo gitpython psycopg2-binary docker psutil
+
+COPY server/ .
+COPY public/ ./public
+COPY web/ ./web
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    g++ \
+    sqlite3 \
+    libsqlite3-dev \
+    mongodb-clients \
+    postgresql-client \
+    openjdk-11-jdk \
+    nodejs \
+    npm \
+    git \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -c "from server.services.database import init_db; init_db()"
+RUN python -c "from server.models.mcp_alchemist import mcp_alchemist; mcp_alchemist.setup_local_db()"
+RUN python -c "from server.sdk.vial_monitor import vial_monitor; vial_monitor.check_system_health()"
+
+EXPOSE 8000
+
+CMD ["python", "-m", "server.mcp_server"]
