@@ -20,14 +20,6 @@ async def train(params: dict, token: str = Depends(verify_token)):
     db.agents.insert_one({"hash": "placeholder", "data": data, "status": "trained"})
     return {"jsonrpc": "2.0", "result": {"status": "training initiated", "data": data}, "id": params.get("id", 1)}
 
-@router.post("/sync")
-async def sync(params: dict, token: str = Depends(verify_token)):
-    node_id = params.get("node_id", "")
-    if not node_id:
-        raise HTTPException(status_code=400, detail="Node ID required")
-    # Placeholder: Implement quantum sync logic
-    return {"jsonrpc": "2.0", "result": {"status": "synced", "node_id": node_id}, "id": params.get("id", 1)}
-
 @router.post("/wallet")
 async def wallet(token: str = Depends(verify_token)):
     # Placeholder: Fetch wallet from SQLite
