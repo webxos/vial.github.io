@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.final
+    ports:
+      - "80:8000"
+    env_file:
+      - .env.prod
+    volumes:
+      - ./server/data:/app/data
+      - ./public:/app/public
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  data:
