@@ -1,16 +1,18 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from ..config import settings
+import sqlite3
+from contextlib import contextmanager
 
-SQLALCHEMY_DATABASE_URL = settings.database_url
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
+@contextmanager
 def get_db():
-    db = SessionLocal()
+    conn = sqlite3.connect('vial_mcp.db', check_same_thread=False)
     try:
-        yield db
+        yield conn
     finally:
-        db.close()
+        conn.close()
+
+def init_db():
+    with sqlite3.connect('vial_mcp.db') as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS credentials
+                        (id INTEGER PRIMARY KEY, token TEXT, expires TEXT)''')
+        conn.execute('''CREATE TABLE IF NOT EXISTS quantum_links
+                        (id INTEGER PRIMARY KEY, link_id TEXT, status TEXT, time TEXT)''')
+        conn.commit()
