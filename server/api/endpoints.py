@@ -1,43 +1,28 @@
-from fastapi import APIRouter, HTTPException
-from octokit import Octokit  # Assuming Octokit is installed via PyPI or custom wrapper
+from fastapi import APIRouter, Request
+from mcp.server.fastmcp import FastMCP
+from ..security import get_current_user
 from ..error_handler import handle_sqlite_error
 from ..services.database import get_db
 from ..models.alchemy_pytorch import AlchemyPyTorch
+from ..api.utils import jsonrpc_response
 
 router = APIRouter()
-octokit = Octokit(auth="your-github-token-here")  # Replace with dynamic token logic
+mcp_server = FastMCP()
 model = AlchemyPyTorch()
 
-@router.post("/auth/token")
+@router.post("/jsonrpc")
 @handle_sqlite_error
-def authenticate(username: str, password: str, db=None):
-    if username == "admin" and password == "admin":
-        return {"access_token": "dummy_token", "token_type": "bearer"}
-    raise HTTPException(status_code=401, detail="Invalid credentials")
+async def jsonrpc_endpoint(request: Request, db=None, user=Depends(get_current_user)):
+    data = await request.json()
+    method = data.get("method")
+    params = data.get("params", {})
+    id = data.get("id")
 
-@router.get("/troubleshoot")
-@handle_sqlite_error
-def troubleshoot(db=None):
-    return {"status": "ok", "details": "System diagnostics completed"}
-
-@router.post("/quantum/link")
-@handle_sqlite_error
-def quantum_link(node_a: str, node_b: str, db=None):
-    return model.establish_quantum_link(node_a, node_b)
-
-@router.post("/generate-credentials")
-@handle_sqlite_error
-def generate_credentials(db=None):
-    return {"token": "new_dummy_token_123", "expires": "2025-08-21T01:54:00Z"}
-
-@router.post("/git/push")
-@handle_sqlite_error
-def git_push(message: str, db=None):
-    repo = "vial/vial"
-    octokit.repos.createCommitComment({
-        "owner": "vial",
-        "repo": repo,
-        "commit_sha": "main",
-        "body": message
-    })
-    return {"status": "success", "message": f"Git push with commit: {message}"}
+    if method == "tools/list":
+        tools = [{"name": "quantum_link", "description": "Establish quantum link", "inputSchema": {"type": "object", "properties": {"node_a": {"type": "string"}, "node_b": {"type": "string"}}}}]
+        return jsonrpc_response(id, tools)
+    elif method == "tools/call":
+        if params.get("name") == "quantum_link":
+            result = model.establish_quantum_link(params.get("node_a"), params.get("node_b"))
+            return jsonrpc_response(id, result)
+    return jsonrpc_response(id, {"error": "Method not found"}, error_code=-32601)
