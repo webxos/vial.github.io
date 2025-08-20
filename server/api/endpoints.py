@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
+from octokit import Octokit  # Assuming Octokit is installed via PyPI or custom wrapper
 from ..error_handler import handle_sqlite_error
 from ..services.database import get_db
-from ..models.pytorch_model import PyTorchModel
-from ..models.quantum_link import QuantumLink
+from ..models.alchemy_pytorch import AlchemyPyTorch
 
 router = APIRouter()
-model = PyTorchModel()
-quantum_link = QuantumLink()
+octokit = Octokit(auth="your-github-token-here")  # Replace with dynamic token logic
+model = AlchemyPyTorch()
 
 @router.post("/auth/token")
 @handle_sqlite_error
@@ -23,14 +23,21 @@ def troubleshoot(db=None):
 @router.post("/quantum/link")
 @handle_sqlite_error
 def quantum_link(node_a: str, node_b: str, db=None):
-    return quantum_link.establish_link(node_a, node_b)
+    return model.establish_quantum_link(node_a, node_b)
 
 @router.post("/generate-credentials")
 @handle_sqlite_error
 def generate_credentials(db=None):
-    return {"token": "new_dummy_token_123", "expires": "2025-08-21T01:35:00Z"}
+    return {"token": "new_dummy_token_123", "expires": "2025-08-21T01:54:00Z"}
 
 @router.post("/git/push")
 @handle_sqlite_error
 def git_push(message: str, db=None):
+    repo = "vial/vial"
+    octokit.repos.createCommitComment({
+        "owner": "vial",
+        "repo": repo,
+        "commit_sha": "main",
+        "body": message
+    })
     return {"status": "success", "message": f"Git push with commit: {message}"}
