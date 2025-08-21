@@ -1,25 +1,19 @@
-from pydantic import BaseSettings
-from server.logging import logger
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     GITHUB_TOKEN: str
     GITHUB_USERNAME: str
-    MONGO_URL: str
-    REDIS_URL: str
-    NOTIFICATION_API_URL: str
+    MONGO_URL: str = "mongodb://localhost:27017"
+    REDIS_URL: str = "redis://localhost:6379"
+    NOTIFICATION_API_URL: str = "https://api.example.com/notify"
+    JWT_SECRET: str
+    API_BASE_URL: str = "http://localhost:8000"
+    SQLITE_DB_PATH: str = "/app/vial.db"
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
 
 
-def get_settings():
-    try:
-        return Settings()
-    except Exception as e:
-        logger.error(f"Failed to load settings: {str(e)}")
-        raise ValueError(f"Settings load failed: {str(e)}")
-
-
-settings = get_settings()
+settings = Settings()
