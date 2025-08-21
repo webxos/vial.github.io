@@ -1,31 +1,19 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
-import pytest
+from server.quantum.quantum_sync import quantum_sync
+from unittest.mock import patch
 
-client = TestClient(app)
+def test_quantum_sync_initialization():
+    assert quantum_sync is not None
 
-@pytest.fixture
-def auth_token():
-    response = client.post("/auth/token", data={"username": "admin", "password": "admin"})
-    return response.json()["access_token"]
 
-def test_quantum_sync(auth_token):
-    headers = {"Authorization": f"Bearer {auth_token}"}
-    response = client.post(
-        "/jsonrpc",
-        json={"jsonrpc": "2.0", "method": "sync", "params": {"node_id": "test_node"}, "id": 1},
-        headers=headers
-    )
-    assert response.status_code == 200
-    assert response.json()["result"]["status"] == "synced"
-    assert "quantum_state" in response.json()["result"]
+def test_quantum_sync_execute():
+    with patch("qiskit.execute") as mock_execute:
+        mock_execute.return_value.result.return_value.get_counts.return_value = {"00": 100}
+        result = quantum_sync.execute_circuit({"circuit": "simple"})
+        assert result["status"] == "success"
+        assert result["counts"] == {"00": 100}
 
-def test_quantum_sync_no_node_id(auth_token):
-    headers = {"Authorization": f"Bearer {auth_token}"}
-    response = client.post(
-        "/jsonrpc",
-        json={"jsonrpc": "2.0", "method": "sync", "params": {}, "id": 1},
-        headers=headers
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Node ID required"
+
+def test_quantum_sync_invalid_circuit():
+    result = quantum_sync.execute_circuit({"circuit": "invalid"})
+    assert result["status"] == "failed"
+    assert "Invalid circuit" in result["error"]
