@@ -6,7 +6,6 @@ class AuthAgent:
     def __init__(self):
         self.users = {"admin": "hashed_password"}
 
-
     def authenticate(self, username: str, password: str):
         stored_password = self.users.get(username)
         if stored_password and verify_password(password, stored_password):
