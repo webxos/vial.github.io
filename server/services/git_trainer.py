@@ -23,7 +23,7 @@ class GitTrainer:
 
     def commit_file(self, repo_name: str, file_path: str, content: str, commit_message: str):
         try:
-            response = self.client.repos.create_or_update_file_contents(
+            self.client.repos.create_or_update_file_contents(
                 owner=self.settings.GITHUB_USERNAME,
                 repo=repo_name,
                 path=file_path,
@@ -31,7 +31,7 @@ class GitTrainer:
                 content=content.encode('base64').decode('utf-8')
             )
             logger.info(f"Committed file {file_path} to {repo_name}")
-            return {"status": "committed", "commit": response.json}
+            return {"status": "committed"}
         except Exception as e:
             logger.error(f"Failed to commit file: {str(e)}")
             raise ValueError(f"Commit failed: {str(e)}")
