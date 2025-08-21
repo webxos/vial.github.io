@@ -1,41 +1,33 @@
-from server.services.mongodb_handler import mongodb_handler
-from server.logging import logger
+import json
 import os
-import gzip
-import datetime
+from server.services.mongodb_handler import MongoDBHandler
+from server.config import settings
 
 
 class BackupRestore:
     def __init__(self):
-        self.backup_dir = "backups"
+        self.mongo = MongoDBHandler()
+        self.backup_dir = "/app/backups"
 
-    def backup(self):
-        try:
-            os.makedirs(self.backup_dir, exist_ok=True)
-            backup_file = (f"{self.backup_dir}/vial_backup_"
-                           f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.gz")
-            with gzip.open(backup_file, 'wt') as f:
-                for collection in mongodb_handler.db.list_collection_names():
-                    for doc in mongodb_handler.db[collection].find():
-                        f.write(str(doc) + '\n')
-            logger.info(f"Backup created: {backup_file}")
-            return {"status": "success", "file": backup_file}
-        except Exception as e:
-            logger.error(f"Backup failed: {str(e)}")
-            return {"status": "failed", "error": str(e)}
+    async def backup_data(self):
+        os.makedirs(self.backup_dir, exist_ok=True)
+        backup_file = f"{self.backup_dir}/backup_{int(time.time())}.json"
+        data = []
+        async for doc in self.mongo.collection.find():
+            doc["_id"] = str(doc["_id"])
+            data.append(doc)
+        with open(backup_file, "w") as f:
+            json.dump(data, f)
+        async with get_db() as db:
+            wallets = await db.execute(select(Wallet))
+            with open(f"{self.backup_dir}/wallets_{int(time.time())}.json", "w") as f:
+                json.dump([w.__dict__ for w in wallets.scalars()], f)
+        return {"status": "backup_completed", "file": backup_file}
 
-    def restore(self, backup_file: str):
-        try:
-            with gzip.open(backup_file, 'rt') as f:
-                for line in f:
-                    doc = eval(line)
-                    collection = doc.get("collection")
-                    mongodb_handler.db[collection].insert_one(doc)
-            logger.info(f"Restored from: {backup_file}")
-            return {"status": "success"}
-        except Exception as e:
-            logger.error(f"Restore failed: {str(e)}")
-            return {"status": "failed", "error": str(e)}
-
-
-backup_restore = BackupRestore()
+    async def restore_data(self, backup_file: str):
+        with open(backup_file, "r") as f:
+            data = json.load(f)
+        await self.mongo.collection.delete_many({})
+        for doc in data:
+            await self.mongo.save_metadata(doc)
+        return {"status": "restore_completed"}
