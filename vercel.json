@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "server/**.py": {
+      "runtime": "python3.11"
+    }
+  },
+  "routes": [
+    {"src": "/api/(.*)", "dest": "/server/$1"},
+    {"src": "/(.*)", "dest": "/public/$1"}
+  ]
+}
