@@ -6,7 +6,6 @@ class WebXosWallet:
     def __init__(self):
         self.address = str(uuid.uuid4())
 
-
     def get_balance(self):
         try:
             balance = 100
@@ -15,7 +14,6 @@ class WebXosWallet:
         except Exception as e:
             logger.error(f"Failed to get balance: {str(e)}")
             raise ValueError(f"Balance retrieval failed: {str(e)}")
-
 
     def send_transaction(self, recipient: str, amount: int):
         try:
