@@ -1,20 +1,22 @@
-from fastapi import HTTPException
-from octokit import Octokit
-from server.config import get_settings
+import json
+import os
+from server.logging import logger
 
-settings = get_settings()
 
-def validate_jsonrpc_request(request: dict):
-    if not isinstance(request, dict) or request.get("jsonrpc") != "2.0":
-        raise HTTPException(status_code=400, detail="Invalid JSON-RPC version")
-    if "method" not in request or "id" not in request:
-        raise HTTPException(status_code=400, detail="Missing method or id")
-    return True
-
-def github_search(query: str, max_results: int = 3):
+def load_config(file_path: str) -> dict:
     try:
-        client = Octokit(auth="token", token=os.getenv("GITHUB_TOKEN", settings.GITHUB_TOKEN))
-        response = client.search.code(q=query, sort="indexed")
-        return [{"file": item["name"], "content": item["text_matches"]} for item in response.json["items"][:max_results]]
+        with open(file_path, 'r') as f:
+            return json.load(f)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"GitHub search error: {str(e)}")
+        logger.error(f"Failed to load config from {file_path}: {str(e)}")
+        raise ValueError(f"Config load failed: {str(e)}")
+
+
+def save_config(file_path: str, config: dict):
+    try:
+        with open(file_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        logger.info(f"Config saved to {file_path}")
+    except Exception as e:
+        logger.error(f"Failed to save config to {file_path}: {str(e)}")
+        raise ValueError(f"Config save failed: {str(e)}")
