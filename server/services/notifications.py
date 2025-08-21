@@ -1,36 +1,21 @@
-from server.config import get_settings
-from server.logging import logger
-import aiohttp
+import httpx
+from server.config import settings
+from fastapi import HTTPException
 
 
-class NotificationService:
-    def __init__(self):
-        self.settings = get_settings()
-
-    async def send_notification(self, user_id: str, message: str, method: str):
+async def send_notification(message: str, channel: str = "in-app"):
+    async with httpx.AsyncClient() as client:
         try:
-            if method == "inapp":
-                logger.info(f"Sent in-app notification to {user_id}: {message}")
-                return {
-                    "status": "notification sent",
-                    "method": method,
-                    "user_id": user_id,
-                    "message": message
-                }
-            elif method == "email":
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(
-                        self.settings.NOTIFICATION_API_URL,
-                        json={"user_id": user_id, "message": message}
-                    ) as response:
-                        response.raise_for_status()
-                        logger.info(f"Sent email notification to {user_id}")
-                        return {"status": "notification sent", "method": method}
+            if channel == "in-app":
+                return {"status": "sent", "message": message}
+            elif channel == "email":
+                response = await client.post(
+                    settings.NOTIFICATION_API_URL,
+                    json={"message": message, "type": "email"}
+                )
+                response.raise_for_status()
+                return {"status": "sent", "channel": channel}
             else:
-                raise ValueError("Invalid notification method")
+                raise HTTPException(status_code=400, detail="Invalid channel")
         except Exception as e:
-            logger.error(f"Notification failed: {str(e)}")
-            raise ValueError(f"Notification failed: {str(e)}")
-
-
-notification_service = NotificationService()
+            raise HTTPException(status_code=500, detail=str(e))
