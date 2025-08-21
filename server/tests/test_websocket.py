@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from server.mcp_server import app
 import websockets
+import pytest
 
 
 async def auth_token():
@@ -10,6 +11,7 @@ async def auth_token():
     return response.json()["access_token"]
 
 
+@pytest.mark.asyncio
 async def test_websocket_connection(auth_token):
     async with websockets.connect("ws://localhost:8000/ws?token=" + auth_token) as ws:
         await ws.send("test message")
@@ -17,6 +19,7 @@ async def test_websocket_connection(auth_token):
         assert response == "Echo: test message"
 
 
+@pytest.mark.asyncio
 async def test_websocket_invalid_token():
     with pytest.raises(websockets.exceptions.ConnectionClosed):
         async with websockets.connect("ws://localhost:8000/ws?token=invalid") as ws:
