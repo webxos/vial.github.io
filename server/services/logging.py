@@ -1,5 +1,7 @@
 import logging
+import os
 from server.services.audit_log import AuditLog
+from fastapi import HTTPException
 
 
 logging.basicConfig(
@@ -11,21 +13,31 @@ logging.basicConfig(
 
 class Logger:
     def __init__(self, name: str):
-        self.logger = logging.getLogger(name)
-        self.audit = AuditLog()
+        try:
+            os.makedirs("/app/logs", exist_ok=True)
+            self.logger = logging.getLogger(name)
+            self.audit = AuditLog()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Logger init failed: {str(e)}")
 
     async def info(self, message: str, user_id: str = "system"):
-        self.logger.info(message)
-        await self.audit.log_action(
-            action="log_info",
-            user_id=user_id,
-            details={"message": message}
-        )
+        try:
+            self.logger.info(message)
+            await self.audit.log_action(
+                action="log_info",
+                user_id=user_id,
+                details={"message": message}
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Logging failed: {str(e)}")
 
     async def error(self, message: str, user_id: str = "system"):
-        self.logger.error(message)
-        await self.audit.log_action(
-            action="log_error",
-            user_id=user_id,
-            details={"message": message}
-        )
+        try:
+            self.logger.error(message)
+            await self.audit.log_action(
+                action="log_error",
+                user_id=user_id,
+                details={"message": message}
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Logging failed: {str(e)}")
