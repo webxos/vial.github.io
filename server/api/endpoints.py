@@ -1,26 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from server.services.git_trainer import git_trainer
 from server.security import verify_token
-from pymongo import MongoClient
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-router = APIRouter(prefix="/jsonrpc", tags=["jsonrpc"])
+router = APIRouter()
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://mongo:27017/vial")
-client = MongoClient(MONGO_URL)
-db = client.vial
 
-@router.post("/train")
-async def train(params: dict, token: str = Depends(verify_token)):
-    data = params.get("data", "")
-    if not data:
-        raise HTTPException(status_code=400, detail="Training data required")
-    # Placeholder: Implement training logic with mcp_alchemist
-    db.agents.insert_one({"hash": "placeholder", "data": data, "status": "trained"})
-    return {"jsonrpc": "2.0", "result": {"status": "training initiated", "data": data}, "id": params.get("id", 1)}
+async def create_repository(repo_data: dict, token: str = Depends(verify_token)):
+    result = git_trainer.create_repo(repo_data["name"], repo_data.get("description", ""),
+                                     repo_data.get("private", False))
+    return result
 
-@router.post("/wallet")
-async def wallet(token: str = Depends(verify_token)):
-    # Placeholder: Fetch wallet from SQLite
-    return {"jsonrpc": "2.0", "result": {"balance": 0.0, "address": "placeholder"}, "id": 1}
+
+async def commit_file(commit_data: dict, token: str = Depends(verify_token)):
+    result = git_trainer.commit_file(commit_data["repo_name"], commit_data["file_path"],
+                                    commit_data["content"], commit_data["commit_message"])
+    return result
