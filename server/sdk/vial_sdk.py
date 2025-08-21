@@ -7,7 +7,6 @@ class VialSDK:
         self.api_key = "default_key"
         self.base_url = "http://localhost:8000"
 
-
     def execute(self, command: dict):
         try:
             response = requests.post(f"{self.base_url}/jsonrpc", json=command)
