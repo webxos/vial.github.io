@@ -13,12 +13,14 @@ class Wallet(Base):
     user_id = Column(String, unique=True)
     balance = Column(Float, default=0.0)
     reputation = Column(Integer, default=0)
+    role = Column(String, default="user")
 
 
 class WalletModel(BaseModel):
     user_id: str
     balance: float = 0.0
     reputation: int = 0
+    role: str = "user"
 
     class Config:
         orm_mode = True
