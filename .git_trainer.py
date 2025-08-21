@@ -2,10 +2,12 @@ from octokit import Octokit
 from server.config import get_settings
 from server.logging import logger
 
+
 class GitTrainer:
     def __init__(self):
         self.settings = get_settings()
         self.client = Octokit(auth='token', token=self.settings.GITHUB_TOKEN)
+
 
     def create_repo(self, repo_name: str, description: str = "", private: bool = False):
         try:
@@ -19,6 +21,7 @@ class GitTrainer:
         except Exception as e:
             logger.error(f"Failed to create repository: {str(e)}")
             raise ValueError(f"Repository creation failed: {str(e)}")
+
 
     def commit_file(self, repo_name: str, file_path: str, content: str, commit_message: str):
         try:
@@ -34,5 +37,6 @@ class GitTrainer:
         except Exception as e:
             logger.error(f"Failed to commit file: {str(e)}")
             raise ValueError(f"Commit failed: {str(e)}")
+
 
 git_trainer = GitTrainer()
