@@ -6,7 +6,7 @@ import json
 
 
 async def cache_middleware(request: Request, call_next):
-    cache_key = f"cache:{hashlib.md5(f'{request.method}:{request.url}'.encode()).hexdigest()}"
+    cache_key = (f"cache:{hashlib.md5(f'{request.method}:{request.url}'.encode()).hexdigest()}")
     try:
         cached_response = redis_handler.get(cache_key)
         if cached_response:
