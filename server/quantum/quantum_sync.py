@@ -1,29 +1,26 @@
-from qiskit import QuantumCircuit, execute, Aer
-from server.services.mongodb_handler import mongodb_handler
-from server.config import get_settings
-import json
+from server.logging import logger
+import qiskit
+
 
 class QuantumSync:
     def __init__(self):
-        self.settings = get_settings()
-        self.handler = mongodb_handler
+        self.backend = qiskit.Aer.get_backend("qasm_simulator")
 
-    def sync_quantum_state(self, node_id: str):
-        # Simulate quantum circuit
-        circuit = QuantumCircuit(2, 2)
-        circuit.h(0)
-        circuit.cx(0, 1)
-        circuit.measure([0, 1], [0, 1])
-        simulator = Aer.get_backend('qasm_simulator')
-        result = execute(circuit, simulator, shots=1024).result()
-        counts = result.get_counts()
-        
-        # Store result in MongoDB
-        self.handler.db.agents.update_one(
-            {"hash": node_id},
-            {"$set": {"quantum_state": json.dumps(counts), "status": "synced"}},
-            upsert=True
-        )
-        return counts
+
+    def execute_circuit(self, circuit_data: dict):
+        try:
+            circuit = circuit_data.get("circuit")
+            if not circuit:
+                raise ValueError("Invalid circuit")
+            result = qiskit.execute(circuit, self.backend).result()
+            return {"status": "success", "counts": result.get_counts()}
+        except Exception as e:
+            logger.error(f"Quantum circuit execution failed: {str(e)}")
+            return {"status": "failed", "error": str(e)}
+
+
+    def get_status(self):
+        return {"status": "running", "backend": self.backend.name()}
+
 
 quantum_sync = QuantumSync()
