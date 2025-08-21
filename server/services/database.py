@@ -10,10 +10,8 @@ class Database:
         self.engine = create_engine(settings.MONGO_URL)
         self.Session = sessionmaker(bind=self.engine)
 
-
     def get_session(self):
         return self.Session()
-
 
     def execute_query(self, query: str):
         try:
@@ -24,7 +22,6 @@ class Database:
         except Exception as e:
             logger.error(f"Query execution failed: {str(e)}")
             raise ValueError(f"Query execution failed: {str(e)}")
-
 
     def close(self):
         self.engine.dispose()
