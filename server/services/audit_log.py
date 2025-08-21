@@ -1,26 +1,18 @@
-from server.services.mongodb_handler import mongodb_handler
-from server.logging import logger
-import datetime
+from server.services.mongodb_handler import MongoDBHandler
+from datetime import datetime
 
 
 class AuditLog:
     def __init__(self):
-        self.collection = mongodb_handler.db["audit_logs"]
+        self.mongo = MongoDBHandler()
+        self.collection = self.mongo.db["audit_logs"]
 
-    def log_action(self, user_id: str, action: str, details: dict = None):
-        try:
-            log_entry = {
-                "user_id": user_id,
-                "action": action,
-                "details": details or {},
-                "timestamp": datetime.datetime.utcnow()
-            }
-            self.collection.insert_one(log_entry)
-            logger.info(f"Audit log: {user_id} performed {action}")
-            return {"status": "logged", "entry": log_entry}
-        except Exception as e:
-            logger.error(f"Audit log error: {str(e)}")
-            raise ValueError(f"Audit log failed: {str(e)}")
-
-
-audit_log = AuditLog()
+    async def log_action(self, action: str, user_id: str, details: dict):
+        log_entry = {
+            "action": action,
+            "user_id": user_id,
+            "details": details,
+            "timestamp": datetime.utcnow()
+        }
+        result = await self.mongo.save_metadata(log_entry)
+        return result
