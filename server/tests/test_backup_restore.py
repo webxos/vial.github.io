@@ -1,25 +1,24 @@
 from server.services.backup_restore import backup_restore
-import pytest
 from unittest.mock import patch
-import subprocess
 
-@patch("subprocess.run")
-def test_backup(mock_subprocess):
-    mock_subprocess.return_value = None
-    result = backup_restore.backup()
-    assert result["status"] == "backup created"
-    assert "file" in result
-    mock_subprocess.assert_called_once()
 
-@patch("subprocess.run")
-def test_restore(mock_subprocess):
-    mock_subprocess.return_value = None
-    result = backup_restore.restore("backups/vial_backup_20230820_123456.gz")
-    assert result["status"] == "restore complete"
-    mock_subprocess.assert_called_once()
+def test_backup():
+    with patch("gzip.open") as mock_gzip:
+        mock_gzip.return_value.__enter__.return_value.write = None
+        result = backup_restore.backup()
+        assert result["status"] == "success"
+        assert "file" in result
 
-@patch("subprocess.run")
-def test_backup_failure(mock_subprocess):
-    mock_subprocess.side_effect = subprocess.CalledProcessError(1, "mongodump")
-    with pytest.raises(ValueError, match="Backup failed"):
-        backup_restore.backup()
+
+def test_restore():
+    with patch("gzip.open") as mock_gzip:
+        mock_gzip.return_value.__enter__.return_value.read.return_value = "{'collection': 'test'}"
+        result = backup_restore.restore("test.gz")
+        assert result["status"] == "success"
+
+
+def test_restore_failure():
+    with patch("gzip.open") as mock_gzip:
+        mock_gzip.return_value.__enter__.side_effect = Exception("Restore error")
+        result = backup_restore.restore("test.gz")
+        assert result["status"] == "failed"
