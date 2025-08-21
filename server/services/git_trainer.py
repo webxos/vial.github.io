@@ -1,4 +1,5 @@
 import httpx
+import base64
 from server.config import settings
 from server.services.audit_log import AuditLog
 
@@ -36,7 +37,7 @@ class GitTrainer:
                     f"{params['repo_name']}/contents/{params['file_path']}",
                     json={
                         "message": params["commit_message"],
-                        "content": params["content"].encode("base64").decode("utf-8")
+                        "content": base64.b64encode(params["content"].encode()).decode("utf-8")
                     }
                 )
                 response.raise_for_status()
@@ -47,7 +48,6 @@ class GitTrainer:
                 )
                 return {"status": "committed"}
         elif action == "suggest_code":
-            # Placeholder for Copilot-like suggestion logic
             suggestion = {"code": params["code_snippet"]["code"] + " # Suggested by Copilot"}
             await self.audit.log_action(
                 action="suggest_code",
