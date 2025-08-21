@@ -1,21 +1,32 @@
-import logging
-from logging.handlers import RotatingFileHandler
+import asyncio
+from server.services.notification import send_notification
+from server.services.audit_log import AuditLog
 
 
-class Logger:
+class AutoScheduler:
     def __init__(self):
-        self.logger = logging.getLogger("vial")
-        self.logger.setLevel(logging.INFO)
-        handler = RotatingFileHandler("vial.log", maxBytes=1000000, backupCount=5)
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        self.audit = AuditLog()
 
-    def info(self, message: str):
-        self.logger.info(message)
+    async def schedule_task(self, task: str, interval: int):
+        while True:
+            try:
+                await self.execute_task(task)
+                await self.audit.log_action(
+                    action="scheduled_task",
+                    user_id="system",
+                    details={"task": task, "interval": interval}
+                )
+                await asyncio.sleep(interval)
+            except Exception as e:
+                await self.audit.log_action(
+                    action="scheduled_task_failed",
+                    user_id="system",
+                    details={"task": task, "error": str(e)}
+                )
+                await asyncio.sleep(interval)
 
-    def error(self, message: str):
-        self.logger.error(message)
-
-
-logger = Logger()
+    async def execute_task(self, task: str):
+        if task == "send_notification":
+            await send_notification("Scheduled task executed", channel="in-app")
+        else:
+            raise ValueError("Unknown task")
