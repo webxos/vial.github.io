@@ -1,27 +1,23 @@
-from server.logging import logger
+from pydantic import BaseModel
+from server.services.git_trainer import GitTrainer
+from server.quantum.quantum_sync import QuantumSync
 
+class MCPAlchemist(BaseModel):
+    git_trainer: GitTrainer
+    quantum_sync: QuantumSync
 
-class McpAlchemist:
-    def __init__(self):
-        self.model = "claude-3-opus"
+    async def process_task(self, task: dict):
+        if task["type"] == "git":
+            result = await self.git_trainer.execute_task(
+                task["action"], task["params"]
+            )
+        elif task["type"] == "quantum":
+            result = await self.quantum_sync.run_circuit(
+                task["circuit"], task.get("backend", "qasm_simulator")
+            )
+        else:
+            raise ValueError("Invalid task type")
+        return result
 
-    def process(self, request: dict):
-        try:
-            result = {"status": "processed", "output": "processed data"}
-            logger.info(f"Processed request: {request}")
-            return result
-        except Exception as e:
-            logger.error(f"Processing failed: {str(e)}")
-            raise ValueError(f"Processing failed: {str(e)}")
-
-    def train(self, data: dict):
-        try:
-            result = {"status": "trained", "metrics": {}}
-            logger.info(f"Trained with data: {data}")
-            return result
-        except Exception as e:
-            logger.error(f"Training failed: {str(e)}")
-            raise ValueError(f"Training failed: {str(e)}")
-
-
-mcp_alchemist = McpAlchemist()
+    class Config:
+        arbitrary_types_allowed = True
