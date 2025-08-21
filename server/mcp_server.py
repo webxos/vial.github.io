@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from server.api import auth, endpoints, health_check, quantum_endpoints
 from server.services.notification import notification_service
 from server.logging import logger
-import json
+
 
 app = FastAPI(
     title="Vial MCP Controller",
@@ -24,7 +24,6 @@ async def jsonrpc(request: dict, token: str = Depends(oauth2_scheme)):
     if request.get("jsonrpc") != "2.0":
         raise HTTPException(status_code=400, detail="Invalid JSON-RPC version")
     method = request.get("method")
-    params = request.get("params", {})
     request_id = request.get("id")
     
     try:
@@ -45,7 +44,11 @@ async def jsonrpc(request: dict, token: str = Depends(oauth2_scheme)):
             raise HTTPException(status_code=400, detail="Method not found")
     except Exception as e:
         logger.error(f"JSON-RPC error: {str(e)}")
-        return {"jsonrpc": "2.0", "error": {"code": -32600, "message": str(e)}, "id": request_id}
+        return {
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": str(e)},
+            "id": request_id
+        }
 
 
 app.include_router(auth.router, prefix="/auth")
