@@ -8,6 +8,7 @@ def test_auto_deploy():
         result = auto_deploy.deploy("test_repo")
         assert result["status"] == "deployed"
 
+
 def test_auto_deploy_failure():
     with patch("docker.APIClient") as mock_docker:
         mock_docker.return_value.containers.run.side_effect = Exception("Docker error")
