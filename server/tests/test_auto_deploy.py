@@ -1,6 +1,5 @@
 from server.automation.auto_deploy import auto_deploy
 from unittest.mock import patch
-import subprocess
 
 
 def test_auto_deploy():
@@ -8,7 +7,6 @@ def test_auto_deploy():
         mock_docker.return_value.containers.run.return_value = None
         result = auto_deploy.deploy("test_repo")
         assert result["status"] == "deployed"
-
 
 def test_auto_deploy_failure():
     with patch("docker.APIClient") as mock_docker:
