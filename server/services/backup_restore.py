@@ -2,17 +2,18 @@ from server.services.mongodb_handler import mongodb_handler
 from server.logging import logger
 import os
 import gzip
+import datetime
 
 
 class BackupRestore:
     def __init__(self):
         self.backup_dir = "backups"
 
-
     def backup(self):
         try:
             os.makedirs(self.backup_dir, exist_ok=True)
-            backup_file = f"{self.backup_dir}/vial_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.gz"
+            backup_file = (f"{self.backup_dir}/vial_backup_"
+                           f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.gz")
             with gzip.open(backup_file, 'wt') as f:
                 for collection in mongodb_handler.db.list_collection_names():
                     for doc in mongodb_handler.db[collection].find():
@@ -22,7 +23,6 @@ class BackupRestore:
         except Exception as e:
             logger.error(f"Backup failed: {str(e)}")
             return {"status": "failed", "error": str(e)}
-
 
     def restore(self, backup_file: str):
         try:
