@@ -1,40 +1,13 @@
-from redis import Redis
-from server.config import get_settings
-from server.logging import logger
+import redis.asyncio as redis
+from server.config import settings
 
 
-class RedisHandler:
-    def __init__(self):
-        settings = get_settings()
-        self.redis = Redis.from_url(settings.REDIS_URL)
-
-    def get(self, key: str):
-        try:
-            return self.redis.get(key)
-        except Exception as e:
-            logger.error(f"Redis get failed: {str(e)}")
-            return None
-
-    def setex(self, key: str, time: int, value: str):
-        try:
-            self.redis.setex(key, time, value)
-        except Exception as e:
-            logger.error(f"Redis setex failed: {str(e)}")
-
-    def incr(self, key: str):
-        try:
-            return self.redis.incr(key)
-        except Exception as e:
-            logger.error(f"Redis incr failed: {str(e)}")
-            return 0
-
-    def ping(self):
-        try:
-            self.redis.ping()
-            return True
-        except Exception as e:
-            logger.error(f"Redis ping failed: {str(e)}")
-            return False
+redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
-redis_handler = RedisHandler()
+async def test_redis_connection():
+    try:
+        await redis_client.ping()
+        return {"status": "connected"}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
