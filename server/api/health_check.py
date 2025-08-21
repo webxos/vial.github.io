@@ -3,18 +3,18 @@ from server.services.redis_handler import redis_handler
 from server.logging import logger
 
 
-def check_system_health():
+async def check_health():
     health_status = {"status": "healthy", "services": {}}
     try:
-        mongodb_handler.db.command("ping")
-        health_status["services"]["mongodb"] = "healthy"
+        mongodb_handler.ping()
+        health_status["services"]["mongodb"] = "ok"
     except Exception as e:
-        health_status["services"]["mongodb"] = "unavailable"
         logger.error(f"MongoDB health check failed: {str(e)}")
+        health_status["services"]["mongodb"] = "error"
     try:
         redis_handler.ping()
-        health_status["services"]["redis"] = "healthy"
+        health_status["services"]["redis"] = "ok"
     except Exception as e:
-        health_status["services"]["redis"] = "unavailable"
         logger.error(f"Redis health check failed: {str(e)}")
+        health_status["services"]["redis"] = "error"
     return health_status
