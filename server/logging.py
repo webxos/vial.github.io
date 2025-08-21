@@ -11,10 +11,8 @@ class Logger:
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-
     def info(self, message: str):
         self.logger.info(message)
-
 
     def error(self, message: str):
         self.logger.error(message)
