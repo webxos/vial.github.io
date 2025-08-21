@@ -1,5 +1,4 @@
 import json
-import os
 from server.logging import logger
 
 
@@ -10,7 +9,6 @@ def load_config(file_path: str) -> dict:
     except Exception as e:
         logger.error(f"Failed to load config from {file_path}: {str(e)}")
         raise ValueError(f"Config load failed: {str(e)}")
-
 
 def save_config(file_path: str, config: dict):
     try:
