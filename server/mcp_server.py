@@ -1,77 +1,67 @@
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from server.security import verify_token, generate_credentials
-from server.api.auth import router as auth_router
-from server.api.endpoints import router as endpoints_router
-from server.api.quantum_endpoints import router as quantum_router
-from server.api.alchemist_endpoints import router as alchemist_router
-from server.api.copilot_integration import router as copilot_router
-from server.api.health_check import router as health_router
-from server.api.websocket import router as websocket_router
-from server.api.docs import router as docs_router
-from server.error_handler import exception_handler
-from server.api.rate_limiter import rate_limit_middleware
-from server.api.middleware import cors_middleware
-from server.api.cache_control import cache_middleware
+from fastapi.security import OAuth2PasswordBearer
+from server.api import auth, endpoints, health_check, quantum_endpoints
+from server.services.notification import notification_service
+from server.logging import logger
+import json
 
-app = FastAPI(title="Vial MCP Controller")
+app = FastAPI(
+    title="Vial MCP Controller",
+    description="AI-driven task management with GitHub, MongoDB, Redis, and Qiskit",
+    version="1.0.0"
+)
 
-
-app.exception_handler(Exception)(exception_handler)
-
-
-app.middleware("http")(rate_limit_middleware)
-app.middleware("http")(cors_middleware)
-app.middleware("http")(cache_middleware)
-
-
-app.mount("/public", StaticFiles(directory="public"), name="public")
-
-
-app.include_router(auth_router)
-app.include_router(endpoints_router)
-app.include_router(quantum_router)
-app.include_router(alchemist_router)
-app.include_router(copilot_router)
-app.include_router(health_router)
-app.include_router(websocket_router)
-app.include_router(docs_router)
-
-
-class JsonRpcRequest(BaseModel):
-    jsonrpc: str
-    method: str
-    params: dict = {}
-    id: int
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+async def health():
+    return await health_check.check_health()
 
 
 @app.post("/jsonrpc")
-async def jsonrpc_endpoint(request: JsonRpcRequest, token: str = Depends(verify_token)):
-    if request.jsonrpc != "2.0":
+async def jsonrpc(request: dict, token: str = Depends(oauth2_scheme)):
+    if request.get("jsonrpc") != "2.0":
         raise HTTPException(status_code=400, detail="Invalid JSON-RPC version")
-    if request.method == "status":
-        return {"jsonrpc": "2.0", "result": {"status": "running", "version": "2.7"},
-                "id": request.id}
-    elif request.method == "help":
-        return {
-            "jsonrpc": "2.0",
-            "result": {
-                "commands": ["/login", "/train", "/translate", "/diagnose", "/sync",
-                             "/wallet", "/deploy", "/copilot", "/health_check"]
-            },
-            "id": request.id
-        }
-    else:
-        raise HTTPException(status_code=400, detail="Method not found")
+    method = request.get("method")
+    params = request.get("params", {})
+    request_id = request.get("id")
+    
+    try:
+        if method == "status":
+            return {"jsonrpc": "2.0", "result": {"status": "ok"}, "id": request_id}
+        elif method == "help":
+            return {
+                "jsonrpc": "2.0",
+                "result": {
+                    "methods": [
+                        {"name": "status", "description": "Check server status"},
+                        {"name": "help", "description": "List available methods"}
+                    ]
+                },
+                "id": request_id
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Method not found")
+    except Exception as e:
+        logger.error(f"JSON-RPC error: {str(e)}")
+        return {"jsonrpc": "2.0", "error": {"code": -32600, "message": str(e)}, "id": request_id}
 
 
-@app.post("/auth/generate-credentials")
-async def generate_api_credentials(token: str = Depends(verify_token)):
-    key, secret = generate_credentials()
-    return {"key": key, "secret": secret}
+app.include_router(auth.router, prefix="/auth")
+app.include_router(endpoints.router)
+app.include_router(quantum_endpoints.router, prefix="/quantum")
+
+
+@app.on_event("startup")
+async def startup_event():
+    await notification_service.send_notification(
+        "admin", "Server started", "inapp"
+    )
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await notification_service.send_notification(
+        "admin", "Server stopped", "inapp"
+    )
