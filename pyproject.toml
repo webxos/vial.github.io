@@ -1,32 +1,36 @@
 [project]
 name = "vial-mcp-controller"
 version = "2.7.0"
-description = "A modular control plane for AI-driven task management with GitHub and quantum computing"
+description = "Modular control plane for AI-driven task management with quantum and wallet integration"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "Vial Team", email = "contact@vial.github.io" }
 ]
-license = { text = "MIT" }
-readme = "README.md"
-requires-python = ">=3.11"
+license = { file = "LICENSE" }
+readme = "readme.md"
+requires-python = ">=3.9"
 dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn>=0.30.0",
-    "pydantic>=2.9.0",
-    "httpx>=0.27.0",
-    "pymongo>=4.8.0",
+    "fastapi>=0.103.0",
+    "pydantic>=2.0.0",
+    "sqlalchemy>=2.0.0",
+    "pymongo>=4.0.0",
+    "torch>=2.0.0",
+    "qiskit>=0.44.0",
+    "web3>=6.0.0",
+    "jose>=3.3.0",
+    "python-dotenv>=1.0.0",
     "redis>=5.0.0",
-    "qiskit>=1.2.0",
-    "python-jose[cryptography]>=3.3.0",
-    "pytest>=8.3.0",
-    "flake8>=7.1.0",
-    "torch>=2.4.0"
+    "pytest>=7.0.0",
+    "flake8>=6.0.0",
+    "langchain>=0.0.300",
+    "aiofiles>=23.2.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/vial/vial.github.io"
+Documentation = "https://vial.github.io/docs"
+Repository = "https://github.com/vial/vial.github.io"
+Issues = "https://github.com/vial/vial.github.io/issues"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[project.urls]
-Homepage = "https://github.com/your-username/vial.github.io"
-Repository = "https://github.com/your-username/vial.github.io"
-Documentation = "https://your-username.github.io/vial.github.io/docs"
