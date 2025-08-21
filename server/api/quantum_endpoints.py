@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordBearer
-from server.quantum.quantum_sync import execute_quantum_circuit
+from server.models.mcp_alchemist import MCPAlchemist
+from server.quantum.quantum_sync import QuantumRequest
+from server.security import verify_jwt
+
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
-
-@router.post("/execute")
-async def execute_circuit(circuit: str, token: str = Depends(oauth2_scheme)):
-    return await execute_quantum_circuit(circuit)
+@router.post("/predict")
+async def predict_quantum(
+    request: QuantumRequest,
+    token: str = Depends(verify_jwt)
+):
+    alchemist = MCPAlchemist()
+    result = await alchemist.predict_quantum_outcome(request.circuit)
+    return result
