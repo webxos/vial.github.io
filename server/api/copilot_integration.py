@@ -1,11 +1,22 @@
 from fastapi import APIRouter, Depends
-from server.config import copilot_config
-from server.security import verify_token
+from server.services.git_trainer import GitTrainer
+from server.security import verify_jwt
+
 
 router = APIRouter()
 
 
-async def get_copilot_suggestions(query: dict, token: str = Depends(verify_token)):
-    config = copilot_config.get_config()
-    suggestions = copilot_config.generate_suggestions(query, config)
-    return {"suggestions": suggestions}
+@router.post("/copilot/suggest")
+async def suggest_code(
+    code_snippet: dict,
+    token: str = Depends(verify_jwt)
+):
+    git_trainer = GitTrainer()
+    try:
+        suggestion = await git_trainer.execute_task(
+            action="suggest_code",
+            params={"code_snippet": code_snippet}
+        )
+        return {"status": "success", "suggestion": suggestion}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
