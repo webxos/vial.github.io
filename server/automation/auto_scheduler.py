@@ -1,28 +1,21 @@
-from server.services.git_trainer import git_trainer
-from server.logging import logger
-import schedule
-import time
+import logging
+from logging.handlers import RotatingFileHandler
 
 
-class AutoScheduler:
+class Logger:
     def __init__(self):
-        self.scheduler = schedule
+        self.logger = logging.getLogger("vial")
+        self.logger.setLevel(logging.INFO)
+        handler = RotatingFileHandler("vial.log", maxBytes=1000000, backupCount=5)
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+
+    def info(self, message: str):
+        self.logger.info(message)
+
+    def error(self, message: str):
+        self.logger.error(message)
 
 
-    def schedule_task(self, task_name: str, interval: int):
-        try:
-            self.scheduler.every(interval).seconds.do(git_trainer.create_repo,
-                                                     task_name)
-            logger.info(f"Scheduled task: {task_name} every {interval} seconds")
-        except Exception as e:
-            logger.error(f"Failed to schedule task: {str(e)}")
-            raise ValueError(f"Scheduling failed: {str(e)}")
-
-
-    def run(self):
-        while True:
-            self.scheduler.run_pending()
-            time.sleep(1)
-
-
-auto_scheduler = AutoScheduler()
+logger = Logger()
