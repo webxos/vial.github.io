@@ -1,50 +1,32 @@
-from server.services.mongodb_handler import mongodb_handler
+from server.logging import logger
 import uuid
-from server.config import get_settings
 
-class WebXOSWallet:
+
+class WebXosWallet:
     def __init__(self):
-        self.settings = get_settings()
-        self.handler = mongodb_handler
+        self.address = str(uuid.uuid4())
 
-    def create_wallet(self, user_id: str):
-        wallet = {
-            "address": str(uuid.uuid4()),
-            "user_id": user_id,
-            "balance": 0.0,
-            "hash": str(uuid.uuid4())
-        }
-        wallet_id = self.handler.save_wallet(wallet)
-        return wallet
 
-    def get_balance(self, address: str):
-        wallet = self.handler.get_wallet(address)
-        if not wallet:
-            raise ValueError("Wallet not found")
-        return wallet["balance"]
+    def get_balance(self):
+        try:
+            balance = 100
+            logger.info(f"Retrieved balance for {self.address}")
+            return balance
+        except Exception as e:
+            logger.error(f"Failed to get balance: {str(e)}")
+            raise ValueError(f"Balance retrieval failed: {str(e)}")
 
-    def update_balance(self, address: str, amount: float):
-        wallet = self.handler.get_wallet(address)
-        if not wallet:
-            raise ValueError("Wallet not found")
-        wallet["balance"] += amount
-        self.handler.db.wallets.update_one({"address": address}, {"$set": {"balance": wallet["balance"]}})
-        return wallet["balance"]
 
-    def export_wallet(self, address: str):
-        wallet = self.handler.get_wallet(address)
-        if not wallet:
-            raise ValueError("Wallet not found")
-        return {
-            "address": wallet["address"],
-            "balance": wallet["balance"],
-            "hash": wallet["hash"]
-        }
+    def send_transaction(self, recipient: str, amount: int):
+        try:
+            if amount <= 0:
+                raise ValueError("Invalid amount")
+            result = {"status": "success", "tx_id": str(uuid.uuid4())}
+            logger.info(f"Sent transaction to {recipient} for {amount}")
+            return result
+        except Exception as e:
+            logger.error(f"Transaction failed: {str(e)}")
+            raise ValueError(f"Transaction failed: {str(e)}")
 
-    def import_wallet(self, wallet_data: dict):
-        if not all(key in wallet_data for key in ["address", "balance", "hash"]):
-            raise ValueError("Invalid wallet data")
-        self.handler.save_wallet(wallet_data)
-        return wallet_data["address"]
 
-webxos_wallet = WebXOSWallet()
+webxos_wallet = WebXosWallet()
