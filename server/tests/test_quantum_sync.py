@@ -1,6 +1,7 @@
 from server.quantum.quantum_sync import quantum_sync
 from unittest.mock import patch
 
+
 def test_quantum_sync_initialization():
     assert quantum_sync is not None
 
