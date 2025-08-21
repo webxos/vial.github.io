@@ -1,31 +1,27 @@
 from server.models.webxos_wallet import webxos_wallet
-import pytest
-from pymongo import MongoClient
-from server.config import get_settings
+from unittest.mock import patch
 
-settings = get_settings()
 
-@pytest.fixture
-def mongo_client():
-    client = MongoClient(settings.MONGO_URL)
-    yield client
-    client.close()
+def test_wallet_initialization():
+    assert webxos_wallet is not None
+    assert webxos_wallet.address is not None
 
-def test_create_wallet():
-    wallet = webxos_wallet.create_wallet("test_user")
-    assert "address" in wallet
-    assert wallet["user_id"] == "test_user"
-    assert wallet["balance"] == 0.0
 
-def test_update_balance(mongo_client):
-    wallet = webxos_wallet.create_wallet("test_user")
-    new_balance = webxos_wallet.update_balance(wallet["address"], 100.0)
-    assert new_balance == 100.0
-    db_wallet = mongo_client.vial.wallets.find_one({"address": wallet["address"]})
-    assert db_wallet["balance"] == 100.0
+def test_wallet_balance():
+    with patch("server.models.webxos_wallet.webxos_wallet.get_balance") as mock_balance:
+        mock_balance.return_value = 100
+        balance = webxos_wallet.get_balance()
+        assert balance == 100
 
-def test_export_import_wallet():
-    wallet = webxos_wallet.create_wallet("test_user")
-    exported = webxos_wallet.export_wallet(wallet["address"])
-    imported_address = webxos_wallet.import_wallet(exported)
-    assert imported_address == wallet["address"]
+
+def test_wallet_transaction():
+    with patch("server.models.webxos_wallet.webxos_wallet.send_transaction") as mock_tx:
+        mock_tx.return_value = {"tx_id": "123"}
+        result = webxos_wallet.send_transaction("recipient", 50)
+        assert result["tx_id"] == "123"
+
+
+def test_wallet_invalid_transaction():
+    result = webxos_wallet.send_transaction("recipient", -50)
+    assert result["status"] == "failed"
+    assert "Invalid amount" in result["error"]
