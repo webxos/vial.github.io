@@ -25,7 +25,7 @@ async def jsonrpc(request: dict, token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=400, detail="Invalid JSON-RPC version")
     method = request.get("method")
     request_id = request.get("id")
-    
+
     try:
         if method == "status":
             return {"jsonrpc": "2.0", "result": {"status": "ok"}, "id": request_id}
