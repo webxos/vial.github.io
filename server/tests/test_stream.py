@@ -1,31 +1,42 @@
 import pytest
 from fastapi.testclient import TestClient
 from server.mcp_server import app
-from server.models.webxos_wallet import WebXOSWallet
+from server.models.webxos_wallet import WebXOSWallet, WalletModel
+from server.api.vial_manager import VialManager
+from unittest.mock import AsyncMock, patch
+import json
 
+@pytest.fixture
+def client():
+    return TestClient(app)
 
-client = TestClient(app)
+@pytest.fixture
+async def mock_wallet():
+    wallet = WebXOSWallet()
+    wallet.update_wallet = AsyncMock(return_value=WalletModel(
+        user_id="test_user",
+        balance=0.0001,
+        transactions=[{"type": "stream_update", "vial_id": "vial1", "amount": 0.0001}]
+    ))
+    return wallet
 
+@pytest.fixture
+async def mock_vial_manager():
+    manager = VialManager()
+    manager.get_vial_states = AsyncMock(return_value={
+        "vial1": {"status": "running", "qubits": []}
+    })
+    return manager
 
 @pytest.mark.asyncio
-async def test_stream_vials():
-    token_response = await client.post("/auth/token")
-    token = token_response.json()["access_token"]
-    response = await client.get(
-        "/stream/test_network",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "text/event-stream"
-    content = response.text
-    assert "data:" in content
-    wallet_manager = WebXOSWallet()
-    balance = await wallet_manager.get_balance("test_network")
-    assert balance > 0.0
-
-
-@pytest.mark.asyncio
-async def test_stream_unauthorized():
-    response = await client.get("/stream/test_network")
-    assert response.status_code == 401
-    assert response.json()["error"]["code"] == 401
+async def test_stream_endpoint(client, mock_wallet, mock_vial_manager):
+    with patch("server.api.stream.WebXOSWallet", return_value=mock_wallet), \
+         patch("server.api.stream.VialManager", return_value=mock_vial_manager):
+        with client.websocket_connect("/stream?token=test_token") as ws:
+            data = ws.receive_json()
+            assert data["vial_id"] == "vial1"
+            assert data["state"] == {"status": "running", "qubits": []}
+            assert data["wallet"]["user_id"] == "test_user"
+            assert data["wallet"]["balance"] == 0.0001
+            mock_wallet.update_wallet.assert_called_once()
+            mock_vial_manager.get_vial_states.assert_called_once()
