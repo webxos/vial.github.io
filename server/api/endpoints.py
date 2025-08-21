@@ -1,21 +1,39 @@
-from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordBearer
-from server.services.git_trainer import git_trainer
+from fastapi import APIRouter
+
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+@router.get("/help")
+async def help():
+    return {
+        "commands": {
+            "/auth/token": "Authenticate user and return access token",
+            "/auth/generate-credentials": "Generate API key and secret",
+            "/quantum/execute": "Execute a quantum circuit",
+            "/export": "Export data (placeholder)",
+            "/import": "Import data (placeholder)",
+            "/void": "Void action (placeholder)",
+            "/troubleshoot": "Run diagnostics"
+        }
+    }
 
 
-@router.post("/repos/create")
-async def create_repo(repo_name: str, description: str = "", private: bool = False,
-                      token: str = Depends(oauth2_scheme)):
-    return git_trainer.create_repo(repo_name, description, private)
+@router.post("/void")
+async def void():
+    return {"status": "void_action_triggered"}
 
 
-@router.post("/repos/commit")
-async def commit_file(repo_name: str, file_path: str, content: str,
-                      commit_message: str, token: str = Depends(oauth2_scheme)):
-    return git_trainer.commit_file(
-        repo_name, file_path, content, commit_message
-    )
+@router.post("/troubleshoot")
+async def troubleshoot():
+    return {"status": "troubleshooting", "logs": "Check server logs"}
+
+
+@router.post("/export")
+async def export_data():
+    return {"status": "export_initiated"}
+
+
+@router.post("/import")
+async def import_data():
+    return {"status": "import_initiated"}
