@@ -1,24 +1,34 @@
-from server.services.git_trainer import git_trainer
+import os
+import subprocess
+from fastapi import HTTPException
+from server.config import settings
 from server.logging import logger
-import docker
-
 
 class AutoDeploy:
     def __init__(self):
-        self.docker_client = docker.from_env()
+        self.deploy_env = os.getenv("DEPLOY_ENV", "local")
 
-    def deploy(self, repo_name: str):
+    async def deploy(self, platform: str, config: dict):
         try:
-            git_trainer.create_repo(repo_name)
-            self.docker_client.containers.run(
-                "vial-mcp-alchemist:latest",
-                detach=True
+            if platform == "netlify":
+                cmd = [
+                    "netlify", "deploy", "--prod",
+                    f"--dir={config.get('dir', 'dist')}"
+                ]
+            elif platform == "vercel":
+                cmd = [
+                    "vercel", "--prod",
+                    f"--token={settings.VERCEL_TOKEN}"
+                ]
+            else:
+                raise HTTPException(status_code=400, detail="Invalid platform")
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, check=True
             )
-            logger.info(f"Deployed {repo_name}")
-            return {"status": "deployed"}
-        except Exception as e:
-            logger.error(f"Deployment failed: {str(e)}")
-            raise ValueError(f"Deployment failed: {str(e)}")
-
+            logger.info(f"Deployed to {platform}: {result.stdout}")
+            return {"status": "deployed", "platform": platform}
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Deployment failed: {e.stderr}")
+            raise HTTPException(status_code=500, detail="Deployment failed")
 
 auto_deploy = AutoDeploy()
