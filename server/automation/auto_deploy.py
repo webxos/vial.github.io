@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from server.config import settings
 from server.logging import logger
 
+
 class AutoDeploy:
     def __init__(self):
         self.deploy_env = os.getenv("DEPLOY_ENV", "local")
@@ -30,5 +31,6 @@ class AutoDeploy:
         except subprocess.CalledProcessError as e:
             logger.error(f"Deployment failed: {e.stderr}")
             raise HTTPException(status_code=500, detail="Deployment failed")
+
 
 auto_deploy = AutoDeploy()
