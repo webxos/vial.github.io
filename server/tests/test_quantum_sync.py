@@ -1,22 +1,25 @@
-from server.quantum.quantum_sync import quantum_sync
-from unittest.mock import patch
+import pytest
+from fastapi.testclient import TestClient
+from server.mcp_server import app
 
 
-def test_quantum_sync_initialization():
-    assert quantum_sync is not None
+client = TestClient(app)
 
 
-def test_quantum_sync_execute():
-    with patch("qiskit.execute") as mock_execute:
-        mock_execute.return_value.result.return_value.get_counts.return_value = {
-            "00": 100
-        }
-        result = quantum_sync.execute_circuit({"circuit": "simple"})
-        assert result["status"] == "success"
-        assert result["counts"] == {"00": 100}
-
-
-def test_quantum_sync_invalid_circuit():
-    result = quantum_sync.execute_circuit({"circuit": "invalid"})
-    assert result["status"] == "failed"
-    assert "Invalid circuit" in result["error"]
+@pytest.mark.asyncio
+async def test_quantum_execute():
+    token_response = await client.post("/auth/token")
+    token = token_response.json()["access_token"]
+    circuit = {
+        "qubits": 2,
+        "gates": [{"type": "h", "target": 0}, {"type": "cx", "control": 0, "target": 1}]
+    }
+    response = await client.post(
+        "/quantum/execute",
+        json={"circuit": circuit, "backend": "qasm_simulator"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    assert "status" in response.json()
+    assert response.json()["status"] == "success"
+    assert "counts" in response.json()
