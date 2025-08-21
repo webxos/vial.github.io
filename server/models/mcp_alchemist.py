@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from server.services.git_trainer import GitTrainer
 from server.quantum.quantum_sync import QuantumSync
 
+
 class MCPAlchemist(BaseModel):
     git_trainer: GitTrainer
     quantum_sync: QuantumSync
