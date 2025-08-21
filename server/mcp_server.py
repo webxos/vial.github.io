@@ -3,7 +3,8 @@ from server.api import auth, endpoints, quantum_endpoints, websocket, copilot_in
 from server.api.cache_control import cache_response
 from server.api.rate_limiter import rate_limit
 from server.api.middleware import logging_middleware
-from server.security import setup_cors
+from server.api.error_handler import setup_error_handlers
+from server.services.security import setup_cors
 
 
 app = FastAPI(
@@ -17,6 +18,7 @@ app.middleware("http")(cache_response)
 app.middleware("http")(rate_limit)
 app.middleware("http")(logging_middleware)
 setup_cors(app)
+setup_error_handlers(app)
 
 
 app.include_router(auth.router, prefix="/auth")
