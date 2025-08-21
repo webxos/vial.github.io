@@ -1,18 +1,12 @@
 from fastapi import APIRouter, Depends
-from server.quantum.quantum_sync import quantum_sync
-from server.security import verify_token
+from fastapi.security import OAuth2PasswordBearer
+from server.quantum.quantum_sync import execute_quantum_circuit
 
 router = APIRouter()
 
-
-async def execute_quantum_circuit(
-    circuit_data: dict,
-    token: str = Depends(verify_token)
-):
-    result = quantum_sync.execute_circuit(circuit_data)
-    return result
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
-async def get_quantum_status(token: str = Depends(verify_token)):
-    status = quantum_sync.get_status()
-    return status
+@router.post("/execute")
+async def execute_circuit(circuit: str, token: str = Depends(oauth2_scheme)):
+    return await execute_quantum_circuit(circuit)
