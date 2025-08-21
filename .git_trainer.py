@@ -8,7 +8,6 @@ class GitTrainer:
         self.settings = get_settings()
         self.client = Octokit(auth='token', token=self.settings.GITHUB_TOKEN)
 
-
     def create_repo(self, repo_name: str, description: str = "", private: bool = False):
         try:
             response = self.client.repos.create_for_authenticated_user(
@@ -21,7 +20,6 @@ class GitTrainer:
         except Exception as e:
             logger.error(f"Failed to create repository: {str(e)}")
             raise ValueError(f"Repository creation failed: {str(e)}")
-
 
     def commit_file(self, repo_name: str, file_path: str, content: str, commit_message: str):
         try:
