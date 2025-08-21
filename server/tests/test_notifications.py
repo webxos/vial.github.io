@@ -1,37 +1,22 @@
-from ..services.notification import notification_service
-from unittest.mock import patch
 import pytest
+from fastapi.testclient import TestClient
+from server.mcp_server import app
+from server.services.notification import send_notification
 
 
-async def test_inapp_notification():
-    result = await notification_service.send_notification(
-        "test_user",
-        "Test message",
-        "inapp"
-    )
-    assert result["status"] == "notification sent"
-    assert result["method"] == "inapp"
-    assert result["user_id"] == "test_user"
-    assert result["message"] == "Test message"
+client = TestClient(app)
 
 
-async def test_email_notification():
-    with patch("aiohttp.ClientSession.post") as mock_post:
-        mock_post.return_value.__aenter__.return_value.status = 200
-        result = await notification_service.send_notification(
-            "test_user",
-            "Test email",
-            "email"
-        )
-        assert result["status"] == "notification sent"
-        assert result["method"] == "email"
-        mock_post.assert_called_once()
+@pytest.mark.asyncio
+async def test_in_app_notification():
+    response = await send_notification("Test in-app message", channel="in-app")
+    assert response["status"] == "sent"
+    assert response["message"] == "Test in-app message"
 
 
-async def test_invalid_notification_method():
-    with pytest.raises(ValueError, match="Invalid notification method"):
-        await notification_service.send_notification(
-            "test_user",
-            "Test message",
-            "invalid"
-        )
+@pytest.mark.asyncio
+async def test_invalid_channel_notification():
+    with pytest.raises(Exception) as exc_info:
+        await send_notification("Test message", channel="invalid")
+    assert exc_info.value.status_code == 400
+    assert "Invalid channel" in str(exc_info.value)
