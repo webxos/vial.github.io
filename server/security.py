@@ -3,12 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from server.config import settings
 
+
 ALLOWED_ORIGINS = [
     "https://vial.github.io",
     "https://your-app.netlify.app",
     "https://your-app.vercel.app",
     "http://localhost:8000"
 ]
+
 
 def setup_cors(app):
     app.add_middleware(
@@ -18,6 +20,7 @@ def setup_cors(app):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
 
 async def verify_jwt(token: str):
     try:
