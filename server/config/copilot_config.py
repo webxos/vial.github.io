@@ -1,16 +1,13 @@
-from pydantic import BaseSettings
-from server.config import Settings
+from server.logging import logger
 
-class CopilotSettings(Settings):
-    GITHUB_TOKEN: str = "placeholder_token"
-    COPILOT_MAX_SNIPPETS: int = 3
-    COPILOT_QUERY_TIMEOUT: int = 30
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+def get_config():
+    try:
+        return {"model": "claude-3-opus", "enabled": True}
+    except Exception as e:
+        logger.error(f"Failed to load copilot config: {str(e)}")
+        raise ValueError(f"Copilot config load failed: {str(e)}")
 
-def get_copilot_settings():
-    return CopilotSettings()
 
-copilot_settings = get_copilot_settings()
+def generate_suggestions(query: dict, config: dict):
+    return ["suggestion1", "suggestion2"]
