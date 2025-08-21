@@ -1,13 +1,11 @@
-name: CI
+name: CD
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,8 +21,40 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run tests
-      run: pytest server/tests/
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Run flake8
-      run: flake8 . --max-line-length=88 --extend-ignore=E203
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/vial-mcp-controller:latest
+
+    - name: Deploy to server
+      env:
+        DEPLOY_SERVER: ${{ secrets.DEPLOY_SERVER }}
+        DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      run: |
+        echo "$DEPLOY_KEY" > deploy_key
+        chmod 600 deploy_key
+        ssh -i deploy_key -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_SERVER << 'EOF'
+          docker pull ${{ secrets.DOCKER_USERNAME }}/vial-mcp-controller:latest
+          docker stop vial-mcp-controller || true
+          docker rm vial-mcp-controller || true
+          docker run -d --name vial-mcp-controller -p 8000:8000 \
+            -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -e GITHUB_USERNAME=${{ secrets.GITHUB_USERNAME }} \
+            -e MONGO_URL=${{ secrets.MONGO_URL }} \
+            -e REDIS_URL=${{ secrets.REDIS_URL }} \
+            -e NOTIFICATION_API_URL=${{ secrets.NOTIFICATION_API_URL }} \
+            ${{ secrets.DOCKER_USERNAME }}/vial-mcp-controller:latest
+        EOF
