@@ -13,6 +13,7 @@ from server.api.docs import router as docs_router
 from server.error_handler import exception_handler
 from server.api.rate_limiter import rate_limit_middleware
 from server.api.middleware import cors_middleware
+from server.api.cache_control import cache_middleware
 import os
 
 app = FastAPI(title="Vial MCP Controller")
@@ -23,6 +24,7 @@ app.exception_handler(Exception)(exception_handler)
 # Add middlewares
 app.middleware("http")(rate_limit_middleware)
 app.middleware("http")(cors_middleware)
+app.middleware("http")(cache_middleware)
 
 # Mount static files
 app.mount("/public", StaticFiles(directory="public"), name="public")
