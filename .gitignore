@@ -39,9 +39,3 @@ build/
 *.egg
 *.eggs/
 *.egg-info/
-
-# Testing
-.coverage
-coverage.xml
-*.cover
-*.pytest_cache/
