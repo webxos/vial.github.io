@@ -1,40 +1,41 @@
 from server.services.mongodb_handler import mongodb_handler
-from server.config import get_settings
 from server.logging import logger
 import os
-import subprocess
-import datetime
+import gzip
+
 
 class BackupRestore:
     def __init__(self):
-        self.settings = get_settings()
-        self.db = mongodb_handler.db
+        self.backup_dir = "backups"
 
-    def backup(self, backup_dir: str = "backups"):
-        os.makedirs(backup_dir, exist_ok=True)
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = f"{backup_dir}/vial_backup_{timestamp}.gz"
+
+    def backup(self):
         try:
-            subprocess.run(
-                ["mongodump", "--uri", self.settings.MONGO_URL, "--archive", backup_file],
-                check=True
-            )
+            os.makedirs(self.backup_dir, exist_ok=True)
+            backup_file = f"{self.backup_dir}/vial_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.gz"
+            with gzip.open(backup_file, 'wt') as f:
+                for collection in mongodb_handler.db.list_collection_names():
+                    for doc in mongodb_handler.db[collection].find():
+                        f.write(str(doc) + '\n')
             logger.info(f"Backup created: {backup_file}")
-            return {"status": "backup created", "file": backup_file}
-        except subprocess.CalledProcessError as e:
+            return {"status": "success", "file": backup_file}
+        except Exception as e:
             logger.error(f"Backup failed: {str(e)}")
-            raise ValueError(f"Backup failed: {str(e)}")
+            return {"status": "failed", "error": str(e)}
+
 
     def restore(self, backup_file: str):
         try:
-            subprocess.run(
-                ["mongorestore", "--uri", self.settings.MONGO_URL, "--archive", backup_file, "--drop"],
-                check=True
-            )
-            logger.info(f"Database restored from: {backup_file}")
-            return {"status": "restore complete"}
-        except subprocess.CalledProcessError as e:
+            with gzip.open(backup_file, 'rt') as f:
+                for line in f:
+                    doc = eval(line)
+                    collection = doc.get("collection")
+                    mongodb_handler.db[collection].insert_one(doc)
+            logger.info(f"Restored from: {backup_file}")
+            return {"status": "success"}
+        except Exception as e:
             logger.error(f"Restore failed: {str(e)}")
-            raise ValueError(f"Restore failed: {str(e)}")
+            return {"status": "failed", "error": str(e)}
+
 
 backup_restore = BackupRestore()
