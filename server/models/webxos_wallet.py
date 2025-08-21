@@ -1,30 +1,37 @@
-from server.logging import logger
-import uuid
+from pydantic import BaseModel
+from server.services.database import get_db
+from sqlalchemy import Column, Integer, Float, String
+from sqlalchemy.ext.declarative import declarative_base
 
 
-class WebXosWallet:
-    def __init__(self):
-        self.address = str(uuid.uuid4())
-
-    def get_balance(self):
-        try:
-            balance = 100
-            logger.info(f"Retrieved balance for {self.address}")
-            return balance
-        except Exception as e:
-            logger.error(f"Failed to get balance: {str(e)}")
-            raise ValueError(f"Balance retrieval failed: {str(e)}")
-
-    def send_transaction(self, recipient: str, amount: int):
-        try:
-            if amount <= 0:
-                raise ValueError("Invalid amount")
-            result = {"status": "success", "tx_id": str(uuid.uuid4())}
-            logger.info(f"Sent transaction to {recipient} for {amount}")
-            return result
-        except Exception as e:
-            logger.error(f"Transaction failed: {str(e)}")
-            raise ValueError(f"Transaction failed: {str(e)}")
+Base = declarative_base()
 
 
-webxos_wallet = WebXosWallet()
+class Wallet(Base):
+    __tablename__ = "wallets"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, unique=True)
+    balance = Column(Float, default=0.0)
+    reputation = Column(Integer, default=0)
+
+
+class WalletModel(BaseModel):
+    user_id: str
+    balance: float = 0.0
+    reputation: int = 0
+
+    class Config:
+        orm_mode = True
+
+
+async def update_wallet(user_id: str, balance: float, reputation: int):
+    async with get_db() as db:
+        wallet = await db.get(Wallet, user_id)
+        if not wallet:
+            wallet = Wallet(user_id=user_id, balance=balance, reputation=reputation)
+            db.add(wallet)
+        else:
+            wallet.balance = balance
+            wallet.reputation = reputation
+        await db.commit()
+        return WalletModel.from_orm(wallet)
