@@ -8,6 +8,8 @@ from server.api.quantum_endpoints import router as quantum_router
 from server.api.alchemist_endpoints import router as alchemist_router
 from server.api.copilot_integration import router as copilot_router
 from server.api.health_check import router as health_router
+from server.api.websocket import router as websocket_router
+from server.api.docs import router as docs_router
 from server.error_handler import exception_handler
 from server.api.rate_limiter import rate_limit_middleware
 import os
@@ -29,7 +31,9 @@ app.include_router(endpoints_router)
 app.include_router(quantum_router)
 app.include_router(alchemist_router)
 app.include_router(copilot_router)
-app.include_router(health_router)
+app.includerouter(health_router)
+app.include_router(websocket_router)
+app.include_router(docs_router)
 
 # JSON-RPC Request Model
 class JsonRpcRequest(BaseModel):
