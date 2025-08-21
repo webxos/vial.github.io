@@ -8,7 +8,6 @@ class RedisHandler:
         settings = get_settings()
         self.redis = Redis.from_url(settings.REDIS_URL)
 
-
     def get(self, key: str):
         try:
             return self.redis.get(key)
@@ -16,13 +15,11 @@ class RedisHandler:
             logger.error(f"Redis get failed: {str(e)}")
             return None
 
-
     def setex(self, key: str, time: int, value: str):
         try:
             self.redis.setex(key, time, value)
         except Exception as e:
             logger.error(f"Redis setex failed: {str(e)}")
-
 
     def incr(self, key: str):
         try:
@@ -30,7 +27,6 @@ class RedisHandler:
         except Exception as e:
             logger.error(f"Redis incr failed: {str(e)}")
             return 0
-
 
     def ping(self):
         try:
