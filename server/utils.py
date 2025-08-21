@@ -1,21 +1,19 @@
 import json
-from server.logging import logger
+from fastapi import HTTPException
 
 
-def load_config(file_path: str) -> dict:
-    try:
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Failed to load config from {file_path}: {str(e)}")
-        raise ValueError(f"Config load failed: {str(e)}")
+def parse_jsonrpc_request(data: dict):
+    if not all(key in data for key in ["jsonrpc", "method", "id"]):
+        raise HTTPException(status_code=400, detail="Invalid JSON-RPC request")
+    if data["jsonrpc"] != "2.0":
+        raise HTTPException(status_code=400, detail="JSON-RPC version must be 2.0")
+    return data["method"], data.get("params", {}), data["id"]
 
 
-def save_config(file_path: str, config: dict):
-    try:
-        with open(file_path, 'w') as f:
-            json.dump(config, f, indent=2)
-        logger.info(f"Config saved to {file_path}")
-    except Exception as e:
-        logger.error(f"Failed to save config to {file_path}: {str(e)}")
-        raise ValueError(f"Config save failed: {str(e)}")
+def build_jsonrpc_response(id: str, result: dict = None, error: dict = None):
+    response = {"jsonrpc": "2.0", "id": id}
+    if result is not None:
+        response["result"] = result
+    if error is not None:
+        response["error"] = error
+    return response
