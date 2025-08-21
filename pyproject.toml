@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vial-mcp-alchemist"
+version = "0.1.0"
+authors = [
+    { name = "WebXOS", email = "support@webxos.com" }
+]
+description = "MCP Alchemist for Vial MCP Controller"
+readme = "readme.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "pymongo>=4.0.0",
+    "python-dotenv>=0.21.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/vial/vial.github.io"
