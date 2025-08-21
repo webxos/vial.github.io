@@ -5,7 +5,10 @@ from server.security import verify_token
 router = APIRouter()
 
 
-async def execute_quantum_circuit(circuit_data: dict, token: str = Depends(verify_token)):
+async def execute_quantum_circuit(
+    circuit_data: dict,
+    token: str = Depends(verify_token)
+):
     result = quantum_sync.execute_circuit(circuit_data)
     return result
 
