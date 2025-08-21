@@ -17,7 +17,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def verify_token(token: str) -> bool:
     try:
-        payload = jwt.decode(token, "secret_key", algorithms=["HS256"])
+        jwt.decode(token, "secret_key", algorithms=["HS256"])
         return True
     except Exception as e:
         logger.error(f"Token verification failed: {str(e)}")
