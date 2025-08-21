@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from server.api import auth, endpoints, quantum_endpoints, websocket, copilot_integration
+from server.api import auth, endpoints, quantum_endpoints, websocket, copilot_integration, jsonrpc
 from server.api.cache_control import cache_response
 from server.api.rate_limiter import rate_limit
 from server.api.middleware import logging_middleware
@@ -24,6 +24,7 @@ app.include_router(endpoints.router)
 app.include_router(quantum_endpoints.router, prefix="/quantum")
 app.include_router(websocket.router)
 app.include_router(copilot_integration.router, prefix="/copilot")
+app.include_router(jsonrpc.router, prefix="/jsonrpc")
 
 
 @app.get("/health")
