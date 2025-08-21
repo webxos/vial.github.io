@@ -21,3 +21,4 @@ schedule==1.2.2
 build==1.2.2
 twine==5.1.1
 websockets==12.0
+aiohttp==3.10.5
