@@ -1,41 +1,32 @@
 # Python
 __pycache__/
+*.py[cod]
 *.pyc
 *.pyo
 *.pyd
 .Python
 env/
 venv/
-*.egg-info/
-.pypirc
-
-# Environment
-.env
-vial.db
-*.db
-
-# SSL
-ssl/
-*.pem
+ENV/
+env.bak/
+venv.bak/
 
 # Docker
 *.log
-*.pid
-*.seed
+*.tar.gz
+docker-compose.override.yml
 
-# IDEs
+# Editor and OS
+.DS_Store
+*.swp
+*.swo
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Build
+# Project-specific
+.env
 dist/
 build/
-*.egg
-*.eggs/
 *.egg-info/
+public/static/dist/
+*.log
