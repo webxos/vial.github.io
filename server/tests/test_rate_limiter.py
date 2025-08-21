@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from server.mcp_server import app
-from unittest.mock import Mock
+from unittest.mock import patch
 
 client = TestClient(app)
 
@@ -14,12 +14,12 @@ def auth_token():
 
 
 def test_rate_limit():
-    mock_get = Mock(return_value=None)
-    mock_setex = Mock(return_value=None)
-    mock_incr = Mock(return_value=1)
-    with patch("server.services.redis_handler.redis_handler.get", mock_get), \
-         patch("server.services.redis_handler.redis_handler.setex", mock_setex), \
-         patch("server.services.redis_handler.redis_handler.incr", mock_incr):
+    with patch("server.services.redis_handler.redis_handler.get") as mock_get, \
+         patch("server.services.redis_handler.redis_handler.setex") as mock_setex, \
+         patch("server.services.redis_handler.redis_handler.incr") as mock_incr:
+        mock_get.return_value = None
+        mock_setex.return_value = None
+        mock_incr.return_value = 1
         headers = {"Authorization": f"Bearer {auth_token()}"}
         response = client.post(
             "/jsonrpc",
@@ -30,8 +30,8 @@ def test_rate_limit():
 
 
 def test_rate_limit_exceeded():
-    mock_get = Mock(return_value="100")
-    with patch("server.services.redis_handler.redis_handler.get", mock_get):
+    with patch("server.services.redis_handler.redis_handler.get") as mock_get:
+        mock_get.return_value = "100"
         headers = {"Authorization": f"Bearer {auth_token()}"}
         response = client.post(
             "/jsonrpc",
