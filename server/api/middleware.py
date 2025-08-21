@@ -1,5 +1,4 @@
 from fastapi import Request
-from fastapi.responses import Response
 
 
 async def cors_middleware(request: Request, call_next):
