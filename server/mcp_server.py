@@ -7,9 +7,13 @@ from server.api.endpoints import router as endpoints_router
 from server.api.quantum_endpoints import router as quantum_router
 from server.api.alchemist_endpoints import router as alchemist_router
 from server.api.copilot_integration import router as copilot_router
+from server.error_handler import exception_handler
 import os
 
 app = FastAPI(title="Vial MCP Controller")
+
+# Add exception handler
+app.exception_handler(Exception)(exception_handler)
 
 # Mount static files
 app.mount("/public", StaticFiles(directory="public"), name="public")
