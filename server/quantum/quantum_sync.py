@@ -1,24 +1,23 @@
-from server.logging import logger
-import qiskit
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from qiskit import QuantumCircuit, Aer, execute
 
 
-class QuantumSync:
-    def __init__(self):
-        self.backend = qiskit.Aer.get_backend("qasm_simulator")
-
-    def execute_circuit(self, circuit_data: dict):
-        try:
-            circuit = circuit_data.get("circuit")
-            if not circuit:
-                raise ValueError("Invalid circuit")
-            result = qiskit.execute(circuit, self.backend).result()
-            return {"status": "success", "counts": result.get_counts()}
-        except Exception as e:
-            logger.error(f"Quantum circuit execution failed: {str(e)}")
-            return {"status": "failed", "error": str(e)}
-
-    def get_status(self):
-        return {"status": "running", "backend": self.backend.name()}
+router = APIRouter()
 
 
-quantum_sync = QuantumSync()
+class QuantumRequest(BaseModel):
+    circuit: dict
+    backend: str = "qasm_simulator"
+
+
+@router.post("/execute")
+async def execute_circuit(request: QuantumRequest):
+    try:
+        circuit = QuantumCircuit.from_dict(request.circuit)
+        backend = Aer.get_backend(request.backend)
+        result = execute(circuit, backend, shots=1024).result()
+        counts = result.get_counts()
+        return {"status": "success", "counts": counts}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
