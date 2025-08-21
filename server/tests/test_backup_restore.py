@@ -1,26 +1,24 @@
-from server.services.backup_restore import backup_restore
-from unittest.mock import patch
+import pytest
+from fastapi.testclient import TestClient
+from server.mcp_server import app
+from server.services.backup_restore import BackupRestore
 
 
-def test_backup():
-    with patch("gzip.open") as mock_gzip:
-        mock_gzip.return_value.__enter__.return_value.write = None
-        result = backup_restore.backup()
-        assert result["status"] == "success"
-        assert "file" in result
+client = TestClient(app)
 
 
-def test_restore():
-    with patch("gzip.open") as mock_gzip:
-        mock_gzip.return_value.__enter__.return_value.read.return_value = (
-            "{'collection': 'test'}"
-        )
-        result = backup_restore.restore("test.gz")
-        assert result["status"] == "success"
+@pytest.mark.asyncio
+async def test_backup_data():
+    backup_restore = BackupRestore()
+    response = await backup_restore.backup_data()
+    assert response["status"] == "backup_completed"
+    assert os.path.exists(response["file"])
 
 
-def test_restore_failure():
-    with patch("gzip.open") as mock_gzip:
-        mock_gzip.return_value.__enter__.side_effect = Exception("Restore error")
-        result = backup_restore.restore("test.gz")
-        assert result["status"] == "failed"
+@pytest.mark.asyncio
+async def test_restore_data():
+    backup_restore = BackupRestore()
+    backup_response = await backup_restore.backup_data()
+    backup_file = backup_response["file"]
+    response = await backup_restore.restore_data(backup_file)
+    assert response["status"] == "restore_completed"
