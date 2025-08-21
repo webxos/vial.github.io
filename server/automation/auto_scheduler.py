@@ -10,12 +10,13 @@ class AutoScheduler:
     async def schedule_task(self, task: str, interval: int):
         while True:
             try:
-                await self.execute_task(task)
-                await self.audit.log_action(
-                    action="scheduled_task",
-                    user_id="system",
-                    details={"task": task, "interval": interval}
-                )
+                async with asyncio.timeout(60):
+                    await self.execute_task(task)
+                    await self.audit.log_action(
+                        action="scheduled_task",
+                        user_id="system",
+                        details={"task": task, "interval": interval}
+                    )
                 await asyncio.sleep(interval)
             except Exception as e:
                 await self.audit.log_action(
