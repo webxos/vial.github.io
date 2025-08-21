@@ -1,22 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
-from server.security import verify_token
+from fastapi import APIRouter, Depends
 from server.models.mcp_alchemist import mcp_alchemist
+from server.security import verify_token
 
-router = APIRouter(prefix="/jsonrpc", tags=["alchemist"])
+router = APIRouter()
 
-@router.post("/translate")
-async def translate(params: dict, token: str = Depends(verify_token)):
-    data = params.get("data", "")
-    if not data:
-        raise HTTPException(status_code=400, detail="Translation data required")
-    # Placeholder: Use mcp_alchemist for translation
-    result = mcp_alchemist.train(data)  # Reuse train as placeholder
-    return {"jsonrpc": "2.0", "result": {"status": "translated", "output": result["output"]}, "id": params.get("id", 1)}
 
-@router.post("/diagnose")
-async def diagnose(params: dict, token: str = Depends(verify_token)):
-    data = params.get("data", "")
-    if not data:
-        raise HTTPException(status_code=400, detail="Diagnostic data required")
-    # Placeholder: Implement diagnostic logic
-    return {"jsonrpc": "2.0", "result": {"status": "diagnosed", "data": data}, "id": params.get("id", 1)}
+async def process_alchemist_request(request: dict, token: str = Depends(verify_token)):
+    result = mcp_alchemist.process(request)
+    return result
+
+
+async def train_alchemist_model(data: dict, token: str = Depends(verify_token)):
+    result = mcp_alchemist.train(data)
+    return result
