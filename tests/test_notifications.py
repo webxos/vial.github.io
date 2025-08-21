@@ -11,6 +11,7 @@ async def test_inapp_notification():
     assert result["message"] == "Test message"
 
 
+@patch("aiohttp.ClientSession.post", new_callable=AsyncMock)
 async def test_email_notification(mock_post):
     mock_post.return_value.__aenter__.return_value.status = 200
     result = await notification_service.send_notification("test_user",
