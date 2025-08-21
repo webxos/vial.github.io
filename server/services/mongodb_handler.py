@@ -9,7 +9,6 @@ class MongoDBHandler:
         self.client = MongoClient(settings.MONGO_URL)
         self.db = self.client["vial"]
 
-
     def insert(self, collection: str, data: dict):
         try:
             result = self.db[collection].insert_one(data)
