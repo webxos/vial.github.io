@@ -1,16 +1,24 @@
 from fastapi import Request, HTTPException
-from server.services.redis_handler import redis_handler
-from server.logging import logger
+from server.services.redis_handler import redis_client
+import time
 
 
-async def rate_limit_middleware(request: Request, call_next):
+async def rate_limit(request: Request, call_next):
     client_ip = request.client.host
     key = f"rate_limit:{client_ip}"
-    request_count = redis_handler.incr(key)
-    if request_count == 1:
-        redis_handler.setex(key, 60, request_count)
-    if request_count > 100:
-        logger.warning(f"Rate limit exceeded for {client_ip}")
-        raise HTTPException(status_code=429, detail="Too many requests")
+    limit = 100  # requests per minute
+    window = 60  # seconds
+
+    count = await redis_client.get(key)
+    count = int(count) if count else 0
+
+    if count >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Try again later.",
+        )
+
     response = await call_next(request)
+    await redis_client.incr(key)
+    await redis_client.expire(key, window)
     return response
