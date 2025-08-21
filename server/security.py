@@ -1,30 +1,32 @@
-from python_jose import jwt
-from passlib.context import CryptContext
-from server.logging import logger
-import secrets
+import os
+from fastapi.middleware.cors import CORSMiddleware
+from jose import JWTError, jwt
+from server.config import settings
 
+ALLOWED_ORIGINS = [
+    "https://vial.github.io",
+    "https://your-app.netlify.app",
+    "https://your-app.vercel.app",
+    "http://localhost:8000"
+]
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def setup_cors(app):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def verify_token(token: str) -> bool:
+async def verify_jwt(token: str):
     try:
-        jwt.decode(token, "secret_key", algorithms=["HS256"])
-        return True
-    except Exception as e:
-        logger.error(f"Token verification failed: {str(e)}")
-        return False
-
-
-def generate_credentials() -> tuple:
-    api_key = secrets.token_hex(16)
-    api_secret = secrets.token_hex(32)
-    return api_key, api_secret
+        payload = jwt.decode(
+            token,
+            os.getenv("JWT_SECRET", settings.JWT_SECRET),
+            algorithms=["RS256"],
+            options={"verify_aud": False}
+        )
+        return payload
+    except JWTError as e:
+        raise JWTError(f"Token verification failed: {str(e)}")
