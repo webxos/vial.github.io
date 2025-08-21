@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 from server.mcp_server import app
-import pytest
 
 client = TestClient(app)
+
 
 def test_openapi_schema():
     response = client.get("/docs/openapi.json")
