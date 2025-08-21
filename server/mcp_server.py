@@ -9,12 +9,16 @@ from server.api.alchemist_endpoints import router as alchemist_router
 from server.api.copilot_integration import router as copilot_router
 from server.api.health_check import router as health_router
 from server.error_handler import exception_handler
+from server.api.rate_limiter import rate_limit_middleware
 import os
 
 app = FastAPI(title="Vial MCP Controller")
 
 # Add exception handler
 app.exception_handler(Exception)(exception_handler)
+
+# Add rate limiting middleware
+app.middleware("http")(rate_limit_middleware)
 
 # Mount static files
 app.mount("/public", StaticFiles(directory="public"), name="public")
