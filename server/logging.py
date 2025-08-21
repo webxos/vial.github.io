@@ -1,19 +1,23 @@
 import logging
-from server.config import get_settings
+from logging.handlers import RotatingFileHandler
 
-settings = get_settings()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("vial.log"),
-        logging.StreamHandler()
-    ]
-)
+class Logger:
+    def __init__(self):
+        self.logger = logging.getLogger("vial")
+        self.logger.setLevel(logging.INFO)
+        handler = RotatingFileHandler("vial.log", maxBytes=1000000, backupCount=5)
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
 
-logger = logging.getLogger("vial")
 
-def setup_logging():
-    logger.info("Logging initialized")
-    return logger
+    def info(self, message: str):
+        self.logger.info(message)
+
+
+    def error(self, message: str):
+        self.logger.error(message)
+
+
+logger = Logger()
