@@ -1,22 +1,37 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name="vial-mcp-alchemist",
     version="0.1.0",
-    author="WebXOS",
-    author_email="support@webxos.com",
-    description="MCP Alchemist for Vial MCP Controller",
-    long_description=open("readme.md").read(),
+    packages=["server", "server.models"],
+    install_requires=[
+        "fastapi==0.115.0",
+        "uvicorn==0.30.6",
+        "python-jose[cryptography]==3.3.0",
+        "passlib[bcrypt]==1.7.4",
+        "pymongo==4.8.0",
+        "redis==5.0.8",
+        "sqlalchemy==2.0.32",
+        "qiskit==1.2.0",
+        "octokitpy>=0.1.0",
+        "emscripten==0.0.1",
+        "gitpython==3.1.43",
+        "psycopg2-binary==2.9.9",
+        "docker==7.1.0",
+        "psutil==6.0.0",
+        "python-dotenv==1.0.1",
+        "torch==2.4.0",
+        "torchvision==0.19.0",
+        "torchaudio==2.4.0",
+        "websockets==12.0",
+        "aiohttp==3.10.5"
+    ],
+    author="Vial Team",
+    author_email="contact@vial.github.io",
+    description="MCP Alchemist module for Vial MCP Controller",
+    long_description=open("mcp_alchemistreadme.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/vial/vial.github.io",
-    packages=["server.models"],
-    package_dir={"": "server"},
-    include_package_data=True,
-    install_requires=[
-        "torch>=2.0.0",
-        "pymongo>=4.0.0",
-        "python-dotenv>=0.21.0"
-    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
