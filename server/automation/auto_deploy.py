@@ -1,36 +1,28 @@
-import os
-import subprocess
-from fastapi import HTTPException
-from server.config import settings
-from server.logging import logger
+from server.services.git_trainer import GitTrainer
+from server.services.audit_log import AuditLog
 
 
 class AutoDeploy:
     def __init__(self):
-        self.deploy_env = os.getenv("DEPLOY_ENV", "local")
+        self.git_trainer = GitTrainer()
+        self.audit = AuditLog()
 
-    async def deploy(self, platform: str, config: dict):
+    async def deploy_to_github_pages(self, repo_name: str, branch: str = "main"):
         try:
-            if platform == "netlify":
-                cmd = [
-                    "netlify", "deploy", "--prod",
-                    f"--dir={config.get('dir', 'dist')}"
-                ]
-            elif platform == "vercel":
-                cmd = [
-                    "vercel", "--prod",
-                    f"--token={settings.VERCEL_TOKEN}"
-                ]
-            else:
-                raise HTTPException(status_code=400, detail="Invalid platform")
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, check=True
+            result = await self.git_trainer.execute_task(
+                action="create_repo",
+                params={"repo_name": repo_name, "private": False}
             )
-            logger.info(f"Deployed to {platform}: {result.stdout}")
-            return {"status": "deployed", "platform": platform}
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Deployment failed: {e.stderr}")
-            raise HTTPException(status_code=500, detail="Deployment failed")
-
-
-auto_deploy = AutoDeploy()
+            await self.audit.log_action(
+                action="deploy_github_pages",
+                user_id="system",
+                details={"repo_name": repo_name, "branch": branch}
+            )
+            return {"status": "deployed", "repo": result["repo"]}
+        except Exception as e:
+            await self.audit.log_action(
+                action="deploy_failed",
+                user_id="system",
+                details={"repo_name": repo_name, "error": str(e)}
+            )
+            return {"status": "failed", "error": str(e)}
