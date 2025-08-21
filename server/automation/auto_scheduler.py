@@ -1,31 +1,28 @@
+from server.services.git_trainer import git_trainer
+from server.logging import logger
 import schedule
 import time
-from server.services.git_trainer import git_trainer
-from server.api.quantum_endpoints import router as quantum_router
-from fastapi import FastAPI
-from server.config import get_settings
 
-app = FastAPI()
 
 class AutoScheduler:
     def __init__(self):
-        self.settings = get_settings()
+        self.scheduler = schedule
 
-    def schedule_training(self, repo_url: str, data_path: str, interval_minutes: int = 60):
-        schedule.every(interval_minutes).minutes.do(
-            lambda: git_trainer.train_from_repo(repo_url, data_path)
-        )
-        return {"status": "training scheduled"}
 
-    def schedule_sync(self, node_id: str, interval_minutes: int = 30):
-        async def sync_task():
-            await quantum_router.get("/sync")({"node_id": node_id, "id": 1})
-        schedule.every(interval_minutes).minutes.do(sync_task)
-        return {"status": "sync scheduled"}
+    def schedule_task(self, task_name: str, interval: int):
+        try:
+            self.scheduler.every(interval).seconds.do(git_trainer.create_repo,
+                                                     task_name)
+            logger.info(f"Scheduled task: {task_name} every {interval} seconds")
+        except Exception as e:
+            logger.error(f"Failed to schedule task: {str(e)}")
+            raise ValueError(f"Scheduling failed: {str(e)}")
+
 
     def run(self):
         while True:
-            schedule.run_pending()
-            time.sleep(60)
+            self.scheduler.run_pending()
+            time.sleep(1)
+
 
 auto_scheduler = AutoScheduler()
