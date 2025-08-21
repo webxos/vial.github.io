@@ -12,6 +12,7 @@ def test_token_endpoint():
     assert response.status_code == 200
     assert "access_token" in response.json()
 
+
 def test_invalid_credentials():
     response = client.post(
         "/auth/token",
@@ -20,10 +21,12 @@ def test_invalid_credentials():
     assert response.status_code == 401
     assert "Invalid credentials" in response.json()["detail"]
 
+
 def test_missing_credentials():
     response = client.post("/auth/token", data={})
     assert response.status_code == 400
     assert "Missing credentials" in response.json()["detail"]
+
 
 def test_generate_credentials():
     response = client.post(
