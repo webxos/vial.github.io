@@ -1,20 +1,34 @@
-from server.logging import logger
-import requests
+import httpx
+from server.config import settings
 
 
 class VialSDK:
-    def __init__(self):
-        self.api_key = "default_key"
-        self.base_url = "http://localhost:8000"
+    def __init__(self, api_base_url: str = settings.API_BASE_URL):
+        self.client = httpx.AsyncClient(base_url=api_base_url)
+        self.token = None
 
-    def execute(self, command: dict):
-        try:
-            response = requests.post(f"{self.base_url}/jsonrpc", json=command)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"SDK execution failed: {str(e)}")
-            return {"status": "failed", "error": str(e)}
+    async def authenticate(self, username: str, password: str):
+        response = await self.client.post(
+            "/auth/token",
+            json={"username": username, "password": password}
+        )
+        response.raise_for_status()
+        self.token = response.json().get("access_token")
+        return self.token
 
+    async def generate_credentials(self):
+        response = await self.client.post(
+            "/auth/generate-credentials",
+            headers={"Authorization": f"Bearer {self.token}"}
+        )
+        response.raise_for_status()
+        return response.json()
 
-vial_sdk = VialSDK()
+    async def execute_quantum_circuit(self, circuit: dict, backend: str = "qasm_simulator"):
+        response = await self.client.post(
+            "/quantum/execute",
+            json={"circuit": circuit, "backend": backend},
+            headers={"Authorization": f"Bearer {self.token}"}
+        )
+        response.raise_for_status()
+        return response.json()
