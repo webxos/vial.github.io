@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from server.services.database import get_db, Wallet
+from server.services.database import get_db
+from server.models.webxos_wallet import Wallet
 from sqlalchemy import select
 from fastapi import HTTPException
 
