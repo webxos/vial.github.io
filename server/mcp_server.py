@@ -55,7 +55,6 @@ async def health_check():
 async def jsonrpc_endpoint(request: JsonRpcRequest, token: str = Depends(verify_token)):
     if request.jsonrpc != "2.0":
         raise HTTPException(status_code=400, detail="Invalid JSON-RPC version")
-    
     if request.method == "status":
         return {"jsonrpc": "2.0", "result": {"status": "running", "version": "2.7"},
                 "id": request.id}
