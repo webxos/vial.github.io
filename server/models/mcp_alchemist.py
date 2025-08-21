@@ -1,24 +1,26 @@
-from pydantic import BaseModel
-from server.services.git_trainer import GitTrainer
-from server.quantum.quantum_sync import QuantumSync
+from torch import nn, optim
+import torch
+from server.quantum.quantum_sync import QuantumCircuit
+from server.services.mongodb_handler import MongoDBHandler
 
 
-class MCPAlchemist(BaseModel):
-    git_trainer: GitTrainer
-    quantum_sync: QuantumSync
+class MCPAlchemist(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(16, 32)
+        self.fc2 = nn.Linear(32, 8)
+        self.relu = nn.ReLU()
+        self.mongo = MongoDBHandler()
 
-    async def process_task(self, task: dict):
-        if task["type"] == "git":
-            result = await self.git_trainer.execute_task(
-                task["action"], task["params"]
-            )
-        elif task["type"] == "quantum":
-            result = await self.quantum_sync.run_circuit(
-                task["circuit"], task.get("backend", "qasm_simulator")
-            )
-        else:
-            raise ValueError("Invalid task type")
-        return result
-
-    class Config:
-        arbitrary_types_allowed = True
+    async def predict_quantum_outcome(self, circuit: dict):
+        circuit_obj = QuantumCircuit.from_dict(circuit)
+        input_tensor = torch.tensor(
+            [float(circuit_obj.num_qubits), float(circuit_obj.depth())],
+            dtype=torch.float32
+        )
+        input_tensor = input_tensor.view(1, -1)
+        with torch.no_grad():
+            output = self.fc2(self.relu(self.fc1(input_tensor)))
+        prediction = output.tolist()[0]
+        await self.mongo.save_quantum_result(circuit_id=str(id(circuit)), result=prediction)
+        return {"prediction": prediction}
