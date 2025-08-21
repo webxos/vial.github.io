@@ -1,11 +1,9 @@
 from server.logging import logger
-import torch
 
 
 class McpAlchemist:
     def __init__(self):
         self.model = "claude-3-opus"
-
 
     def process(self, request: dict):
         try:
@@ -15,7 +13,6 @@ class McpAlchemist:
         except Exception as e:
             logger.error(f"Processing failed: {str(e)}")
             raise ValueError(f"Processing failed: {str(e)}")
-
 
     def train(self, data: dict):
         try:
