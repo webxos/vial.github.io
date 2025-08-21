@@ -7,7 +7,6 @@ class AuditLog:
     def __init__(self):
         self.collection = mongodb_handler.db["audit_logs"]
 
-
     def log_action(self, user_id: str, action: str, details: dict = None):
         try:
             log_entry = {
