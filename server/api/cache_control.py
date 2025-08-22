@@ -1,26 +1,31 @@
-# server/api/cache_control.py
-from fastapi import Request, Response
+from fastapi import Response
 from fastapi.responses import JSONResponse
+from functools import wraps
 import redis
-from server.config.settings import settings
-import logging
+import json
+from server.config import settings
+from server.logging import logger
 
-logger = logging.getLogger(__name__)
+redis_client = redis.Redis(
+    host=settings.REDIS_HOST,
+    port=settings.REDIS_PORT,
+    db=0,
+    decode_responses=True
+)
 
-redis_client = redis.Redis(host=settings.REDIS_HOST, port=6379, db=0)
 
-async def cache_response(request: Request, call_next):
-    """Middleware to cache API responses."""
-    cache_key = f"cache:{request.url.path}:{request.query_params}"
-    cached_response = redis_client.get(cache_key)
-    
-    if cached_response:
-        logger.info(f"Cache hit for {request.url.path}")
-        return JSONResponse(content=cached_response.decode('utf-8'))
-    
-    response = await call_next(request)
-    if response.status_code == 200:
-        redis_client.setex(cache_key, 300, response.body)
-        logger.info(f"Cached response for {request.url.path}")
-    
-    return response
+def cache_response(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        cache_key = f"cache:{func.__name__}:{json.dumps(kwargs)}"
+        cached = redis_client.get(cache_key)
+        if cached:
+            logger.log(f"Cache hit for {cache_key}")
+            return JSONResponse(content=json.loads(cached))
+        response = await func(*args, **kwargs)
+        if isinstance(response, Response):
+            content = response.body.decode()
+            redis_client.setex(cache_key, settings.CACHE_TTL, content)
+            logger.log(f"Cache set for {cache_key}")
+        return response
+    return wrapper
