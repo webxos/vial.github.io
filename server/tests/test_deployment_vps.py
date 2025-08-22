@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 from server.mcp_server import app
 import subprocess
-import os
 import requests
 
 
