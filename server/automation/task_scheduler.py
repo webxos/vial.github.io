@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+
 async def setup_task_scheduler(app: FastAPI):
     print("Setting up task scheduler")
 
