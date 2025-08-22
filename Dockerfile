@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     docker.io \
     && rm -rf /var/lib/apt/lists/*
 
-# Install docker-compose for CI
+# Install Vercel CLI and docker-compose
+RUN npm install -g vercel@latest
 RUN pip install docker-compose==1.29.2
 
 # Copy requirements and install
@@ -28,6 +29,7 @@ COPY server/ ./server/
 COPY scripts/ ./scripts/
 COPY public/js/threejs_integrations.js ./public/js/threejs_integrations.js
 COPY public/index.html ./public/index.html
+COPY vercel.json .
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -37,6 +39,7 @@ ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
 ENV SECRET_KEY=your-secret-key-here
 ENV REPUTATION_LOGGING_ENABLED=true
 ENV API_PORT=8000
+ENV VERCEL_TOKEN=your-vercel-token-here
 
 # Expose ports
 EXPOSE 8000
