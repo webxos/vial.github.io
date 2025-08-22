@@ -1,4 +1,6 @@
+# docker-compose.yml
 version: '3.8'
+
 services:
   app:
     build:
@@ -7,24 +9,31 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - SQL_URL=sqlite:///vial.db
-      - MONGODB_URL=mongodb://mongodb:27017/vial
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-secret-key
-    volumes:
-      - ./data:/app/data
+      - PYTHONUNBUFFERED=1
+      - SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
+      - REDIS_HOST=redis
+      - WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
+      - SECRET_KEY=your-secret-key-here
+      - REPUTATION_LOGGING_ENABLED=true
+      - API_PORT=8000
     depends_on:
-      - mongodb
       - redis
-  mongodb:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - ./server:/app/server
+      - ./scripts:/app/scripts
+      - ./public:/app/public
+
   redis:
-    image: redis:latest
+    image: redis:6.2
     ports:
       - "6379:6379"
-volumes:
-  mongodb_data:
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./public:/usr/share/nginx/html:ro
+    depends_on:
+      - app
