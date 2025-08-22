@@ -1,13 +1,10 @@
+# requirements.txt
 fastapi==0.103.2
 uvicorn==0.23.2
-sqlalchemy==2.0.23
-pydantic==2.4.2
+sqlalchemy==2.0.21
+pydantic-settings==2.0.3
 torch==2.0.1
-qiskit==0.44.1
-pymongo==4.5.0
-redis==5.0.1
-jose==1.0.0
-python-jwt==4.0.0
-apscheduler==3.10.4
+redis==4.6.0
 pytest==7.4.2
 pytest-asyncio==0.21.1
+alembic==1.12.0
