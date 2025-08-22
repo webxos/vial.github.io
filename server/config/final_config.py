@@ -1,17 +1,15 @@
-from server.services.advanced_logging import AdvancedLogger
+# server/config/final_config.py
+from pydantic_settings import BaseSettings
 
+class Settings(BaseSettings):
+    SQLALCHEMY_DATABASE_URL: str = "sqlite:///vial.db"
+    REDIS_HOST: str = "redis"
+    WEBXOS_WALLET_ADDRESS: str = "e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d"
+    SECRET_KEY: str = "your-secret-key-here"
+    REPUTATION_LOGGING_ENABLED: bool = True
 
-logger = AdvancedLogger()
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
-
-def get_final_config():
-    config = {
-        "app_version": "2.9.3",
-        "environment": "production",
-        "sql_url": "sqlite:///vial.db",
-        "mongodb_url": "mongodb://mongodb:27017/vial",
-        "redis_url": "redis://redis:6379"
-    }
-    logger.log("Final configuration aggregated",
-               extra={"config_keys": list(config.keys())})
-    return config
+settings = Settings()
