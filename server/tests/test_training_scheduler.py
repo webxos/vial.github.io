@@ -10,7 +10,6 @@ def client():
 
 
 def test_schedule_training():
-    scheduler = TrainingScheduler(app)
     response = client.post("/agent/schedule", json={"task_id": "train_vial", 
                                                    "interval": 60, 
                                                    "params": {"vial_id": "vial1"}})
