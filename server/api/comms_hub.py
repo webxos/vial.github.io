@@ -10,18 +10,13 @@ logger = AdvancedLogger()
 @router.websocket("/comms")
 async def comms_hub(websocket: WebSocket):
     await websocket.accept()
-    logger.log("Comms hub connection established", extra={"client": websocket.client})
     try:
         while True:
             data = await websocket.receive_text()
-            payload = json.loads(data)
-            if payload.get("type") == "message":
-                await websocket.send_json({
-                    "type": "message_broadcast",
-                    "user_id": payload.get("user_id"),
-                    "message": payload.get("message")
-                })
-                logger.log("Message broadcast", extra={"user_id": payload.get("user_id")})
+            message = json.loads(data)
+            logger.log("Message received",
+                       extra={"type": message.get("type"), "user_id": message.get("user_id")})
+            await websocket.send_json({"type": "message_broadcast", "data": message})
     except Exception as e:
         logger.log("Comms hub error", extra={"error": str(e)})
         await websocket.close()
