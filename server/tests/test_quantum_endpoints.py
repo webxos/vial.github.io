@@ -1,19 +1,26 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_quantum_endpoints.py
 import pytest
+from fastapi.testclient import TestClient
+from server.api.quantum_endpoints import router
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_quantum_sync(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_quantum_sync():
+    """Test quantum sync endpoint with reputation check."""
+    client = TestClient(router)
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    response = client.post("/quantum/sync", json={"vial_id": "vial1"}, headers={"Authorization": f"Bearer {token}"})
+    response = client.get(
+        "/quantum/sync/test_wallet",
+        headers={"Authorization": "Bearer test_token"}
+    )
     assert response.status_code == 200
     assert "quantum_state" in response.json()
-    assert response.json()["vial_id"] == "vial1"
