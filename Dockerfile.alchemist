@@ -1,11 +1,28 @@
+# Dockerfile.alchemist
 FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt torch torchvision
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY server/models/mcp_alchemist.py .
-COPY server/services/prompt_training.py .
+# Copy application code
+COPY server/models/mcp_alchemist.py ./server/models/mcp_alchemist.py
+COPY server/services/ ./server/services/
+COPY server/config/ ./server/config/
+COPY server/utils/ ./server/utils/
 
-CMD ["python", "-c", "from mcp_alchemist import Alchemist; from prompt_training import PromptTrainer; trainer = PromptTrainer(); trainer.train()"]
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
+ENV REPUTATION_LOGGING_ENABLED=true
+
+# Command to run the alchemist
+CMD ["python", "server/models/mcp_alchemist.py"]
