@@ -1,0 +1,42 @@
+.container {
+  display: flex;
+  height: 100vh;
+}
+.sidebar {
+  width: 250px;
+  background-color: #2c3e50;
+  color: white;
+  padding: 10px;
+}
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar {
+  background-color: #34495e;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+.canvas {
+  flex: 1;
+  background-color: white;
+  border: 1px solid #ccc;
+}
+.component {
+  background-color: #3498db;
+  color: white;
+  padding: 5px;
+  margin: 5px;
+  cursor: pointer;
+}
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+  .container {
+    flex-direction: column;
+  }
+}
