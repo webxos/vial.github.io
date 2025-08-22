@@ -5,11 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY server/ ./server/
-COPY public/ ./public/
-
-ENV PYTHONUNBUFFERED=1
-ENV API_BASE_URL=http://localhost:8000
+COPY . .
 
 EXPOSE 8000
 
