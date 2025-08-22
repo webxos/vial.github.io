@@ -1,36 +1,25 @@
-# server/api/comms_hub.py
 from fastapi import APIRouter, WebSocket
+from server.logging import logger
 from server.services.vial_manager import VialManager
-from server.models.webxos_wallet import Wallet
-from server.services.database import SessionLocal
-import logging
+from server.api.websocket import broadcast_message
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+
+@router.websocket("/comms")
+async def comms_hub(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
             data = await websocket.receive_json()
-            with SessionLocal() as session:
-                if data.get("type") == "wallet_update":
-                    wallet = session.query(Wallet).filter_by(
-                        address=data.get("wallet_address")
-                    ).first()
-                    if wallet:
-                        await websocket.send_json({
-                            "status": "success",
-                            "balance": wallet.balance,
-                            "address": wallet.address
-                        })
-                elif data.get("type") == "component_update":
-                    await websocket.send_json({
-                        "status": "success",
-                        "component_id": data.get("component_id"),
-                        "action": data.get("action")
-                    })
+            vial_id = data.get("vial_id")
+            message = data.get("message")
+            if vial_id and message:
+                await broadcast_message(f"{vial_id}: {message}")
+                logger.log(f"Comms hub sent: {vial_id} - {message}")
+                await websocket.send_json({"status": "sent", "vial_id": vial_id})
+            else:
+                await websocket.send_json({"error": "Invalid data"})
     except Exception as e:
-        logger.error(f"WebSocket error: {str(e)}")
+        logger.log(f"Comms hub error: {str(e)}")
         await websocket.close()
