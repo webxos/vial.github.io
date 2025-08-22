@@ -21,7 +21,8 @@ def mock_prompt_trainer():
 @pytest.mark.asyncio
 async def test_train_prompt(client, mock_prompt_trainer):
     with patch("server.services.prompt_training.PromptTrainer", return_value=mock_prompt_trainer):
-        response = client.post("/agent/train", json={"prompt_text": "Test {context}", "context": {"data": "test"}})
+        response = client.post("/agent/train", json={"prompt_text": "Test {context}", 
+                                                    "context": {"data": "test"}})
         assert response.status_code == 200
         assert response.json() == {"output": "trained"}
         mock_prompt_trainer.alchemist.process_prompt.assert_called_once()
