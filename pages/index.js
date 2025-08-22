@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import Head from 'next/head';
@@ -6,6 +6,8 @@ import styles from '../styles/Home.module.css';
 
 export default function Home() {
   const canvasRef = useRef(null);
+  const [gitCommand, setGitCommand] = useState('');
+  const [troubleshootResult, setTroubleshootResult] = useState(null);
 
   useEffect(() => {
     const scene = new THREE.Scene();
@@ -40,6 +42,35 @@ export default function Home() {
     };
   }, []);
 
+  const handleTroubleshoot = async () => {
+    try {
+      const response = await fetch('/api/alchemist/troubleshoot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'User reported issue' })
+      });
+      const result = await response.json();
+      setTroubleshootResult(result);
+    } catch (error) {
+      console.error('Troubleshoot error:', error);
+    }
+  };
+
+  const handleGitCommand = async () => {
+    try {
+      const response = await fetch('/api/alchemist/git', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: gitCommand })
+      });
+      const result = await response.json();
+      console.log('Git command result:', result);
+      setGitCommand('');
+    } catch (error) {
+      console.error('Git command error:', error);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <Head>
@@ -55,10 +86,28 @@ export default function Home() {
       </div>
       <div className={styles.main}>
         <div className={styles.toolbar}>
+          <button onClick={handleTroubleshoot}>Troubleshoot</button>
           <button>Save Configuration</button>
           <button>Export SVG</button>
         </div>
-        <div className={styles.canvas} ref={canvasRef}></div>
+        <div className={styles.canvas} ref={canvasRef} data-testid="canvas"></div>
+        <textarea
+          className={styles.console}
+          value={gitCommand}
+          onChange={(e) => setGitCommand(e.target.value)}
+          placeholder="Enter Git commands (e.g., git commit -m 'Update')"
+        />
+        {troubleshootResult && (
+          <div className={styles.troubleshoot}>
+            <h3>Troubleshooting Steps</h3>
+            <p>{troubleshootResult.steps}</p>
+            <ul>
+              {troubleshootResult.options.map((option, index) => (
+                <li key={index}>{option}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
