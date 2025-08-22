@@ -1,19 +1,10 @@
 import json
-from fastapi import HTTPException
+from server.models.webxos_wallet import WalletModel
 
-
-def parse_jsonrpc_request(data: dict):
-    if not all(key in data for key in ["jsonrpc", "method", "id"]):
-        raise HTTPException(status_code=400, detail="Invalid JSON-RPC request")
-    if data["jsonrpc"] != "2.0":
-        raise HTTPException(status_code=400, detail="JSON-RPC version must be 2.0")
-    return data["method"], data.get("params", {}), data["id"]
-
-
-def build_jsonrpc_response(id: str, result: dict = None, error: dict = None):
-    response = {"jsonrpc": "2.0", "id": id}
-    if result is not None:
-        response["result"] = result
-    if error is not None:
-        response["error"] = error
-    return response
+def parse_json(data: str) -> WalletModel:
+    parsed_data = json.loads(data)
+    return WalletModel(
+        user_id=parsed_data.get("user_id", ""),
+        balance=parsed_data.get("balance", 0.0),
+        network_id=parsed_data.get("network_id", "")
+    )
