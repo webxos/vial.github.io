@@ -1,55 +1,45 @@
-# docker-compose.yml
 version: '3.8'
-
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  vial-mcp:
+    build: .
     ports:
       - "8000:8000"
     environment:
-      - PYTHONUNBUFFERED=1
+      - MONGO_URI=${MONGO_URI}
       - SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
-      - REDIS_HOST=redis
-      - WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
-      - SECRET_KEY=your-secret-key-here
-      - REPUTATION_LOGGING_ENABLED=true
-      - API_PORT=8000
-      - VERCEL_TOKEN=your-vercel-token-here
-    depends_on:
-      - redis
+      - JWT_SECRET=${JWT_SECRET}
+      - DEBUG=${DEBUG}
+      - VERCEL_API_TOKEN=${VERCEL_API_TOKEN}
+      - VERCEL_PROJECT_ID=${VERCEL_PROJECT_ID}
     volumes:
-      - ./server:/app/server
-      - ./scripts:/app/scripts
-      - ./public:/app/public
-      - ./pages:/app/pages
-
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
+    restart: unless-stopped
+  mongodb:
+    image: mongo:7-jammy
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
   redis:
-    image: redis:6.2
+    image: redis:7-alpine
     ports:
       - "6379:6379"
-
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./public:/usr/share/nginx/html:ro
-    depends_on:
-      - app
-
-  vercel:
-    image: node:18
-    command: npx vercel dev --token $VERCEL_TOKEN
-    environment:
-      - VERCEL_TOKEN=your-vercel-token-here
-    volumes:
-      - ./public:/app/public
-      - ./pages:/app/pages
-      - ./vercel.json:/app/vercel.json
+    restart: unless-stopped
+  nextjs-frontend:
+    build:
+      context: ./public
+      dockerfile: Dockerfile.nextjs
     ports:
       - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://vial-mcp:8000
     depends_on:
-      - app
+      - vial-mcp
+    restart: unless-stopped
+volumes:
+  mongodb_data:
