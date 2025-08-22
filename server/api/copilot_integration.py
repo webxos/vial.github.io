@@ -1,24 +1,21 @@
 from fastapi import APIRouter, Depends
-from server.services.git_trainer import GitTrainer
+from sqlalchemy.orm import Session
+from server.services.database import get_db
 from server.services.advanced_logging import AdvancedLogger
-from server.models.visual_components import ComponentModel
-from pydantic import BaseModel
-
-
-class CopilotRequest(BaseModel):
-    component: ComponentModel
 
 
 router = APIRouter()
 logger = AdvancedLogger()
 
 
-@router.post("/generate-code")
-async def generate_code(request: CopilotRequest, git_trainer: GitTrainer = Depends(lambda: GitTrainer())):
+@router.post("/copilot/generate-code")
+async def generate_code(component: dict, db: Session = Depends(get_db)):
     try:
-        result = await git_trainer.commit_visual_config(request.component)
-        logger.log("Code generated via Copilot", extra={"component_id": request.component.id})
-        return {"status": "generated", "code": result["code"]}
+        code = {"endpoint": f"def {component['title'].lower()}_handler(): pass"}
+        logger.log("Code generated",
+                   extra={"component_id": component.get("id")})
+        return {"status": "generated", "code": code}
     except Exception as e:
-        logger.log("Code generation failed", extra={"error": str(e)})
-        return {"error": str(e)}
+        logger.log("Code generation failed",
+                   extra={"error": str(e)})
+        raise
