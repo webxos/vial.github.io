@@ -1,32 +1,39 @@
-# server/quantum/quantum_sync.py
-import logging
-from server.services.database import SessionLocal
-from server.models.mcp_alchemist import Agent
+from qiskit import QuantumCircuit, Aer, execute
+from server.services.vial_manager import VialManager
+from server.models.visual_components import ComponentModel
+from server.logging import logger
+import hashlib
 
-logger = logging.getLogger(__name__)
 
-class QuantumSync:
-    def __init__(self):
-        self.quantum_state = {}
+class QuantumVisualSync:
+    def __init__(self, vial_manager: VialManager = None):
+        self.vial_manager = vial_manager or VialManager()
+        self.backend = Aer.get_backend('qasm_simulator')
 
-    async def sync_quantum_state(self, agent_id: str) -> dict:
-        """Synchronize quantum state with agent context."""
+    def create_quantum_circuit_from_visual(self, components: list[ComponentModel]):
         try:
-            with SessionLocal() as session:
-                agent = session.query(Agent).filter_by(
-                    id=agent_id
-                ).first()
-                if not agent:
-                    raise ValueError(f"Agent not found: {agent_id}")
-            
-            state = {"quantum_bits": 8, "entanglement_level": 0.95}
-            logger.info(f"Quantum state synced for agent: {agent_id}")
-            return {
-                "status": "success",
-                "quantum_state": state
-            }
+            qc = QuantumCircuit(4, 4)
+            for component in components:
+                if component.type == "agent":
+                    vial_id = component.config.get("vial_id", "default")
+                    if vial_id in self.vial_manager.agents:
+                        qc.h(hash(vial_id) % 4)
+            result = execute(qc, self.backend, shots=1).result()
+            quantum_hash = hashlib.sha256(str(result).encode()).hexdigest()[:64]
+            logger.log(f"Quantum circuit created for components: {quantum_hash}")
+            return {"quantum_hash": quantum_hash}
         except Exception as e:
-            logger.error(
-                f"Quantum sync error for agent {agent_id}: {str(e)}"
-            )
-            raise
+            logger.log(f"Quantum circuit error: {str(e)}")
+            return {"error": str(e)}
+
+    def sync_quantum_state(self, vial_id: str):
+        try:
+            qc = QuantumCircuit(4, 4)
+            qc.h(hash(vial_id) % 4)
+            result = execute(qc, self.backend, shots=1).result()
+            quantum_state = result.get_counts()
+            logger.log(f"Quantum state synced for vial: {vial_id}")
+            return {"quantum_state": quantum_state}
+        except Exception as e:
+            logger.log(f"Quantum sync error: {str(e)}")
+            return {"error": str(e)}
