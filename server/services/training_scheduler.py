@@ -1,20 +1,34 @@
-from fastapi import FastAPI
+# server/services/training_scheduler.py
 from server.services.vial_manager import VialManager
-from server.services.advanced_logging import AdvancedLogger
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
+import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
 
-def setup_training_scheduler(app: FastAPI):
-    logger = AdvancedLogger()
-    vial_manager = VialManager()
-    scheduler = AsyncIOScheduler()
+class TrainingScheduler:
+    def __init__(self):
+        self.vial_manager = VialManager()
 
-    async def schedule_training():
-        for vial_id in vial_manager.agents:
-            result = await vial_manager.train_vial(vial_id)
-            logger.log("Scheduled training completed", extra={"vial_id": vial_id, "result": result})
-
-    scheduler.add_job(schedule_training, 'interval', minutes=60)
-    scheduler.start()
-    app.state.scheduler = scheduler
-    logger.log("Training scheduler initialized", extra={"interval": "60 minutes"})
+    async def schedule_training(self, vial_id: str, wallet_address: str) -> dict:
+        """Schedule training with reputation-based prioritization."""
+        try:
+            with SessionLocal() as session:
+                wallet = session.query(Wallet).filter_by(
+                    address=wallet_address
+                ).first()
+                if not wallet or wallet.reputation < 10.0:
+                    raise ValueError(
+                        f"Insufficient reputation for {wallet_address}"
+                    )
+            
+            result = await self.vial_manager.train_vial(vial_id)
+            logger.info(
+                f"Training scheduled for vial {vial_id} "
+                f"for wallet {wallet_address}"
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Training scheduling error: {str(e)}")
+            raise
