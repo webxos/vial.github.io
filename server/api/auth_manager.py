@@ -4,6 +4,7 @@ from requests_oauthlib import OAuth2Session
 from server.models.auth_agent import AuthAgent
 import os
 
+
 oauth2_scheme = OAuth2AuthorizationCodeBearer(
     authorizationUrl="https://github.com/login/oauth/authorize",
     tokenUrl="https://github.com/login/oauth/access_token"
@@ -25,5 +26,6 @@ class AuthManager:
                 detail="Invalid GitHub authentication"
             )
         return self.auth_agent.process_user(user_info)
+
 
 auth = AuthManager()
