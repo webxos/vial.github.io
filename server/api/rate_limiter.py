@@ -1,29 +1,25 @@
-from fastapi import FastAPI, Request
-from server.services.advanced_logging import AdvancedLogger
-import time
+# server/api/rate_limiter.py
+from fastapi import Request, HTTPException
+import redis
+from server.config.settings import settings
+import logging
+from datetime import datetime, timedelta
 
+logger = logging.getLogger(__name__)
+redis_client = redis.Redis(host=settings.REDIS_HOST, port=6379, db=0)
 
-logger = AdvancedLogger()
-rate_limits = {}
-
-
-def setup_rate_limiter(app: FastAPI):
-    @app.middleware("http")
-    async def limit_requests(request: Request, call_next):
-        client_ip = request.client.host
-        if client_ip not in rate_limits:
-            rate_limits[client_ip] = {"count": 0, "timestamp": time.time()}
-        
-        if time.time() - rate_limits[client_ip]["timestamp"] < 60:
-            rate_limits[client_ip]["count"] += 1
-            if rate_limits[client_ip]["count"] > 100:
-                logger.log("Rate limit exceeded",
-                           extra={"client_ip": client_ip})
-                return {"error": "Rate limit exceeded"}
-        else:
-            rate_limits[client_ip] = {"count": 1, "timestamp": time.time()}
-        
-        response = await call_next(request)
-        logger.log("Request processed",
-                   extra={"client_ip": client_ip})
-        return response
+async def rate_limit(request: Request, call_next):
+    """Rate limit requests based on client IP or wallet address."""
+    client_ip = request.client.host
+    wallet_address = request.headers.get("X-Wallet-Address", client_ip)
+    key = f"rate_limit:{wallet_address}"
+    
+    current_count = redis_client.get(key)
+    if current_count and int(current_count) >= 100:
+        logger.warning(f"Rate limit exceeded for {wallet_address}")
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    response = await call_next(request)
+    redis_client.incr(key)
+    redis_client.expireat(key, int((datetime.now() + timedelta(minutes=1)).timestamp()))
+    return response
