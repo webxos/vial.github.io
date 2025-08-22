@@ -1,41 +1,47 @@
-# server/services/vercel_agent.py
-import httpx
-import logging
-from fastapi import Depends, HTTPException
-from server.security.auth import oauth2_scheme
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
+from fastapi import HTTPException
+from server.config import settings
+from server.logging import logger
+import requests
 
-logger = logging.getLogger(__name__)
 
-async def check_vercel_deployment(token: str = Depends(oauth2_scheme)) -> dict:
-    """Check Vercel deployment status and validate wallet."""
-    try:
-        async with httpx.AsyncClient() as client:
-            headers = {"Authorization": f"Bearer {token}"}
-            response = await client.get(
-                "https://api.vercel.com/v6/deployments",
+class VercelAgent:
+    def __init__(self):
+        self.api_token = settings.VERCEL_API_TOKEN
+        self.project_id = settings.VERCEL_PROJECT_ID
+        self.base_url = "https://api.vercel.com/v9"
+
+    async def deploy_project(self, config: dict):
+        try:
+            headers = {"Authorization": f"Bearer {self.api_token}"}
+            payload = {
+                "name": "vial-mcp",
+                "files": config.get("files", []),
+                "projectId": self.project_id,
+                "target": "production"
+            }
+            response = requests.post(
+                f"{self.base_url}/projects/{self.project_id}/deployments",
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()
+            logger.log(f"Vercel deployment initiated: {response.json()['id']}")
+            return {"status": "deployed", "deployment_id": response.json()["id"]}
+        except Exception as e:
+            logger.log(f"Vercel deployment error: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def get_deployment_status(self, deployment_id: str):
+        try:
+            headers = {"Authorization": f"Bearer {self.api_token}"}
+            response = requests.get(
+                f"{self.base_url}/deployments/{deployment_id}",
                 headers=headers
             )
             response.raise_for_status()
-            deployments = response.json()
-            with SessionLocal() as session:
-                wallet = session.query(Wallet).filter_by(
-                    address="e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d"
-                ).first()
-                if not wallet:
-                    raise HTTPException(
-                        status_code=404, detail="Wallet not found"
-                    )
-            logger.info(f"Vercel deployment check: {deployments}")
-            return {
-                "status": "success",
-                "deployments": deployments,
-                "wallet_reputation": wallet.reputation
-            }
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Vercel API error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+            status = response.json().get("status")
+            logger.log(f"Vercel deployment status: {status}")
+            return {"status": status}
+        except Exception as e:
+            logger.log(f"Vercel status check error: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
