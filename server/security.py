@@ -1,35 +1,45 @@
-import os
-from fastapi.middleware.cors import CORSMiddleware
-from jose import JWTError, jwt
-from server.config import settings
+from fastapi import Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+from server.config import config
+from server.logging import logger
 
+class SecurityManager:
+    def __init__(self):
+        self.bearer = HTTPBearer()
 
-ALLOWED_ORIGINS = [
-    "https://vial.github.io",
-    "https://your-app.netlify.app",
-    "https://your-app.vercel.app",
-    "http://localhost:8000"
-]
+    def authenticate(self, credentials: HTTPAuthorizationCredentials):
+        token = credentials.credentials
+        try:
+            payload = jwt.decode(token, config.JWT_SECRET, algorithms=["HS256"])
+            return payload.get("user_id")
+        except jwt.InvalidTokenError:
+            logger.log("Invalid JWT token")
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
+    def get_security_headers(self):
+        return {
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+        }
 
 def setup_cors(app):
+    from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=ALLOWED_ORIGINS,
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-
-async def verify_jwt(token: str):
-    try:
-        payload = jwt.decode(
-            token,
-            os.getenv("JWT_SECRET", settings.JWT_SECRET),
-            algorithms=["RS256"],
-            options={"verify_aud": False}
-        )
-        return payload
-    except JWTError as e:
-        raise JWTError(f"Token verification failed: {str(e)}")
+def setup_security_headers(app):
+    security = SecurityManager()
+    async def add_headers(request: Request, call_next):
+        response = await call_next(request)
+        headers = security.get_security_headers()
+        for key, value in headers.items():
+            response.headers[key] = value
+        return response
+    app.middleware("http")(add_headers)
