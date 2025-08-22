@@ -1,42 +1,23 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
-from server.security import verify_jwt
-from jose import jwt
-from server.config import settings
-import secrets
-
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2AuthorizationCodeBearer
+from server.api.auth_manager import auth
+from server.models.auth_agent import AuthAgent
 
 router = APIRouter()
 
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl="https://github.com/login/oauth/authorize",
+    tokenUrl="https://github.com/login/oauth/access_token"
+)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class Credentials(BaseModel):
-    key: str
-    secret: str
-
-
-@router.post("/token", response_model=Token)
+@router.get("/login")
 async def login():
-    token = jwt.encode(
-        {"sub": "user"}, settings.JWT_SECRET, algorithm="RS256"
-    )
-    return {"access_token": token, "token_type": "bearer"}
+    return {"message": "Redirect to GitHub OAuth", "url": oauth2_scheme.authorizationUrl}
 
-
-@router.post("/generate-credentials", response_model=Credentials)
-async def generate_credentials(token: str = Depends(oauth2_scheme)):
+@router.get("/callback")
+async def callback(code: str):
     try:
-        await verify_jwt(token)
-        key = secrets.token_hex(16)
-        secret = secrets.token_hex(32)
-        return {"key": key, "secret": secret}
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        user_data = await auth.authenticate(code)
+        return {"user": user_data}
+    except HTTPException as e:
+        raise e
