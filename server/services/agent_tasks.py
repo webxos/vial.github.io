@@ -1,6 +1,3 @@
-from fastapi import FastAPI
-
-
 def setup_agent_tasks(app):
     app.state.oauth2_enabled = True
     app.state.token_hash = "test_hash"
