@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from fastapi.testclient import TestClient
 from server.mcp_server import app
 from server.automation.auto_scheduler import AutoScheduler
