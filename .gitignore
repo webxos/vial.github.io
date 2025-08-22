@@ -1,40 +1,41 @@
+# .gitignore
+
 # Python
-__pycache__
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
 env/
 venv/
-env3/
-.venv/
-env3.11/
-build/
-dist/
 *.egg-info/
-
-# Docker
-*.tar
-docker-compose.override.yml
-
-# Logs
-*.log
-vial.log
-db/errorlog.md
+dist/
+build/
 
 # Database
 *.db
-migrations/
-alembic/
+*.sqlite3
 
-# IDE
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# Docker
+*.dockerignore
+docker-compose.override.yml
+
+# IDEs
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
 
-# OS
+# OS generated files
 .DS_Store
+Thumbs.db
 
-# Git
-*.md
-!.gitignore
-!.env.example
+# Node.js
+node_modules/
+npm-debug.log
