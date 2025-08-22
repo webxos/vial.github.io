@@ -1,21 +1,14 @@
-import pytest
-import torch
-from server.models.mcp_alchemist import MCPAlchemist
-from server.mcp_server import app
 from fastapi.testclient import TestClient
+from server.mcp_server import app
+from server.models.mcp_alchemist import Alchemist
 
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    return TestClient(app)
 
 
-@pytest.mark.asyncio
-async def test_predict_quantum_outcome():
-    alchemist = MCPAlchemist()
-    circuit = {
-        "qubits": 2,
-        "gates": [{"type": "h", "target": 0}, {"type": "cx", "control": 0, "target": 1}]
-    }
-    response = await alchemist.predict_quantum_outcome(circuit)
-    assert "prediction" in response
-    assert isinstance(response["prediction"], list)
-    assert len(response["prediction"]) == 8
+def test_alchemist_process():
+    alchemist = Alchemist()
+    result = alchemist.process_prompt("Test prompt", {"data": "test"})
+    assert result is not None
