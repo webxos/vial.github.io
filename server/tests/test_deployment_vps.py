@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from server.mcp_server import app
 import subprocess
 import os
+import requests
 
 
 @pytest.fixture
@@ -11,16 +12,17 @@ def client():
 
 
 def test_vps_deployment():
-    # Simulate VPS deployment with GitHub Pages
     try:
         subprocess.run(["git", "push", "origin", "main"], check=True)
-        assert os.path.exists("public/index.html")
-    except subprocess.CalledProcessError:
-        pytest.fail("Git push to GitHub Pages failed")
-    except FileNotFoundError:
-        pytest.fail("public/index.html not found")
+        response = requests.get("http://vps-ip/public/index.html")
+        assert response.status_code == 200
+        assert "Vial MCP" in response.text
+    except (subprocess.CalledProcessError, requests.RequestException):
+        pytest.fail("VPS deployment or GitHub Pages sync failed")
 
 
-def test_docker_compose():
-    result = subprocess.run(["docker-compose", "up", "-d"], capture_output=True, text=True)
+def test_docker_compose_vps():
+    result = subprocess.run(["docker-compose", "-f", "docker-compose.yml", "up", "-d"],
+                           capture_output=True, text=True)
     assert result.returncode == 0, f"Docker Compose failed: {result.stderr}"
+    subprocess.run(["docker-compose", "down"], capture_output=True)
