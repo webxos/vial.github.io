@@ -4,15 +4,18 @@ from server.mcp_server import app
 from server.api.copilot_integration import CopilotIntegration
 from unittest.mock import AsyncMock, patch
 
+
 @pytest.fixture
 def client():
     return TestClient(app)
+
 
 @pytest.fixture
 def mock_copilot():
     copilot = CopilotIntegration()
     copilot.git_trainer.get_diff = AsyncMock(return_value="diff content")
     return copilot
+
 
 @pytest.mark.asyncio
 async def test_suggest_code(client, mock_copilot):
