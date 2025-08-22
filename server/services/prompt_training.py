@@ -1,27 +1,33 @@
-import torch
-import torch.nn as nn
-from fastapi import FastAPI
-from server.services.advanced_logging import AdvancedLogger
+# server/services/prompt_training.py
+from server.services.vial_manager import VialManager
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
+import logging
+from typing import Dict, Any
 
+logger = logging.getLogger(__name__)
 
-class PromptModel(nn.Module):
+class PromptTrainer:
     def __init__(self):
-        super().__init__()
-        self.fc = nn.Linear(20, 1)
-    
-    def forward(self, x):
-        return torch.sigmoid(self.fc(x))
+        self.vial_manager = VialManager()
 
-
-def setup_prompt_training(app: FastAPI):
-    logger = AdvancedLogger()
-    model = PromptModel()
-    
-    async def train_prompt(prompt: str):
-        dummy_input = torch.randn(1, 20)
-        output = model(dummy_input)
-        logger.log("Prompt training completed", extra={"prompt": prompt, "output": output.item()})
-        return {"status": "trained", "output": output.item()}
-    
-    app.state.train_prompt = train_prompt
-    logger.log("Prompt training initialized", extra={"model": "PromptModel"})
+    async def train_prompt(self, prompt: str, wallet_address: str) -> Dict[str, Any]:
+        """Train model with prompt and reputation check."""
+        try:
+            with SessionLocal() as session:
+                wallet = session.query(Wallet).filter_by(
+                    address=wallet_address
+                ).first()
+                if not wallet or wallet.reputation < 5.0:
+                    raise ValueError(
+                        f"Insufficient reputation for {wallet_address}"
+                    )
+            
+            result = await self.vial_manager.train_vial(prompt)
+            logger.info(
+                f"Prompt training completed for wallet {wallet_address}"
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Prompt training error: {str(e)}")
+            raise
