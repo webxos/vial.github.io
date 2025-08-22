@@ -1,9 +1,20 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from server.mcp_server import app
 
 
 router = APIRouter()
 
-@router.get("/health")
-async def health_check():
-    return {"status": "ok", "timestamp": "2025-08-21T21:26:00Z"}
+@router.get("/help")
+async def get_help():
+    help_text = """
+    Available endpoints:
+    - /health: Check server status
+    - /auth/login: Start OAuth flow
+    - /agent/task: Execute tasks
+    """
+    return {"help": help_text.strip()}
+
+
+@router.get("/docs")
+async def get_docs():
+    return {"message": "See API.md for full documentation"}
