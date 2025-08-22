@@ -1,14 +1,32 @@
+# Dockerfile.final
 FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY --from=build /app/server ./server
-COPY --from=build /app/public ./public
-COPY --from=build /app/docker-compose.yml .
-COPY --from=build /app/requirements.txt .
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy requirements and install
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy application code
+COPY server/ ./server/
+COPY scripts/ ./scripts/
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV SQLALCHEMY_DATABASE_URL=postgresql://user:password@host:5432/vial
+ENV REDIS_HOST=redis
+ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
+ENV SECRET_KEY=your-secret-key-here
+ENV REPUTATION_LOGGING_ENABLED=true
+ENV API_PORT=8000
+
+# Expose ports
 EXPOSE 8000
 
+# Command to run the application
 CMD ["uvicorn", "server.mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]
