@@ -4,11 +4,9 @@ from server.mcp_server import app
 import subprocess
 import requests
 
-
 @pytest.fixture
 def client():
     return TestClient(app)
-
 
 def test_vps_deployment():
     try:
@@ -19,7 +17,6 @@ def test_vps_deployment():
         subprocess.run(["docker-compose", "down"], check=True)
     except (subprocess.CalledProcessError, requests.RequestException):
         pytest.fail("VPS deployment or GitHub Pages sync failed")
-
 
 def test_docker_compose_vps():
     result = subprocess.run(["docker-compose", "-f", "docker-compose.yml", "up", "-d"],
