@@ -1,27 +1,19 @@
-import requests
 from server.services.advanced_logging import AdvancedLogger
+import requests
+
+
+logger = AdvancedLogger()
 
 
 class VialSDK:
-    def __init__(self, base_url: str, token: str):
+    def __init__(self, api_key: str, base_url: str):
+        self.api_key = api_key
         self.base_url = base_url
-        self.token = token
-        self.logger = AdvancedLogger()
-
-    def save_config(self, config: dict):
-        response = requests.post(
-            f"{self.base_url}/save-config",
-            json=config,
-            headers={"Authorization": f"Bearer {self.token}"}
-        )
-        self.logger.log("SDK config save attempted", extra={"config_name": config.get("name")})
-        return response.json()
-
-    def train_vial(self, vial_id: str):
-        response = requests.post(
-            f"{self.base_url}/agent/train",
-            json={"vial_id": vial_id},
-            headers={"Authorization": f"Bearer {self.token}"}
-        )
-        self.logger.log("SDK vial training attempted", extra={"vial_id": vial_id})
+    
+    def make_request(self, endpoint: str, data: dict):
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        response = requests.post(f"{self.base_url}/{endpoint}", json=data)
+        logger.log("SDK request executed",
+                   extra={"endpoint": endpoint,
+                          "status_code": response.status_code})
         return response.json()
