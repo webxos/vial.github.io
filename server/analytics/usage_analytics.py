@@ -14,10 +14,12 @@ def setup_usage_analytics(app: FastAPI):
         analytics_data.setdefault(endpoint, {"count": 0, "last_access": None})
         analytics_data[endpoint]["count"] += 1
         analytics_data[endpoint]["last_access"] = time.time()
-        logger.log("Usage tracked", extra={"endpoint": endpoint, "count": analytics_data[endpoint]["count"]})
+        logger.log("Usage tracked", extra={"endpoint": endpoint,
+                                           "count": analytics_data[endpoint]["count"]})
         return await call_next(request)
     
     @app.get("/analytics")
     async def get_analytics():
-        logger.log("Analytics retrieved", extra={"endpoints": list(analytics_data.keys())})
+        logger.log("Analytics retrieved",
+                   extra={"endpoints": list(analytics_data.keys())})
         return {"analytics": analytics_data}
