@@ -1,21 +1,17 @@
 import logging
-from logging.handlers import RotatingFileHandler
+import logging.handlers
+from server.config import config
 
-
-class Logger:
+class AdvancedLogger:
     def __init__(self):
-        self.logger = logging.getLogger("vial")
-        self.logger.setLevel(logging.INFO)
-        handler = RotatingFileHandler("vial.log", maxBytes=1000000, backupCount=5)
+        self.logger = logging.getLogger("vial_mcp")
+        handler = logging.handlers.RotatingFileHandler("vial.log", maxBytes=10000, backupCount=5)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO if not config.DEBUG else logging.DEBUG)
 
-    def info(self, message: str):
+    def log(self, message: str):
         self.logger.info(message)
 
-    def error(self, message: str):
-        self.logger.error(message)
-
-
-logger = Logger()
+logger = AdvancedLogger()
