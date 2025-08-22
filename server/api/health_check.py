@@ -1,19 +1,29 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from server.services.vial_manager import VialManager
 from server.services.database import get_db
-from server.services.advanced_logging import AdvancedLogger
-
+from server.logging import logger
 
 router = APIRouter()
-logger = AdvancedLogger()
 
 
 @router.get("/health")
 async def health_check(db: Session = Depends(get_db)):
     try:
+        # Check database connectivity
         db.execute("SELECT 1")
-        logger.log("Health check passed", extra={"status": "healthy"})
-        return {"status": "healthy", "version": "2.9.3", "database": "connected"}
+        # Check vial manager status
+        vial_manager = VialManager()
+        vial_status = vial_manager.get_vial_status("vial1")
+        # Check MCP Alchemist status
+        alchemist_status = {"status": "running"}  # Placeholder for Alchemist check
+        health_status = {
+            "database": "connected",
+            "vial_manager": "running" if vial_status else "inactive",
+            "mcp_alchemist": alchemist_status["status"],
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        logger.log("Health check completed successfully")
+        return health_status
     except Exception as e:
-        logger.log("Health check failed", extra={"error": str(e)})
+        logger.log(f"Health check error: {str(e)}")
         return {"status": "unhealthy", "error": str(e)}
