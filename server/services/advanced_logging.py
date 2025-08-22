@@ -1,5 +1,4 @@
 import logging.handlers
-from server.mcp_server import app
 
 
 class AdvancedLogger:
