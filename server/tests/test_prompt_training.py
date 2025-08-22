@@ -1,17 +1,24 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_prompt_training.py
 import pytest
+from server.services.prompt_training import PromptTrainer
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_prompt_training(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    token = token_response.json()["access_token"]
-    response = client.post("/train-prompt", json={"prompt": "test prompt"}, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "trained"
-    assert "output" in response.json()
+@pytest.mark.asyncio
+async def test_prompt_training():
+    """Test prompt training with reputation check."""
+    trainer = PromptTrainer()
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
+    
+    result = await trainer.train_prompt(
+        "test_prompt",
+        "test_wallet"
+    )
+    assert result["status"] == "success"
