@@ -4,9 +4,11 @@ from server.mcp_server import app
 from server.services.prompt_training import PromptTrainer
 from unittest.mock import AsyncMock, patch
 
+
 @pytest.fixture
 def client():
     return TestClient(app)
+
 
 @pytest.fixture
 def mock_prompt_trainer():
@@ -14,6 +16,7 @@ def mock_prompt_trainer():
     trainer.alchemist.process_prompt = AsyncMock(return_value={"output": "trained"})
     trainer.git_trainer.save_training_data = AsyncMock()
     return trainer
+
 
 @pytest.mark.asyncio
 async def test_train_prompt(client, mock_prompt_trainer):
