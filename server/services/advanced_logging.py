@@ -1,34 +1,32 @@
 # server/services/advanced_logging.py
-from fastapi import FastAPI, Request
 import logging
-from server.services.reputation_logger import ReputationLogger
-from typing import Dict, Any
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
 logger = logging.getLogger(__name__)
 
-class AdvancedLogging:
-    def __init__(self, app: FastAPI):
-        self.app = app
-        self.register_middleware()
+class AdvancedLogger:
+    def __init__(self):
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
-    def register_middleware(self):
-        @self.app.middleware("http")
-        async def logging_middleware(request: Request, call_next):
-            """Log requests and reputation updates."""
-            try:
-                response = await call_next(request)
-                wallet_address = request.headers.get("X-Wallet-Address")
-                if wallet_address:
-                    reputation_logger = ReputationLogger()
-                    await reputation_logger.log_reputation(
-                        wallet_address,
-                        f"wallet_{wallet_address}.md"
+    async def log_event(self, event: str, wallet_address: str):
+        """Log event with wallet reputation."""
+        try:
+            with SessionLocal() as session:
+                wallet = session.query(Wallet).filter_by(
+                    address=wallet_address
+                ).first()
+                if not wallet:
+                    raise ValueError(
+                        f"Wallet not found for logging: {wallet_address}"
                     )
-                logger.info(
-                    f"Request: {request.method} {request.url.path} "
-                    f"from {wallet_address or request.client.host}"
-                )
-                return response
-            except Exception as e:
-                logger.error(f"Logging error: {str(e)}")
-                raise
+            logger.info(
+                f"Event: {event}, Wallet: {wallet_address}, "
+                f"Reputation: {wallet.reputation}"
+            )
+        except Exception as e:
+            logger.error(f"Logging error: {str(e)}")
+            raise
