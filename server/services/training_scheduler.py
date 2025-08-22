@@ -4,6 +4,8 @@ from server.services.agent_tasks import AgentTaskManager
 import asyncio
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+import time
+
 
 class TrainingScheduler:
     def __init__(self, app: FastAPI):
@@ -12,6 +14,7 @@ class TrainingScheduler:
         self.task_manager = AgentTaskManager(app)
         self.schedule = {}
         self.executor = ThreadPoolExecutor(max_workers=4)
+        self.metrics = {"tasks_executed": 0, "total_time": 0.0}
 
     async def schedule_training(self, task_id: str, interval: int, params: dict):
         while True:
@@ -22,7 +25,13 @@ class TrainingScheduler:
                 self.prompt_trainer.train_prompt("Train {context}", params)
             ])
             elapsed = (datetime.now() - start_time).total_seconds()
+            self.metrics["tasks_executed"] += 1
+            self.metrics["total_time"] += elapsed
             await asyncio.sleep(max(0, interval - elapsed))
+
+    def get_metrics(self):
+        return self.metrics
+
 
 def setup_training_scheduler(app: FastAPI):
     scheduler = TrainingScheduler(app)
@@ -32,3 +41,7 @@ def setup_training_scheduler(app: FastAPI):
     async def schedule_task(task_id: str, interval: int, params: dict):
         asyncio.create_task(scheduler.schedule_training(task_id, interval, params))
         return {"status": "scheduled", "task_id": task_id}
+
+    @app.get("/agent/metrics")
+    async def get_scheduler_metrics():
+        return app.state.training_scheduler.get_metrics()
