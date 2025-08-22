@@ -1,17 +1,11 @@
-from fastapi import Request, Response
-from server.services.redis_handler import redis_client
-import hashlib
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import time
 
 
 async def cache_response(request: Request, call_next):
-    cache_key = (
-        f"cache:{hashlib.md5(f'{request.method}:{request.url}'"
-        f".encode()).hexdigest()}"
-    )
-    cached = await redis_client.get(cache_key)
-    if cached:
-        return Response(content=cached, media_type="application/json")
+    start_time = time.time()
     response = await call_next(request)
-    if response.status_code == 200:
-        await redis_client.setex(cache_key, 3600, response.body)
+    duration = time.time() - start_time
+    response.headers["X-Cache-Duration"] = f"{duration:.2f}s"
     return response
