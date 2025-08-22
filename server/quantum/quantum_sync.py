@@ -1,23 +1,24 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from qiskit import QuantumCircuit, Aer, execute
+from qiskit import QuantumCircuit, execute, Aer
+from fastapi import FastAPI
 
+class QuantumSync:
+    def __init__(self, app: FastAPI):
+        self.app = app
 
-router = APIRouter()
+    def sync_quantum_state(self, vial_id: str):
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.cx(0, 1)
+        backend = Aer.get_backend("qasm_simulator")
+        job = execute(qc, backend, shots=1024)
+        result = job.result()
+        counts = result.get_counts(qc)
+        return {"vial_id": vial_id, "quantum_state": counts}
 
+def setup_quantum_sync(app: FastAPI):
+    quantum_sync = QuantumSync(app)
+    app.state.quantum_sync = quantum_sync
 
-class QuantumRequest(BaseModel):
-    circuit: dict
-    backend: str = "qasm_simulator"
-
-
-@router.post("/execute")
-async def execute_circuit(request: QuantumRequest):
-    try:
-        circuit = QuantumCircuit.from_dict(request.circuit)
-        backend = Aer.get_backend(request.backend)
-        result = execute(circuit, backend, shots=1024).result()
-        counts = result.get_counts()
-        return {"status": "success", "counts": counts}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    @app.post("/quantum/sync")
+    async def sync_endpoint(vial_id: str):
+        return quantum_sync.sync_quantum_state(vial_id)
