@@ -1,8 +1,6 @@
-from fastapi import Request, Response
-from server.logging import logger
+from fastapi import FastAPI
 
-async def logging_middleware(request: Request, call_next):
-    logger.log(f"Request: {request.method} {request.url}")
-    response: Response = await call_next(request)
-    logger.log(f"Response: {response.status_code}")
+async def logging_middleware(request, call_next):
+    response = await call_next(request)
+    print("Request logged")
     return response
