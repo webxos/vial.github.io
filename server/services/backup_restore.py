@@ -1,35 +1,52 @@
-from fastapi import FastAPI
-from sqlalchemy.orm import Session
-from server.services.database import get_db
-from server.models.visual_components import VisualConfig
-from server.services.advanced_logging import AdvancedLogger
-import json
+# server/services/backup_restore.py
+from fastapi import Depends, HTTPException
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
+import logging
+from typing import Dict, Any
 
+logger = logging.getLogger(__name__)
 
-def setup_backup_restore(app: FastAPI):
-    logger = AdvancedLogger()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-    async def backup_configs(db: Session = Depends(get_db)):
-        configs = db.query(VisualConfig).all()
-        backup_data = [{"id": c.id, "name": c.name, "components": c.components, "connections": c.connections} for c in configs]
-        with open("/app/data/backup.json", "w") as f:
-            json.dump(backup_data, f)
-        logger.log("Configuration backup created", extra={"count": len(backup_data)})
-        return {"status": "backed up", "count": len(backup_data)}
+async def backup_data(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Backup wallet and reputation data."""
+    try:
+        wallets = db.query(Wallet).all()
+        backup_data = [
+            {
+                "address": w.address,
+                "balance": w.balance,
+                "staked_amount": w.staked_amount,
+                "reputation": w.reputation
+            }
+            for w in wallets
+        ]
+        logger.info("Backup completed")
+        return {"status": "success", "data": backup_data}
+    except Exception as e:
+        logger.error(f"Backup error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    async def restore_configs(db: Session = Depends(get_db)):
-        try:
-            with open("/app/data/backup.json", "r") as f:
-                backup_data = json.load(f)
-            for config in backup_data:
-                db.merge(VisualConfig(**config))
-            db.commit()
-            logger.log("Configuration restored", extra={"count": len(backup_data)})
-            return {"status": "restored", "count": len(backup_data)}
-        except Exception as e:
-            logger.log("Restore failed", extra={"error": str(e)})
-            return {"error": str(e)}
-
-    app.state.backup_configs = backup_configs
-    app.state.restore_configs = restore_configs
-    logger.log("Backup/restore initialized", extra={"system": "backup_restore"})
+async def restore_data(data: Dict[str, Any], db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Restore wallet and reputation data."""
+    try:
+        for item in data.get("data", []):
+            wallet = Wallet(
+                address=item["address"],
+                balance=item["balance"],
+                staked_amount=item["staked_amount"],
+                reputation=item["reputation"]
+            )
+            db.merge(wallet)
+        db.commit()
+        logger.info("Restore completed")
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
