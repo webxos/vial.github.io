@@ -6,6 +6,8 @@ from server.api.middleware import logging_middleware
 from server.api.error_handler import setup_error_handlers
 from server.services.security import setup_cors
 from server.api.security_headers import setup_security_headers
+from server.services.agent_tasks import setup_agent_tasks
+from server.services.prompt_training import setup_prompt_training
 
 app = FastAPI(
     title="Vial MCP Controller",
@@ -19,6 +21,8 @@ app.middleware("http")(logging_middleware)
 setup_cors(app)
 setup_error_handlers(app)
 setup_security_headers(app)
+setup_agent_tasks(app)
+setup_prompt_training(app)
 
 app.include_router(auth.router, prefix="/auth")
 app.include_router(endpoints.router)
