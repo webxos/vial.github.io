@@ -7,14 +7,15 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Node.js for frontend build
-RUN apt-get update && apt-get install -y nodejs npm
+# Install frontend dependencies
 COPY public/ ./public/
 RUN npm install --prefix public/ three
 
