@@ -1,49 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
 from datetime import datetime, timedelta
-from server.config.settings import settings
-from server.services.advanced_logging import AdvancedLogger
-from pydantic import BaseModel
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
+from server.config import settings
+from server.security import require_auth
+from server.logging import logger
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-logger = AdvancedLogger()
 
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expire_minutes)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm="HS256")
-    return encoded_jwt
-
-
-@router.post("/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username != "admin" or form_data.password != "secret":
-        logger.log("Authentication failed", extra={"username": form_data.username})
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    access_token = create_access_token(data={"sub": form_data.username})
-    logger.log("Token generated", extra={"username": form_data.username})
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
-@router.get("/verify")
-async def verify_token(token: str = Depends(oauth2_scheme)):
+@router.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-        username: str = payload.get("sub")
-        if username is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        logger.log("Token verified", extra={"username": username})
-        return {"username": username}
-    except JWTError:
-        logger.log("Token verification failed", extra={"token": token})
-        raise HTTPException(status_code=401, detail="Invalid token")
+        # Simplified user validation (replace with real user DB check)
+        if form_data.username != "test" or form_data.password != "test":
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        token_data = {"sub": form_data.username, "exp": datetime.utcnow() + timedelta(hours=1)}
+        token = jwt.encode(token_data, settings.JWT_SECRET, algorithm="HS256")
+        logger.log(f"Generated token for user: {form_data.username}")
+        return {"access_token": token, "token_type": "bearer"}
+    except Exception as e:
+        logger.log(f"Token generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/me")
+async def get_current_user(user=Depends(require_auth)):
+    try:
+        logger.log(f"User profile accessed: {user['id']}")
+        return {"user_id": user["id"]}
+    except Exception as e:
+        logger.log(f"User profile error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
