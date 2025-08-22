@@ -1,22 +1,22 @@
 from fastapi import FastAPI
-from prometheus_client import Counter, Histogram, make_asgi_app
+from prometheus_client import Counter, make_asgi_app
 from server.services.advanced_logging import AdvancedLogger
 
 
-request_counter = Counter("vial_requests_total", "Total API requests", ["endpoint"])
-request_duration = Histogram("vial_request_duration_seconds", "Request duration", ["endpoint"])
 logger = AdvancedLogger()
+request_counter = Counter("http_requests_total", "Total HTTP Requests", ["endpoint"])
 
 
 def setup_prometheus_metrics(app: FastAPI):
-    @app.middleware("http")
-    async def metrics_middleware(request, call_next):
-        endpoint = request.url.path
-        request_counter.labels(endpoint=endpoint).inc()
-        with request_duration.labels(endpoint=endpoint).time():
-            response = await call_next(request)
-        logger.log("Metrics recorded", extra={"endpoint": endpoint})
-        return response
+    metrics_app = make_asgi_app()
+    app.mount("/metrics", metrics_app)
     
-    app.mount("/metrics", make_asgi_app())
-    logger.log("Prometheus metrics initialized", extra={"system": "monitoring"})
+    @app.middleware("http")
+    async def count_requests(request, call_next):
+        request_counter.labels(endpoint=request.url.path).inc()
+        logger.log("Request counted",
+                   extra={"endpoint": request.url.path})
+        return await call_next(request)
+    
+    logger.log("Prometheus metrics initialized",
+               extra={"system": "prometheus"})
