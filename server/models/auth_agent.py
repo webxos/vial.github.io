@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 
-
 class AuthAgent(BaseModel):
     user_id: str
     token: str
