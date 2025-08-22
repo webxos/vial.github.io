@@ -1,4 +1,3 @@
-from fastapi import FastAPI
 
 async def rate_limit(request, call_next):
     response = await call_next(request)
