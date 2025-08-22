@@ -1,13 +1,13 @@
 # server/tests/test_performance_tuner.py
 import pytest
-from server.optimization.performace_tuner import PerformanceTuner
+from server.optimization.performance_tuner import PerformanceTuner
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
 
+
 @pytest.mark.asyncio
 async def test_performance_tuner():
-    """Test performance tuner with reputation check."""
-    tuner = PerformanceTuner()
+    """Test performance tuning with wallet reputation."""
     with SessionLocal() as session:
         wallet = Wallet(
             address="test_wallet",
@@ -17,6 +17,7 @@ async def test_performance_tuner():
         session.add(wallet)
         session.commit()
     
-    result = await tuner.optimize_training("test_vial")
+    tuner = PerformanceTuner()
+    result = await tuner.optimize("test_model")
     assert result["status"] == "success"
-    assert "performance" in result
+    assert "optimized_metrics" in result
