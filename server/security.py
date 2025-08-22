@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.security import OAuth2PasswordBearer
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
