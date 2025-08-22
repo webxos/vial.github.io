@@ -1,25 +1,40 @@
+# server/analytics/usage_analytics.py
 from fastapi import FastAPI, Request
-from server.services.advanced_logging import AdvancedLogger
-import time
+from sqlalchemy.orm import Session
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
+import logging
+from datetime import datetime
 
+logger = logging.getLogger(__name__)
 
-logger = AdvancedLogger()
-analytics_data = {}
+class UsageAnalytics:
+    def __init__(self, app: FastAPI):
+        self.app = app
+        self.register_middleware()
 
+    def register_middleware(self):
+        @self.app.middleware("http")
+        async def analytics_middleware(request: Request, call_next):
+            start_time = datetime.now()
+            response = await call_next(request)
+            duration = (datetime.now() - start_time).total_seconds()
 
-def setup_usage_analytics(app: FastAPI):
-    @app.middleware("http")
-    async def track_usage(request: Request, call_next):
-        endpoint = request.url.path
-        analytics_data.setdefault(endpoint, {"count": 0, "last_access": None})
-        analytics_data[endpoint]["count"] += 1
-        analytics_data[endpoint]["last_access"] = time.time()
-        logger.log("Usage tracked", extra={"endpoint": endpoint,
-                                           "count": analytics_data[endpoint]["count"]})
-        return await call_next(request)
-    
-    @app.get("/analytics")
-    async def get_analytics():
-        logger.log("Analytics retrieved",
-                   extra={"endpoints": list(analytics_data.keys())})
-        return {"analytics": analytics_data}
+            with SessionLocal() as session:
+                # Log wallet-related requests
+                if "/wallet" in request.url.path:
+                    wallet = session.query(Wallet).filter_by(
+                        address=request.headers.get("X-Wallet-Address")
+                    ).first()
+                    if wallet:
+                        logger.info(
+                            f"Wallet {wallet.address} accessed {request.url.path} "
+                            f"in {duration:.2f}s"
+                        )
+
+            return response
+
+    async def log_component_usage(self, component_id: str, action: str):
+        """Log usage of visual API router components."""
+        with SessionLocal() as session:
+            logger.info(f"Component {component_id} performed {action}")
