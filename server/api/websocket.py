@@ -1,44 +1,39 @@
-# server/api/websocket.py
 from fastapi import APIRouter, WebSocket
-from server.services.vial_manager import VialManager
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-import logging
+from server.logging import logger
 import json
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+connected_clients = []
+
+
+async def broadcast_message(message: str):
+    for client in connected_clients:
+        try:
+            await client.send_json({"message": message})
+        except Exception as e:
+            logger.log(f"Broadcast error: {str(e)}")
+            connected_clients.remove(client)
+
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Handle WebSocket connections for real-time updates."""
     await websocket.accept()
+    connected_clients.append(websocket)
     try:
         while True:
             data = await websocket.receive_json()
-            with SessionLocal() as session:
-                if data.get("type") == "wallet_transaction":
-                    wallet = session.query(Wallet).filter_by(
-                        address=data.get("wallet_address")
-                    ).first()
-                    if wallet:
-                        wallet.balance += data.get("amount", 0)
-                        session.commit()
-                        await websocket.send_json({
-                            "status": "success",
-                            "balance": wallet.balance,
-                            "address": wallet.address
-                        })
-                elif data.get("type") == "vial_update":
-                    vial_manager = VialManager()
-                    status = await vial_manager.train_vial(
-                        data.get("vial_id")
-                    )
-                    await websocket.send_json({
-                        "status": "success",
-                        "vial_id": data.get("vial_id"),
-                        "training_status": status
-                    })
+            vial_id = data.get("vial_id")
+            message = data.get("message")
+            if vial_id and message:
+                await broadcast_message(f"{vial_id}: {message}")
+                logger.log(f"WebSocket message from {vial_id}: {message}")
+                await websocket.send_json({
+                    "status": "sent",
+                    "vial_id": vial_id
+                })
+            else:
+                await websocket.send_json({"error": "Invalid data"})
     except Exception as e:
-        logger.error(f"WebSocket error: {str(e)}")
+        logger.log(f"WebSocket error: {str(e)}")
+        connected_clients.remove(websocket)
         await websocket.close()
