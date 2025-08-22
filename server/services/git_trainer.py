@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from git import Repo
-from server.mcp_server import app
 
 
 class GitTrainer:
