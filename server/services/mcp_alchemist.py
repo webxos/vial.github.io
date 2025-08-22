@@ -135,7 +135,7 @@ def setup_mcp_alchemist(app: FastAPI):
                 "vials": [
                     {
                         "name": f"vial{i}",
-                        "status": "running",
+                        "status": vial_manager.get_vial_status(f"vial{i}"),
                         "language": "Python",
                         "balance": 18004.25,
                         "address": str(uuid.uuid4()),
@@ -159,7 +159,7 @@ def setup_mcp_alchemist(app: FastAPI):
                 json={"prompt": prompt, "language": "python"}
             )
             response.raise_for_status()
-            code = response.json().get("code")
+            code = response.json().get("code", "")
             commit_result = commit_to_git({"code": code, "message": f"Copilot: {prompt[:50]}"})
             logger.log(f"Copilot generated code for user: {user['user_id']}")
             return {"status": "generated", "code": code, "commit": commit_result}
@@ -182,6 +182,16 @@ def setup_mcp_alchemist(app: FastAPI):
             return {"status": "troubleshooting", "steps": response, "options": options}
         except Exception as e:
             logger.log(f"Troubleshoot error: {str(e)}")
+            return {"error": str(e)}
+
+    @app.post("/alchemist/git")
+    async def run_git_command(command: str, user=Depends(get_current_user)):
+        try:
+            result = repo.git.execute(["git"] + command.split())
+            logger.log(f"Git command executed: {command}")
+            return {"status": "executed", "result": result}
+        except Exception as e:
+            logger.log(f"Git command error: {str(e)}")
             return {"error": str(e)}
 
 def generate_config_from_prompt(prompt: str) -> dict:
@@ -238,7 +248,11 @@ def commit_to_git(data: dict) -> dict:
         return {"error": str(e)}
 
 def generate_svg_diagram(vial_id: str) -> str:
-    return f"""<svg width="200" height="200">
-        <rect x="10" y="10" width="180" height="180" fill="#3498db"/>
-        <text x="50" y="100" fill="white">{vial_id}</text>
-    </svg>"""
+    try:
+        return f"""<svg width="200" height="200">
+            <rect x="10" y="10" width="180" height="180" fill="#3498db"/>
+            <text x="50" y="100" fill="white">{vial_id}</text>
+        </svg>"""
+    except Exception as e:
+        logger.log(f"SVG generation error: {str(e)}")
+        raise
