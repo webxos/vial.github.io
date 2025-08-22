@@ -1,17 +1,10 @@
-from fastapi import APIRouter, Depends
-from server.models.mcp_alchemist import MCPAlchemist
-from server.quantum.quantum_sync import QuantumRequest
-from server.security import verify_jwt
-
+from fastapi import APIRouter
+from server.quantum.quantum_sync import QuantumSync
 
 router = APIRouter()
 
+quantum_sync = QuantumSync(None)
 
-@router.post("/predict")
-async def predict_quantum(
-    request: QuantumRequest,
-    token: str = Depends(verify_jwt)
-):
-    alchemist = MCPAlchemist()
-    result = await alchemist.predict_quantum_outcome(request.circuit)
-    return result
+@router.post("/sync")
+async def sync_quantum(vial_id: str):
+    return quantum_sync.sync_quantum_state(vial_id)
