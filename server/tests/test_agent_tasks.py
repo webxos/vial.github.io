@@ -1,20 +1,24 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_agent_tasks.py
 import pytest
+from server.services.agent_tasks import AgentTasks
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_execute_task(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_agent_task_execution():
+    """Test agent task execution with reputation check."""
+    agent_tasks = AgentTasks()
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    response = client.post("/agent/execute-task", json={"vial_id": "vial1", "task": "test_task"}, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "completed"
-    assert response.json()["vial_id"] == "vial1"
-    assert "output" in response.json()
+    result = await agent_tasks.execute_task(
+        "test_task",
+        "test_wallet"
+    )
+    assert result["status"] == "success"
