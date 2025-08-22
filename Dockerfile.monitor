@@ -1,11 +1,29 @@
+# Dockerfile.monitor
 FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt prometheus-client==0.20.0
 
-COPY server/api/health_check.py .
-COPY server/tests/test_health_check.py .
+# Copy monitoring code
+COPY server/monitoring/ ./server/monitoring/
 
-CMD ["python", "health_check.py"]
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
+ENV REDIS_HOST=redis
+ENV REPUTATION_LOGGING_ENABLED=true
+ENV PROMETHEUS_PORT=9090
+
+# Expose ports
+EXPOSE 9090
+
+# Command to run the monitoring service
+CMD ["python", "server/monitoring/prometheus_metrics.py"]
