@@ -1,38 +1,31 @@
 version: '3.8'
 
 services:
-  mcp_server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  web:
+    build: .
     ports:
       - "8000:8000"
-    environment:
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - GITHUB_USERNAME=${GITHUB_USERNAME}
-      - MONGO_URL=mongodb://mongo:27017
-      - REDIS_URL=redis://redis:6379
-      - NOTIFICATION_API_URL=${NOTIFICATION_API_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - API_BASE_URL=http://localhost:8000
-    depends_on:
-      - mongo
-      - redis
     volumes:
-      - ./server:/app/server
-      - ./public:/app/public
+      - .:/app
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - SQLALCHEMY_DATABASE_URL=${SQLALCHEMY_DATABASE_URL}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI}
+      - WEB3_PROVIDER_URL=${WEB3_PROVIDER_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - DEBUG=${DEBUG}
+      - PORT=${PORT}
+    depends_on:
+      - mongodb
 
-  mongo:
-    image: mongo:6.0
+  mongodb:
+    image: mongo:latest
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db
-
-  redis:
-    image: redis:7.0
-    ports:
-      - "6379:6379"
+      - mongodb_data:/data/db
 
 volumes:
-  mongo_data:
+  mongodb_data:
