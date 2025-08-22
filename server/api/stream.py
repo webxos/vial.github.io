@@ -1,20 +1,36 @@
-from fastapi import APIRouter
+# server/api/stream.py
+from fastapi import APIRouter, Response
 from fastapi.responses import StreamingResponse
-from server.services.advanced_logging import AdvancedLogger
+from server.services.vial_manager import VialManager
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
+import logging
 import asyncio
 
-
 router = APIRouter()
-logger = AdvancedLogger()
+logger = logging.getLogger(__name__)
 
-
-@router.get("/stream/logs")
-async def stream_logs():
-    async def log_stream():
-        for i in range(10):
-            yield f"data: Log event {i} at {asyncio.get_event_loop().time()}\n\n"
-            await asyncio.sleep(1)
-        logger.log("Log stream completed", extra={"events": 10})
+@router.get("/stream/wallet/{address}")
+async def stream_wallet_updates(address: str):
+    """Stream real-time wallet updates."""
+    async def generate():
+        with SessionLocal() as session:
+            while True:
+                wallet = session.query(Wallet).filter_by(address=address).first()
+                if wallet:
+                    yield f"data: {{\"balance\": {wallet.balance}, \"address\": \"{wallet.address}\"}}\n\n"
+                await asyncio.sleep(1)
     
-    logger.log("Log stream started", extra={"stream": "logs"})
-    return StreamingResponse(log_stream(), media_type="text/event-stream")
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+@router.get("/stream/vial/{vial_id}")
+async def stream_vial_training(vial_id: str):
+    """Stream vial training logs."""
+    async def generate():
+        vial_manager = VialManager()
+        for _ in range(5):  # Simulate 5 training steps
+            status = await vial_manager.train_vial(vial_id)
+            yield f"data: {status}\n\n"
+            await asyncio.sleep(1)
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
