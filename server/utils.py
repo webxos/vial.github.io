@@ -1,6 +1,7 @@
 import json
 from server.models.webxos_wallet import WalletModel
 
+
 def parse_json(data: str) -> WalletModel:
     parsed_data = json.loads(data)
     return WalletModel(
