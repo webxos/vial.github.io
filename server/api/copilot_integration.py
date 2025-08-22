@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from server.services.git_trainer import GitTrainer
-from git import Repo
-import asyncio
+from server.models.copilot_model import CopilotModel
+
 
 router = APIRouter()
 
@@ -10,14 +10,12 @@ class CopilotIntegration:
         self.git_trainer = GitTrainer()
 
     async def suggest_code(self, repo_path: str, file_path: str):
-        repo = Repo(repo_path)
-        changes = await self.git_trainer.get_diff(repo, file_path)
-        # Simplified copilot suggestion logic
-        suggestion = f"// Suggested change for {file_path}: {changes}"
-        return {"suggestion": suggestion}
+        diff = await self.git_trainer.get_diff(repo_path, file_path)
+        return CopilotModel(suggestion=f"// Suggested change for {file_path}: {diff}")
+
 
 copilot = CopilotIntegration()
 
-@router.post("/copilot/suggest")
+@router.post("/suggest")
 async def suggest_code_endpoint(repo_path: str, file_path: str):
     return await copilot.suggest_code(repo_path, file_path)
