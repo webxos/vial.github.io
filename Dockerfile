@@ -9,7 +9,11 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     nodejs \
     npm \
+    docker.io \
     && rm -rf /var/lib/apt/lists/*
+
+# Install docker-compose for CI
+RUN pip install docker-compose==1.29.2
 
 # Copy requirements and install
 COPY requirements.txt .
@@ -23,6 +27,7 @@ RUN npm install --prefix public/ three
 COPY server/ ./server/
 COPY scripts/ ./scripts/
 COPY public/js/threejs_integrations.js ./public/js/threejs_integrations.js
+COPY public/index.html ./public/index.html
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
