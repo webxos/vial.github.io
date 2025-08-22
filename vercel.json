@@ -6,6 +6,10 @@
       "use": "@vercel/static"
     },
     {
+      "src": "pages/**/*",
+      "use": "@vercel/next"
+    },
+    {
       "src": "server/mcp_server.py",
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "50mb" }
@@ -22,7 +26,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "public/index.html"
+      "dest": "pages/$1"
     }
   ],
   "env": {
@@ -32,6 +36,8 @@
     "SECRET_KEY": "your-secret-key-here",
     "REPUTATION_LOGGING_ENABLED": "true",
     "API_PORT": "8000",
-    "VERCEL_TOKEN": "your-vercel-token-here"
+    "VERCEL_TOKEN": "your-vercel-token-here",
+    "NEXTAUTH_URL": "https://your-project-name.vercel.app",
+    "NEXTAUTH_SECRET": "your-nextauth-secret-here"
   }
 }
