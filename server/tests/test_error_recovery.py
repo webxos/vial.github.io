@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from server.mcp_server import app
 from server.services.error_recovery import ErrorRecovery
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 
 @pytest.fixture
