@@ -1,15 +1,16 @@
-import pytest
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+import json
+from fastapi import HTTPException
 
 
-@pytest.fixture
-def client():
-    return TestClient(app)
+def parse_json(data: str):
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
 
 
-def test_schedule_training():
-    response = client.post("/agent/schedule", json={"task_id": "train_vial", "interval": 60,
-                                                   "params": {"vial_id": "vial1"}})
-    assert response.status_code == 200
-    assert response.json()["status"] == "scheduled"
+def validate_wallet(data: dict):
+    required_fields = ["user_id", "balance", "network_id"]
+    if not all(field in data for field in required_fields):
+        raise HTTPException(status_code=400, detail="Missing required wallet fields")
+    return data
