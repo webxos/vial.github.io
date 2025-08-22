@@ -1,12 +1,17 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from server.services.advanced_logging import AdvancedLogger
 
 
-async def setup_error_handlers(app: FastAPI):
+logger = AdvancedLogger()
+
+
+def setup_error_handler(app: FastAPI):
     @app.exception_handler(Exception)
-    async def global_exception_handler(request: Request, exc: Exception):
-        error_msg = str(exc)
-        status_code = 400 if "visual_config" in error_msg.lower() else 500
-        content = {"error": "Invalid visual configuration"} if status_code == 400 else {"message": "Internal server error"}
-        return JSONResponse(status_code=status_code,
-                           content=content)
+    async def custom_exception_handler(request: Request, exc: Exception):
+        logger.log("Error occurred",
+                   extra={"error": str(exc), "url": str(request.url)})
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal server error"}
+        )
