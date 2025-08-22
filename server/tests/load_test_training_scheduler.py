@@ -15,7 +15,7 @@ def client():
 async def test_load_training_scheduler():
     scheduler = TrainingScheduler(app)
     start_time = time.time()
-    tasks = [scheduler.schedule_training("train_vial", 1, {"vial_id": f"vial{i}") 
+    tasks = [scheduler.schedule_training("train_vial", 1, {"vial_id": f"vial{i}"}) 
              for i in range(10)]
     await asyncio.gather(*tasks)
     end_time = time.time()
