@@ -1,24 +1,29 @@
-from fastapi import Request, HTTPException
+from fastapi import FastAPI, Request
 from server.services.advanced_logging import AdvancedLogger
 import time
 
 
 logger = AdvancedLogger()
-requests = {}
+rate_limits = {}
 
 
-async def rate_limit(request: Request, call_next):
-    client_ip = request.client.host
-    current_time = time.time()
-    
-    if client_ip not in requests:
-        requests[client_ip] = []
-    
-    requests[client_ip] = [t for t in requests[client_ip] if current_time - t < 60]
-    if len(requests[client_ip]) >= 100:
-        logger.log("Rate limit exceeded", extra={"client_ip": client_ip})
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
-    
-    requests[client_ip].append(current_time)
-    logger.log("Rate limit check passed", extra={"client_ip": client_ip})
-    return await call_next(request)
+def setup_rate_limiter(app: FastAPI):
+    @app.middleware("http")
+    async def limit_requests(request: Request, call_next):
+        client_ip = request.client.host
+        if client_ip not in rate_limits:
+            rate_limits[client_ip] = {"count": 0, "timestamp": time.time()}
+        
+        if time.time() - rate_limits[client_ip]["timestamp"] < 60:
+            rate_limits[client_ip]["count"] += 1
+            if rate_limits[client_ip]["count"] > 100:
+                logger.log("Rate limit exceeded",
+                           extra={"client_ip": client_ip})
+                return {"error": "Rate limit exceeded"}
+        else:
+            rate_limits[client_ip] = {"count": 1, "timestamp": time.time()}
+        
+        response = await call_next(request)
+        logger.log("Request processed",
+                   extra={"client_ip": client_ip})
+        return response
