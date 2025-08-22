@@ -1,11 +1,49 @@
+# Dockerfile.full
 FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY . .
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
 
+# Install Vercel CLI and Next.js
+RUN npm install -g vercel@latest next@14.2.3 react@18.2.0 react-dom@18.2.0 @next-auth/prisma-adapter@1.0.7 ethers@6.13.2
+
+# Copy requirements and install
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8000 27017
+# Install frontend dependencies
+COPY public/ ./public/
+COPY pages/ ./pages/
+COPY vercel.json .
+RUN npm install --prefix public/ three
 
-CMD ["sh", "-c", "mongod & uvicorn server.mcp_server:app --host 0.0.0.0 --port 8000"]
+# Copy application code
+COPY server/ ./server/
+COPY scripts/ ./scripts/
+COPY public/js/threejs_integrations.js ./public/js/threejs_integrations.js
+COPY public/index.html ./public/index.html
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
+ENV REDIS_HOST=redis
+ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
+ENV SECRET_KEY=your-secret-key-here
+ENV REPUTATION_LOGGING_ENABLED=true
+ENV API_PORT=8000
+ENV VERCEL_TOKEN=your-vercel-token-here
+ENV NEXTAUTH_URL=http://localhost:3000
+ENV NEXTAUTH_SECRET=your-nextauth-secret-here
+
+# Expose ports
+EXPOSE 8000 3000
+
+# Command to run the application
+CMD ["sh", "-c", "uvicorn server.mcp_server:app --host 0.0.0.0 --port ${API_PORT} & npx next start"]
