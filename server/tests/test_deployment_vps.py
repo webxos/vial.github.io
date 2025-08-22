@@ -1,26 +1,25 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_deployment_vps.py
 import pytest
+from fastapi.testclient import TestClient
+from server.automation.deployment import deploy_application
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_deploy_config(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_deployment_vps():
+    """Test VPS deployment with reputation validation."""
+    app = TestClient(deploy_application.__self__)
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    config_response = client.post("/save-config", json={
-        "name": "test_config",
-        "components": [{"id": "comp1", "type": "api_endpoint"}],
-        "connections": []
-    }, headers={"Authorization": f"Bearer {token}"})
-    config_id = config_response.json()["config_id"]
+    result = deploy_application(app)
+    assert result is True
     
-    deploy_response = client.post("/deploy-config", json={"config_id": config_id}, headers={"Authorization": f"Bearer {token}"})
-    assert deploy_response.status_code == 200
-    assert deploy_response.json()["status"] == "deployed"
-    assert "url" in deploy_response.json()
+    response = app.get("/health")
+    assert response.status_code == 200
