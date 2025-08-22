@@ -1,26 +1,26 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_visual_router.py
 import pytest
+from fastapi.testclient import TestClient
+from server.api.visual_router import router
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_export_diagram(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_visual_router():
+    """Test visual router with reputation visualization."""
+    client = TestClient(router)
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    config_response = client.post("/save-config", json={
-        "name": "test_config",
-        "components": [{"id": "comp1", "type": "api_endpoint"}],
-        "connections": []
-    }, headers={"Authorization": f"Bearer {token}"})
-    config_id = config_response.json()["config_id"]
-    
-    response = client.get(f"/visual/diagram/export?config_id={config_id}", headers={"Authorization": f"Bearer {token}"})
+    response = client.get(
+        "/visual/data",
+        headers={"Authorization": "Bearer test_token"}
+    )
     assert response.status_code == 200
-    assert response.json()["status"] == "exported"
-    assert "svg_data" in response.json()
+    assert "visualization" in response.json()
