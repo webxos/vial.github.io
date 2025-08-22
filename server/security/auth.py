@@ -1,20 +1,17 @@
-from jose import jwt
-from datetime import datetime, timedelta
-from server.config.settings import settings
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from server.services.advanced_logging import AdvancedLogger
+from jose import jwt, JWTError
 
 
 logger = AdvancedLogger()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def refresh_token(token: str):
-    try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-        new_payload = payload.copy()
-        new_payload["exp"] = datetime.utcnow() + timedelta(minutes=settings.jwt_expire_minutes)
-        new_token = jwt.encode(new_payload, settings.jwt_secret, algorithm="HS256")
-        logger.log("Token refreshed", extra={"username": payload.get("sub")})
-        return {"access_token": new_token, "token_type": "bearer"}
-    except Exception as e:
-        logger.log("Token refresh failed", extra={"error": str(e)})
-        return {"error": str(e)}
+def setup_auth(app: FastAPI):
+    @app.post("/token")
+    async def login():
+        token = jwt.encode({"user_id": "user123"}, "your-secret-key", algorithm="HS256")
+        logger.log("Token generated",
+                   extra={"user_id": "user123"})
+        return {"access_token": token, "token_type": "bearer"}
