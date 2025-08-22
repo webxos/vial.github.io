@@ -28,6 +28,8 @@ class QuantumVisualSync:
 
     def sync_quantum_state(self, vial_id: str):
         try:
+            if vial_id not in self.vial_manager.agents:
+                raise ValueError(f"Vial {vial_id} not found")
             qc = QuantumCircuit(4, 4)
             qc.h(hash(vial_id) % 4)
             result = execute(qc, self.backend, shots=1).result()
