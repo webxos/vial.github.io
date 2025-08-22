@@ -1,20 +1,16 @@
-from fastapi import APIRouter, Depends
-from server.quantum.quantum_sync import QuantumVisualSync
+from fastapi import APIRouter
 from server.services.advanced_logging import AdvancedLogger
-from pydantic import BaseModel
-
-
-class QuantumRequest(BaseModel):
-    vial_id: str
+from qiskit import QuantumCircuit
 
 
 router = APIRouter()
 logger = AdvancedLogger()
 
 
-@router.post("/sync")
-async def sync_quantum(request: QuantumRequest):
-    quantum_sync = QuantumVisualSync(request.vial_id)
-    result = quantum_sync.sync_quantum_state(request.vial_id)
-    logger.log("Quantum sync executed", extra={"vial_id": request.vial_id})
-    return result
+@router.post("/quantum/sync")
+async def quantum_sync(vial_id: str):
+    circuit = QuantumCircuit(1)
+    circuit.h(0)
+    logger.log("Quantum sync executed",
+               extra={"vial_id": vial_id})
+    return {"quantum_state": "superposition", "vial_id": vial_id}
