@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "public/index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "server/mcp_server.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "50mb" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server/mcp_server.py"
+    },
+    {
+      "src": "/ws/(.*)",
+      "dest": "server/mcp_server.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/index.html"
+    }
+  ],
+  "env": {
+    "SQLALCHEMY_DATABASE_URL": "sqlite:///vial.db",
+    "REDIS_HOST": "redis",
+    "WEBXOS_WALLET_ADDRESS": "e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d",
+    "SECRET_KEY": "your-secret-key-here",
+    "REPUTATION_LOGGING_ENABLED": "true",
+    "API_PORT": "8000",
+    "VERCEL_TOKEN": "your-vercel-token-here"
+  }
+}
