@@ -1,20 +1,47 @@
+# server/models/mcp_alchemist.py
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, Float
+from server.services.vial_manager import VialManager
 import torch
-import torch.nn as nn
-from server.services.advanced_logging import AdvancedLogger
+import logging
 
+Base = declarative_base()
+logger = logging.getLogger(__name__)
 
-logger = AdvancedLogger()
-
-
-class MCPAlchemist(nn.Module):
-    def __init__(self, input_dim: int, output_dim: int):
-        super().__init__()
-        self.model = nn.Linear(input_dim, output_dim)
+class Alchemist(Base):
+    __tablename__ = "alchemist"
     
-    def forward(self, x):
-        return torch.sigmoid(self.model(x))
+    id = Column(String, primary_key=True)
+    model_path = Column(String)
+    performance = Column(Float)
     
-    def train_model(self, data):
-        logger.log("Model training initiated",
-                   extra={"data_size": len(data)})
-        return {"status": "trained"}
+    def train(self, vial_id: str, epochs: int = 10):
+        """Train PyTorch model for vial."""
+        try:
+            model = torch.nn.Linear(10, 1)  # Simplified model
+            optimizer = torch.optim.SGD(
+                model.parameters(),
+                lr=0.01
+            )
+            for _ in range(epochs):
+                optimizer.zero_grad()
+                output = model(torch.randn(1, 10))
+                loss = torch.nn.functional.mse_loss(
+                    output,
+                    torch.randn(1, 1)
+                )
+                loss.backward()
+                optimizer.step()
+            
+            self.performance = float(loss.item())
+            vial_manager = VialManager()
+            vial_manager.update_vial(
+                vial_id,
+                {"performance": self.performance}
+            )
+            logger.info(
+                f"Alchemist {self.id} trained for vial {vial_id}"
+            )
+        except Exception as e:
+            logger.error(f"Training error: {str(e)}")
+            raise
