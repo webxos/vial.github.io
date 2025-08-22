@@ -1,0 +1,27 @@
+[name]
+id = "mcp-alchemist"
+label = "MCP Alchemist (WebXOS)"
+
+[server]
+command = "python"
+args = ["-m", "server.mcp.server"]
+transport = "stdio"
+
+[env]
+PYTHONPATH = "."
+VIAL_ENV = "prod"
+
+[capabilities]
+resources = true
+prompts = true
+tools = true
+
+[permissions]
+"vial.status.get" = "allow"
+"vial.config.generate" = "allow"
+"deploy.vercel" = "prompt"
+"git.commit.push" = "prompt"
+"quantum.sync.state" = "allow"
+"wallet.export" = "allow"
+"copilot.generate" = "prompt"
+"ops.troubleshoot" = "allow"
