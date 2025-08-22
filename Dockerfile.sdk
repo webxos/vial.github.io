@@ -1,10 +1,26 @@
+# Dockerfile.sdk
 FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt httpx==0.27.0
 
-COPY server/sdk/vial_sdk.py .
+# Copy SDK code
+COPY server/sdk/ ./server/sdk/
 
-CMD ["python", "vial_sdk.py"]
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
+ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
+ENV SECRET_KEY=your-secret-key-here
+ENV API_PORT=8000
+
+# Command to run the SDK
+CMD ["python", "server/sdk/vial_sdk.py"]
