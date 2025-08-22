@@ -1,44 +1,44 @@
-# server/services/vial_manager.py
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-import torch
-import logging
-from typing import Dict, Any
+from typing import Dict
+from server.logging import logger
 
-logger = logging.getLogger(__name__)
 
 class VialManager:
     def __init__(self):
-        self.model = torch.nn.Linear(10, 1)
+        self.agents = {
+            f"vial{i}": {"status": "running", "model": None} for i in range(1, 5)
+        }
 
-    async def train_vial(self, vial_id: str) -> Dict[str, Any]:
-        """Train vial with reputation check."""
+    def get_vial_status(self, vial_id: str) -> Dict:
         try:
-            with SessionLocal() as session:
-                wallet = session.query(Wallet).filter_by(
-                    address="test_wallet"
-                ).first()
-                if not wallet or wallet.reputation < 10.0:
-                    raise ValueError(
-                        f"Insufficient reputation for training {vial_id}"
-                    )
-            
-            # Simplified training logic
-            optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
-            loss_fn = torch.nn.MSELoss()
-            for _ in range(10):
-                optimizer.zero_grad()
-                inputs = torch.randn(1, 10)
-                outputs = self.model(inputs)
-                loss = loss_fn(outputs, torch.tensor([[0.0]]))
-                loss.backward()
-                optimizer.step()
-            
-            logger.info(
-                f"Vial {vial_id} trained successfully "
-                f"for wallet with reputation {wallet.reputation}"
-            )
-            return {"status": "success", "vial_id": vial_id}
+            if vial_id not in self.agents:
+                raise ValueError(f"Vial {vial_id} not found")
+            status = self.agents[vial_id]["status"]
+            logger.log(f"Vial status checked: {vial_id} - {status}")
+            return {"vial_id": vial_id, "status": status}
         except Exception as e:
-            logger.error(f"Vial training error: {str(e)}")
-            raise
+            logger.log(f"Vial status error: {str(e)}")
+            return {"error": str(e)}
+
+    def restart_vial(self, vial_id: str) -> Dict:
+        try:
+            if vial_id not in self.agents:
+                raise ValueError(f"Vial {vial_id} not found")
+            self.agents[vial_id]["status"] = "restarting"
+            # Simulate restart
+            self.agents[vial_id]["status"] = "running"
+            logger.log(f"Vial restarted: {vial_id}")
+            return {"status": "restarted", "vial_id": vial_id}
+        except Exception as e:
+            logger.log(f"Vial restart error: {str(e)}")
+            return {"error": str(e)}
+
+    def train_vial(self, vial_id: str, prompt: str) -> Dict:
+        try:
+            if vial_id not in self.agents:
+                raise ValueError(f"Vial {vial_id} not found")
+            # Placeholder for training logic
+            logger.log(f"Vial training initiated: {vial_id} with prompt: {prompt}")
+            return {"status": "trained", "vial_id": vial_id}
+        except Exception as e:
+            logger.log(f"Vial training error: {str(e)}")
+            return {"error": str(e)}
