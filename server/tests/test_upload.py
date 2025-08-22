@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from server.mcp_server import app
 from server.api.upload import UploadManager
@@ -9,7 +10,7 @@ def client():
 
 
 def test_upload_file():
-    upload = UploadManager()
+    client = TestClient(app)
     with open("test_wallet.md", "w") as f:
         f.write("user_id: test_user\nbalance: 100.0")
     with open("test_wallet.md", "rb") as f:
@@ -20,6 +21,6 @@ def test_upload_file():
 
 
 def test_invalid_upload():
-    upload = UploadManager()
+    client = TestClient(app)
     response = client.post("/upload", files={"file": ("invalid.txt", b"invalid")})
     assert response.status_code == 400
