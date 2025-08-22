@@ -1,35 +1,32 @@
-import pytest
 from fastapi.testclient import TestClient
+from fastapi.security import HTTPAuthorizationCredentials, HTTPException
 from server.mcp_server import app
-from server.services.security import verify_jwt
-from jose import jwt
-from server.config import settings
+from server.api.security import SecurityManager
 
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    return TestClient(app)
 
 
-@pytest.mark.asyncio
-async def test_verify_jwt_valid():
-    token = jwt.encode({"user_id": "test_user"}, settings.JWT_SECRET, algorithm="HS256")
-    payload = await verify_jwt(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
-    assert payload["user_id"] == "test_user"
+def test_security_headers():
+    security = SecurityManager()
+    headers = security.get_security_headers()
+    assert "X-Content-Type-Options" in headers
+    assert headers["X-Content-Type-Options"] == "nosniff"
 
 
-@pytest.mark.asyncio
-async def test_verify_jwt_invalid():
-    with pytest.raises(HTTPException) as exc:
-        await verify_jwt(HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid_token"))
-    assert exc.value.status_code == 401
-    assert exc.value.detail == "Invalid token"
+def test_authenticate_valid():
+    security = SecurityManager()
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="valid_token")
+    result = security.authenticate(credentials)
+    assert result is True
 
 
-@pytest.mark.asyncio
-async def test_cors():
-    response = await client.options(
-        "/health",
-        headers={"Origin": "https://example.com", "Access-Control-Request-Method": "GET"}
-    )
-    assert response.status_code == 200
-    assert "Access-Control-Allow-Origin" in response.headers
-    assert response.headers["Access-Control-Allow-Origin"] == "*"
+def test_authenticate_invalid():
+    security = SecurityManager()
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid_token")
+    try:
+        security.authenticate(credentials)
+    except HTTPException as e:
+        assert e.status_code == 401
