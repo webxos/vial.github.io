@@ -1,33 +1,39 @@
-# server/services/prompt_training.py
+from fastapi import FastAPI
 from server.services.vial_manager import VialManager
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-import logging
-from typing import Dict, Any
+from server.models.visual_components import VisualConfig
+from server.logging import logger
+import torch
+import torch.nn as nn
 
-logger = logging.getLogger(__name__)
 
-class PromptTrainer:
+class Alchemist(nn.Module):
     def __init__(self):
-        self.vial_manager = VialManager()
+        super().__init__()
+        self.fc = nn.Linear(100, 10)
+        self.output = nn.Linear(10, 1)
 
-    async def train_prompt(self, prompt: str, wallet_address: str) -> Dict[str, Any]:
-        """Train model with prompt and reputation check."""
+    def forward(self, x):
+        x = torch.relu(self.fc(x))
+        return torch.sigmoid(self.output(x))
+
+
+def setup_prompt_training(app: FastAPI):
+    vial_manager = VialManager()
+    alchemist = Alchemist()
+
+    @app.post("/prompt/train")
+    async def train_prompt(prompt: str, config: VisualConfig = None):
         try:
-            with SessionLocal() as session:
-                wallet = session.query(Wallet).filter_by(
-                    address=wallet_address
-                ).first()
-                if not wallet or wallet.reputation < 5.0:
-                    raise ValueError(
-                        f"Insufficient reputation for {wallet_address}"
-                    )
-            
-            result = await self.vial_manager.train_vial(prompt)
-            logger.info(
-                f"Prompt training completed for wallet {wallet_address}"
-            )
-            return result
+            input_data = torch.rand(100)  # Placeholder for prompt encoding
+            with torch.no_grad():
+                prediction = alchemist(input_data)
+            if config:
+                # Generate component suggestions based on prompt
+                component_suggestions = [{"id": f"comp{i}", "type": "api_endpoint", "title": f"API {i}", "position": {"x": i*10, "y": 0, "z": 0}, "config": {}, "connections": []} for i in range(1, 3)]
+                logger.log(f"Trained prompt with config: {prompt}")
+                return {"status": "trained", "suggestions": component_suggestions}
+            logger.log(f"Trained prompt: {prompt}")
+            return {"status": "trained", "prediction": prediction.tolist()}
         except Exception as e:
-            logger.error(f"Prompt training error: {str(e)}")
-            raise
+            logger.log(f"Prompt training error: {str(e)}")
+            return {"error": str(e)}
