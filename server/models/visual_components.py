@@ -29,9 +29,15 @@ class ComponentModel(BaseModel):
     position: Position3D
     config: Dict[str, Any]
     connections: List[str]
+    svg_style: str = "default"  # Added for SVG customization
 
 
 class ConnectionModel(BaseModel):
     from_component: str
     to_component: str
     type: ConnectionType
+
+
+class VisualConfig(BaseModel):
+    components: List[ComponentModel]
+    connections: List[ConnectionModel]
