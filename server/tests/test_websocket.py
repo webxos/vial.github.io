@@ -1,28 +1,28 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_websocket.py
 import pytest
-import json
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
+from fastapi.testclient import TestClient
+from server.api.websocket import router
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
 @pytest.mark.asyncio
-async def test_websocket_collaboration(client: TestClient):
-    async with client.websocket_connect("/ws") as websocket:
-        # Test cursor update
-        cursor_data = {"type": "cursor_update", "user_id": "test_user", "position": {"x": 100, "y": 200}}
-        await websocket.send_text(json.dumps(cursor_data))
-        response = await websocket.receive_json()
-        assert response["type"] == "cursor_broadcast"
-        assert response["user_id"] == "test_user"
-        assert response["position"] == {"x": 100, "y": 200}
-        
-        # Test config update
-        config_data = {"type": "config_update", "config": {"id": "config1", "name": "test_config"}}
-        await websocket.send_text(json.dumps(config_data))
-        response = await websocket.receive_json()
-        assert response["type"] == "config_broadcast"
-        assert response["config"]["id"] == "config1"
+async def test_websocket():
+    """Test WebSocket with reputation updates."""
+    client = TestClient(router)
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
+    
+    with client.websocket_connect("/ws") as websocket:
+        websocket.send_json({
+            "type": "wallet_update",
+            "wallet_address": "test_wallet"
+        })
+        response = websocket.receive_json()
+        assert response["status"] == "success"
+        assert response["reputation"] == 20.0
