@@ -5,6 +5,7 @@ from server.api.visual_router import router
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
 
+
 @pytest.mark.asyncio
 async def test_visual_router():
     """Test visual router with reputation visualization."""
@@ -24,3 +25,4 @@ async def test_visual_router():
     )
     assert response.status_code == 200
     assert "visualization" in response.json()
+    assert response.json()["visualization"]["reputation"] == 20.0
