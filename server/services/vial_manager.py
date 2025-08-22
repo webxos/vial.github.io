@@ -1,42 +1,44 @@
+# server/services/vial_manager.py
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 import torch
-import torch.nn as nn
-from server.models.mcp_alchemist import Alchemist
-from server.services.advanced_logging import AdvancedLogger
+import logging
+from typing import Dict, Any
 
-
-class VialAgent(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc = nn.Linear(10, 1)
-    
-    def forward(self, x):
-        return torch.sigmoid(self.fc(x))
-
+logger = logging.getLogger(__name__)
 
 class VialManager:
     def __init__(self):
-        self.agents = {}
-        self.alchemist = Alchemist()
-        self.logger = AdvancedLogger()
-        self.create_vial_agents()
-    
-    def create_vial_agents(self):
-        for i in range(1, 5):
-            vial_id = f"vial{i}"
-            self.agents[vial_id] = {
-                "model": VialAgent(),
-                "status": "ready",
-                "balance": 18004.25,
-                "hash": f"hash_{i}"
-            }
-            self.logger.log("Agent created", extra={"vial_id": vial_id})
-    
-    async def train_vial(self, vial_id: str):
-        if vial_id not in self.agents:
-            self.logger.log("Vial not found", extra={"vial_id": vial_id})
-            return {"error": "Vial not found"}
-        agent = self.agents[vial_id]["model"]
-        dummy_input = torch.randn(1, 10)
-        output = agent(dummy_input)
-        self.logger.log("Vial trained", extra={"vial_id": vial_id, "output": output.item()})
-        return {"status": "trained", "vial_id": vial_id}
+        self.model = torch.nn.Linear(10, 1)
+
+    async def train_vial(self, vial_id: str) -> Dict[str, Any]:
+        """Train vial with reputation check."""
+        try:
+            with SessionLocal() as session:
+                wallet = session.query(Wallet).filter_by(
+                    address="test_wallet"
+                ).first()
+                if not wallet or wallet.reputation < 10.0:
+                    raise ValueError(
+                        f"Insufficient reputation for training {vial_id}"
+                    )
+            
+            # Simplified training logic
+            optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
+            loss_fn = torch.nn.MSELoss()
+            for _ in range(10):
+                optimizer.zero_grad()
+                inputs = torch.randn(1, 10)
+                outputs = self.model(inputs)
+                loss = loss_fn(outputs, torch.tensor([[0.0]]))
+                loss.backward()
+                optimizer.step()
+            
+            logger.info(
+                f"Vial {vial_id} trained successfully "
+                f"for wallet with reputation {wallet.reputation}"
+            )
+            return {"status": "success", "vial_id": vial_id}
+        except Exception as e:
+            logger.error(f"Vial training error: {str(e)}")
+            raise
