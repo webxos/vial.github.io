@@ -1,10 +1,8 @@
-from server.mcp_server import app
-from fastapi.testclient import TestClient
+from fastapi import FastAPI
 
-def get_sdk_client():
-    return TestClient(app)
+def setup_sdk(app: FastAPI):
+    print("SDK setup")
 
-def sync_quantum_state(vial_id: str):
-    client = get_sdk_client()
-    response = client.post("/quantum/sync", json={"vial_id": vial_id})
-    return response.json()
+
+def run_sdk(app: FastAPI):
+    print("SDK running")
