@@ -1,37 +1,39 @@
-# server/services/git_trainer.py
-import httpx
-import logging
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
+from git import Repo
+from server.services.vial_manager import VialManager
+from server.models.visual_components import VisualConfig
+from server.logging import logger
+import os
 
-logger = logging.getLogger(__name__)
 
 class GitTrainer:
-    async def train_from_repo(self, repo_url: str, wallet_address: str):
-        """Train model from Git repository with wallet validation."""
+    def __init__(self):
+        self.repo = Repo(os.getcwd())
+        self.vial_manager = VialManager()
+
+    async def commit_visual_config(self, config: VisualConfig):
         try:
-            with SessionLocal() as session:
-                wallet = session.query(Wallet).filter_by(
-                    address=wallet_address
-                ).first()
-                if not wallet:
-                    raise ValueError(
-                        f"Wallet not found for training: {wallet_address}"
-                    )
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://api.github.com/repos/{repo_url}/contents",
-                    headers={"Authorization": f"Bearer {wallet_address}"}
-                )
-                response.raise_for_status()
-                content = response.json()
-            logger.info(
-                f"Training started from repo: {repo_url}, "
-                f"Wallet: {wallet_address}"
-            )
-            return {"status": "success", "content": content}
+            # Generate FastAPI code from visual config
+            code = self._generate_fastapi_code(config)
+            output_path = "generated_routes.py"
+            with open(output_path, "w") as f:
+                f.write(code)
+            self.repo.git.add(output_path)
+            commit_message = f"MCP: Visual config commit {config.components[0].id}"
+            self.repo.index.commit(commit_message)
+            self.repo.remotes.origin.push()
+            logger.log(f"Committed visual config: {commit_message}")
+            return {"status": "committed", "commit_message": commit_message}
         except Exception as e:
-            logger.error(
-                f"Training error for repo {repo_url}: {str(e)}"
-            )
-            raise
+            logger.log(f"Git commit error: {str(e)}")
+            return {"error": str(e)}
+
+    def _generate_fastapi_code(self, config: VisualConfig) -> str:
+        code = ["from fastapi import APIRouter\n", "router = APIRouter()\n"]
+        for component in config.components:
+            if component.type == "api_endpoint":
+                route = f"""
+@router.{component.config.get('method', 'get').lower()}("/{component.id}")
+async def {component.id.replace('-', '_')}():
+    return {{"status": "executed", "endpoint": "{component.id}"}}"""
+                code.append(route)
+        return "\n".join(code)
