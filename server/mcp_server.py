@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from server.api import auth, endpoints, quantum_endpoints, websocket, \
     copilot_integration, jsonrpc, void, troubleshoot, help, comms_hub, \
     upload, stream
@@ -7,7 +6,6 @@ from server.api.webxos_wallet import router as wallet_router
 from server.api.cache_control import cache_response
 from server.api.rate_limiter import rate_limit
 from server.api.middleware import logging_middleware
-from server.error_handler import setup_error_handlers
 from server.security import setup_cors, setup_security_headers
 from server.services.agent_tasks import setup_agent_tasks
 from server.services.prompt_training import setup_prompt_training
@@ -28,7 +26,6 @@ app.middleware("http")(rate_limit)
 app.middleware("http")(logging_middleware)
 
 setup_cors(app)
-await setup_error_handlers(app)
 setup_security_headers(app)
 setup_agent_tasks(app)
 setup_prompt_training(app)
