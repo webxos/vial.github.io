@@ -31,9 +31,10 @@ ENV REDIS_HOST=redis
 ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
 ENV SECRET_KEY=your-secret-key-here
 ENV REPUTATION_LOGGING_ENABLED=true
+ENV API_PORT=8000
 
 # Expose ports
 EXPOSE 8000
 
 # Command to run the application
-CMD ["uvicorn", "server.mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn server.mcp_server:app --host 0.0.0.0 --port ${API_PORT}"]
