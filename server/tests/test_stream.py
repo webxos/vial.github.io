@@ -1,20 +1,27 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_stream.py
 import pytest
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
+from fastapi.testclient import TestClient
+from server.api.stream import router
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
 @pytest.mark.asyncio
-async def test_stream_logs(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+async def test_stream_endpoint():
+    """Test streaming endpoint with reputation check."""
+    client = TestClient(router)
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    with client.websocket_connect("/stream/logs") as websocket:
-        data = websocket.receive_text()
-        assert "data: Log event" in data
-        assert "2025" in data
+    token = "test_token"
+    response = client.get(
+        "/stream/data",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    assert "data" in response.json()
