@@ -1,32 +1,40 @@
 # Python
-__pycache__/
-*.py[cod]
+__pycache__
 *.pyc
 *.pyo
 *.pyd
 .Python
 env/
 venv/
-ENV/
-env.bak/
-venv.bak/
+env3/
+.venv/
+env3.11/
+build/
+dist/
+*.egg-info/
 
 # Docker
-*.log
-*.tar.gz
+*.tar
 docker-compose.override.yml
 
-# Editor and OS
-.DS_Store
-*.swp
-*.swo
+# Logs
+*.log
+vial.log
+db/errorlog.md
+
+# Database
+*.db
+migrations/
+alembic/
+
+# IDE
 .vscode/
 .idea/
 
-# Project-specific
-.env
-dist/
-build/
-*.egg-info/
-public/static/dist/
-*.log
+# OS
+.DS_Store
+
+# Git
+*.md
+!.gitignore
+!.env.example
