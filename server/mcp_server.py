@@ -10,6 +10,8 @@ from server.services.agent_tasks import setup_agent_tasks
 from server.services.prompt_training import setup_prompt_training
 from server.services.training_scheduler import setup_training_scheduler
 from server.services.advanced_logging import setup_advanced_logging
+from server.services.error_recovery import setup_error_recovery
+from server.api.auth_manager import auth
 
 app = FastAPI(
     title="Vial MCP Controller",
@@ -27,6 +29,7 @@ setup_agent_tasks(app)
 setup_prompt_training(app)
 setup_training_scheduler(app)
 setup_advanced_logging(app)
+setup_error_recovery(app)
 
 app.include_router(auth.router, prefix="/auth")
 app.include_router(endpoints.router)
