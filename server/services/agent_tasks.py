@@ -1,33 +1,36 @@
-# server/services/agent_tasks.py
+from fastapi import FastAPI
 from server.services.vial_manager import VialManager
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-import logging
-from typing import Dict, Any
+from server.logging import logger
+import asyncio
 
-logger = logging.getLogger(__name__)
 
-class AgentTasks:
-    def __init__(self):
-        self.vial_manager = VialManager()
+def setup_agent_tasks(app: FastAPI):
+    vial_manager = VialManager()
 
-    async def execute_task(self, task_id: str, wallet_address: str) -> Dict[str, Any]:
-        """Execute agent task with reputation check."""
+    @app.post("/agent/task")
+    async def assign_task(vial_id: str, task: dict):
+        if vial_id not in vial_manager.agents:
+            logger.log(f"Agent not found: {vial_id}")
+            return {"error": "Agent not found"}
         try:
-            with SessionLocal() as session:
-                wallet = session.query(Wallet).filter_by(
-                    address=wallet_address
-                ).first()
-                if not wallet or wallet.reputation < 10.0:
-                    raise ValueError(
-                        f"Insufficient reputation for {wallet_address}"
-                    )
-                result = await self.vial_manager.train_vial(task_id)
-                logger.info(
-                    f"Task {task_id} executed for wallet {wallet_address} "
-                    f"with reputation {wallet.reputation}"
-                )
-                return result
+            agent = vial_manager.agents[vial_id]["model"]
+            task_type = task.get("type")
+            task_data = task.get("data", {})
+            result = await asyncio.to_thread(run_task, agent, task_type, task_data)
+            logger.log(f"Task assigned to {vial_id}: {task_type}")
+            return {"status": "completed", "result": result}
         except Exception as e:
-            logger.error(f"Task execution error: {str(e)}")
-            raise
+            logger.log(f"Task error for {vial_id}: {str(e)}")
+            return {"error": str(e)}
+
+
+def run_task(agent, task_type: str, task_data: dict):
+    if task_type == "predict":
+        input_data = task_data.get("input")
+        if input_data:
+            import torch
+            input_tensor = torch.tensor(input_data, dtype=torch.float32)
+            with torch.no_grad():
+                output = agent(input_tensor)
+            return output.tolist()
+    return {"error": "Invalid task type"}
