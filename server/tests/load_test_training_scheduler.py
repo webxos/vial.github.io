@@ -5,9 +5,11 @@ from server.services.training_scheduler import TrainingScheduler
 import asyncio
 import time
 
+
 @pytest.fixture
 def client():
     return TestClient(app)
+
 
 @pytest.mark.asyncio
 async def test_load_training_scheduler():
