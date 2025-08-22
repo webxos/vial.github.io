@@ -3,20 +3,18 @@ from server.api import auth, endpoints, quantum_endpoints, websocket, copilot_in
 from server.api.cache_control import cache_response
 from server.api.rate_limiter import rate_limit
 from server.api.middleware import logging_middleware
-from server.api.error_handler import setup_error_handlers
-from server.services.security import setup_cors
-from server.api.security_headers import setup_security_headers
+from server.error_handler import setup_error_handlers
+from server.security import setup_cors, setup_security_headers
 from server.services.agent_tasks import setup_agent_tasks
 from server.services.prompt_training import setup_prompt_training
 from server.services.training_scheduler import setup_training_scheduler
-from server.services.advanced_logging import setup_advanced_logging
-from server.services.error_recovery import setup_error_recovery
-
+from server.logging import logger
+from server.config import config
 
 app = FastAPI(
     title="Vial MCP Controller",
     description="Modular control plane for AI-driven task management",
-    version="2.7.0",
+    version="2.9.3",
 )
 
 app.middleware("http")(cache_response)
@@ -28,8 +26,6 @@ setup_security_headers(app)
 setup_agent_tasks(app)
 setup_prompt_training(app)
 setup_training_scheduler(app)
-setup_advanced_logging(app)
-setup_error_recovery(app)
 
 app.include_router(auth.router, prefix="/auth")
 app.include_router(endpoints.router)
@@ -46,4 +42,5 @@ app.include_router(stream.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    logger.log("Health check requested")
+    return {"status": "ok", "timestamp": "2025-08-21T22:35:00Z"}
