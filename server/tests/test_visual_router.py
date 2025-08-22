@@ -1,28 +1,45 @@
-# server/tests/test_visual_router.py
-import pytest
 from fastapi.testclient import TestClient
-from server.api.visual_router import router
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
+from ..mcp_server import app
+from ..models.visual_components import ComponentModel, ConnectionModel, Position3D, ComponentType, ConnectionType
 
 
-@pytest.mark.asyncio
-async def test_visual_router():
-    """Test visual router with reputation visualization."""
-    client = TestClient(router)
-    with SessionLocal() as session:
-        wallet = Wallet(
-            address="test_wallet",
-            balance=100.0,
-            reputation=20.0
-        )
-        session.add(wallet)
-        session.commit()
-    
-    response = client.get(
-        "/visual/data",
-        headers={"Authorization": "Bearer test_token"}
-    )
+def test_visual_config_creation():
+    client = TestClient(app)
+    config = {
+        "components": [
+            {
+                "id": "comp1",
+                "type": ComponentType.API_ENDPOINT,
+                "title": "Test API",
+                "position": {"x": 0, "y": 0, "z": 0},
+                "config": {},
+                "connections": []
+            }
+        ],
+        "connections": []
+    }
+    response = client.post("/save-config", json=config)
     assert response.status_code == 200
-    assert "visualization" in response.json()
-    assert response.json()["visualization"]["reputation"] == 20.0
+    assert response.json()["status"] == "saved"
+
+
+def test_component_validation():
+    client = TestClient(app)
+    component = {
+        "id": "comp1",
+        "type": ComponentType.API_ENDPOINT,
+        "title": "Test API",
+        "position": {"x": 0, "y": 0, "z": 0},
+        "config": {},
+        "connections": []
+    }
+    response = client.post("/components/validate", json=component)
+    assert response.status_code == 200
+    assert response.json()["status"] == "valid"
+
+
+def test_deployment_pipeline():
+    client = TestClient(app)
+    response = client.get("/components/available")
+    assert response.status_code == 200
+    assert len(response.json()["components"]) >= 5
