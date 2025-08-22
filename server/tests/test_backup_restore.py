@@ -1,32 +1,29 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_backup_restore.py
 import pytest
+from server.services.backup_restore import backup_data, restore_data
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_backup_restore(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_backup_restore():
+    """Test backup and restore of wallet data."""
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            staked_amount=50.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    # Save config
-    config_response = client.post("/save-config", json={
-        "name": "test_config",
-        "components": [{"id": "comp1", "type": "api_endpoint"}],
-        "connections": []
-    }, headers={"Authorization": f"Bearer {token}"})
-    assert config_response.status_code == 200
+    backup = await backup_data()
+    assert len(backup["data"]) > 0
+    assert backup["data"][0]["reputation"] == 20.0
     
-    # Backup
-    backup_response = client.post("/backup", headers={"Authorization": f"Bearer {token}"})
-    assert backup_response.status_code == 200
-    assert backup_response.json()["status"] == "backed up"
-    
-    # Restore
-    restore_response = client.post("/restore", headers={"Authorization": f"Bearer {token}"})
-    assert restore_response.status_code == 200
-    assert restore_response.json()["status"] == "restored"
+    await restore_data(backup)
+    with SessionLocal() as session:
+        wallet = session.query(Wallet).filter_by(
+            address="test_wallet"
+        ).first()
+        assert wallet.reputation == 20.0
