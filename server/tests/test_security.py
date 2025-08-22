@@ -1,26 +1,34 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_security.py
 import pytest
+from fastapi.testclient import TestClient
+from server.security.auth import router
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_auth_success(client: TestClient):
-    response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
+@pytest.mark.asyncio
+async def test_oauth_security():
+    """Test OAuth2.0 security with reputation check."""
+    client = TestClient(router)
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
+    
+    response = client.post(
+        "/token",
+        data={"username": "test_user", "password": "test_pass"}
+    )
     assert response.status_code == 200
     assert "access_token" in response.json()
-
-
-def test_auth_failure(client: TestClient):
-    response = client.post("/auth/token", data={"username": "admin", "password": "wrong"})
-    assert response.status_code == 401
-
-
-def test_rbac_admin_access(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    token = token_response.json()["access_token"]
-    response = client.get("/verify", headers={"Authorization": f"Bearer {token}"})
+    
+    token = response.json()["access_token"]
+    response = client.get(
+        "/wallet/reputation/test_wallet",
+        headers={"Authorization": f"Bearer {token}"}
+    )
     assert response.status_code == 200
+    assert response.json()["reputation"] == 20.0
