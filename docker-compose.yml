@@ -1,31 +1,30 @@
 version: '3.8'
-
 services:
-  web:
-    build: .
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     environment:
-      - MONGO_URI=${MONGO_URI}
-      - SQLALCHEMY_DATABASE_URL=${SQLALCHEMY_DATABASE_URL}
-      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
-      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
-      - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI}
-      - WEB3_PROVIDER_URL=${WEB3_PROVIDER_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - DEBUG=${DEBUG}
-      - PORT=${PORT}
+      - SQL_URL=sqlite:///vial.db
+      - MONGODB_URL=mongodb://mongodb:27017/vial
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-secret-key
+    volumes:
+      - ./data:/app/data
     depends_on:
       - mongodb
-
+      - redis
   mongodb:
     image: mongo:latest
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
 volumes:
   mongodb_data:
