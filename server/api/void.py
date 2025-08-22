@@ -1,9 +1,9 @@
 from fastapi import APIRouter
-from server.mcp_server import app
-
+from server.logging import logger
 
 router = APIRouter()
 
-@router.post("/void/reset")
+@router.post("/reset")
 async def reset_network():
+    logger.log("Network reset initiated")
     return {"status": "network reset"}
