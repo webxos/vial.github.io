@@ -1,24 +1,50 @@
-from fastapi import Depends
-from sqlalchemy.orm import Session
-from server.services.database import get_db
-from server.services.advanced_logging import AdvancedLogger
+# server/automation/deployment.py
+from fastapi import FastAPI
+from server.config.settings import settings
+from server.services.database import SessionLocal
+from server.models.visual_components import ComponentModel
+from server.models.webxos_wallet import Wallet
+import logging
+import subprocess
 
+logger = logging.getLogger(__name__)
 
-logger = AdvancedLogger()
-
-
-def deploy_to_github_pages(config_id: str, db: Session = Depends(get_db)):
+def deploy_application(app: FastAPI) -> bool:
+    """Deploy application with validation."""
     try:
-        config = db.query(db.models.VisualConfig).filter_by(id=config_id).first()
-        if not config:
-            logger.log("Deployment failed",
-                       extra={"error": "Config not found"})
-            return {"error": "Config not found"}
+        # Validate database
+        with SessionLocal() as session:
+            session.query(Wallet).first()
+            components = session.query(ComponentModel).all()
+            if not components:
+                logger.error("No visual components found")
+                return False
         
-        logger.log("Deployment to GitHub Pages initiated",
-                   extra={"config_id": config_id})
-        return {"status": "deployed", "url": f"https://vial.github.io/{config_id}"}
+        # Validate WebXOS wallet configuration
+        if not settings.WEBXOS_WALLET_ADDRESS:
+            logger.error("WEBXOS_WALLET_ADDRESS not set")
+            return False
+        
+        # Run deployment script
+        result = subprocess.run(
+            ["bash", "./scripts/deploy.sh"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            logger.error(
+                f"Deployment script failed: {result.stderr}"
+            )
+            return False
+        
+        # Validate API health
+        response = app.test_client().get("/health")
+        if response.status_code != 200:
+            logger.error("Health check failed")
+            return False
+        
+        logger.info("Deployment successful")
+        return True
     except Exception as e:
-        logger.log("Deployment error",
-                   extra={"error": str(e)})
-        raise
+        logger.error(f"Deployment error: {str(e)}")
+        return False
