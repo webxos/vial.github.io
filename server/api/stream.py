@@ -1,12 +1,13 @@
 from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+import asyncio
 
 router = APIRouter()
 
+
 @router.get("/stream")
 async def stream_data():
-    async def data_stream():
-        for i in range(5):
-            yield f"Data chunk {i}\n"
+    async def event_generator():
+        while True:
+            yield "data: ping\n\n"
             await asyncio.sleep(1)
-    return StreamingResponse(data_stream(), media_type="text/plain")
+    return event_generator()
