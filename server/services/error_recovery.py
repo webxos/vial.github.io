@@ -1,21 +1,28 @@
 from fastapi import FastAPI
-from server.services.advanced_logging import AdvancedLogger
-from server.services.backup_restore import backup_configs
-
-
-logger = AdvancedLogger()
+from server.services.vial_manager import VialManager
+from server.logging import logger
+import asyncio
 
 
 def setup_error_recovery(app: FastAPI):
-    async def recover_from_error(error: str):
-        logger.log("Error recovery initiated", extra={"error": error})
+    vial_manager = VialManager()
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        logger.log(f"Global error: {str(exc)}")
+        # Trigger MCP Alchemist troubleshooting
+        async with app.test_client() as client:
+            response = await client.post("/alchemist/troubleshoot", json={"error": str(exc)})
+            logger.log(f"Alchemist troubleshooting response: {response.json()}")
+        return {"error": str(exc), "troubleshooting": response.json()}
+
+    @app.post("/error/recover")
+    async def recover_from_error(error_id: str):
         try:
-            await app.state.backup_configs()
-            logger.log("Error recovery completed with backup", extra={"error": error})
-            return {"status": "recovered"}
+            # Placeholder for error recovery logic
+            vial_manager.restart_vial("vial1")
+            logger.log(f"Recovery initiated for error: {error_id}")
+            return {"status": "recovered", "error_id": error_id}
         except Exception as e:
-            logger.log("Error recovery failed", extra={"error": str(e)})
+            logger.log(f"Recovery error: {str(e)}")
             return {"error": str(e)}
-    
-    app.state.recover_from_error = recover_from_error
-    logger.log("Error recovery initialized", extra={"system": "error_recovery"})
