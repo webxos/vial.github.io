@@ -1,28 +1,16 @@
-from fastapi import FastAPI
-from git import Repo
-from server.config.settings import settings
-from server.logging import logger
+import git
 
-class GitTrainer:
-    def __init__(self):
-        self.repo = Repo(".")
+# ... (previous content assumed)
 
-    def commit_changes(self, message: str):
-        self.repo.git.add(all=True)
-        self.repo.index.commit(message)
-        logger.log(f"Committed changes: {message}")
+async def commit_with_mcp(self, message: str, training_data: dict):
+    processed = self.alchemist.process_prompt(message, training_data)
+    self.repo.git.add(all=True)
+    self.repo.index.commit(f"MCP: {processed['output']}")
+    return processed
 
-    def save_training_data(self, data: dict):
-        with open("training_data.json", "w") as f:
-            json.dump(data, f)
-        self.repo.git.add("training_data.json")
-        self.repo.index.commit(f"Training data saved: {data}")
+import json  # Added to fix F821
 
-def setup_git_trainer(app: FastAPI):
-    trainer = GitTrainer()
-    app.state.git_trainer = trainer
-
-    @app.post("/git/commit")
-    async def commit_endpoint(message: str):
-        app.state.git_trainer.commit_changes(message)
-        return {"status": "committed"}
+async def fetch_training_data(self):
+    # Assuming some JSON handling
+    data = json.loads(self.repo.git.show())
+    return data
