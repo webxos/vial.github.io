@@ -1,19 +1,22 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_performance_tuner.py
 import pytest
+from server.optimization.performace_tuner import PerformanceTuner
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_performance_tuner(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_performance_tuner():
+    """Test performance tuner with reputation check."""
+    tuner = PerformanceTuner()
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    response = client.post("/optimize", json={"endpoint": "/health", "params": {"key": "value"}}, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "optimized"
-    assert response.json()["params"] == {"key": "value"}
+    result = await tuner.optimize_training("test_vial")
+    assert result["status"] == "success"
+    assert "performance" in result
