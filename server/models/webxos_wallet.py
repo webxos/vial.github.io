@@ -1,12 +1,15 @@
-from sqlalchemy import Column, Integer, String
+# server/models/webxos_wallet.py
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, Float, JSON
 
 Base = declarative_base()
 
-
-class WalletModel(Base):
+class Wallet(Base):
     __tablename__ = "wallets"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, unique=True, index=True)
-    balance = Column(Integer)
-    network_id = Column(String)
+    
+    address = Column(String, primary_key=True)
+    balance = Column(Float, default=0.0)
+    staked_amount = Column(Float, default=0.0)
+    reputation = Column(Float, default=0.0)  # Reputation for user metrics
+    dao_proposal = Column(JSON, nullable=True)  # DAO governance data
+    quantum_state = Column(String, nullable=True)  # Quantum sync state
