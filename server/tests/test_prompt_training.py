@@ -1,8 +1,17 @@
 from fastapi.testclient import TestClient
 from server.mcp_server import app
+import pytest
 
 
-def test_prompt_training():
-    client = TestClient(app)
-    resp = client.post("/agent/train", json={"vial_id": "all"})
-    assert resp.json()["status"] == "training_complete"
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+def test_prompt_training(client: TestClient):
+    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
+    token = token_response.json()["access_token"]
+    response = client.post("/train-prompt", json={"prompt": "test prompt"}, headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "trained"
+    assert "output" in response.json()
