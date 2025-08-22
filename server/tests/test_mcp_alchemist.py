@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from server.mcp_server import app
 from server.models.mcp_alchemist import Alchemist
