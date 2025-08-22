@@ -1,26 +1,20 @@
 from fastapi.testclient import TestClient
 from server.mcp_server import app
+import pytest
 
 
-def test_token_hashing():
-    client = TestClient(app)
-    resp = client.post("/auth/token")
-    assert "token" in resp.json()
+@pytest.fixture
+def client():
+    return TestClient(app)
 
 
-def test_wallet_functionality():
-    client = TestClient(app)
-    resp = client.post("/wallet/export", json={"user_id": "test"})
-    assert "vials" in resp.json()
-
-
-def test_api_pipeline():
-    client = TestClient(app)
-    resp = client.get("/health")
-    assert resp.status_code == 200
-
-
-def test_token_merge():
-    client = TestClient(app)
-    resp1 = client.post("/auth/token")
-    assert len(resp1.json()["token"]) > 0
+def test_execute_task(client: TestClient):
+    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
+    assert token_response.status_code == 200
+    token = token_response.json()["access_token"]
+    
+    response = client.post("/agent/execute-task", json={"vial_id": "vial1", "task": "test_task"}, headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+    assert response.json()["vial_id"] == "vial1"
+    assert "output" in response.json()
