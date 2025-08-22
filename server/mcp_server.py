@@ -1,11 +1,11 @@
 from fastapi import FastAPI
-from server.api import auth, endpoints, quantum_endpoints, websocket, copilot_integration, jsonrpc, void, troubleshoot, help
+from server.api import auth, endpoints, quantum_endpoints, websocket, copilot_integration, jsonrpc, void, troubleshoot, help, comms_hub, upload, stream
 from server.api.cache_control import cache_response
 from server.api.rate_limiter import rate_limit
 from server.api.middleware import logging_middleware
 from server.api.error_handler import setup_error_handlers
 from server.services.security import setup_cors
-
+from server.api.security_headers import setup_security_headers
 
 app = FastAPI(
     title="Vial MCP Controller",
@@ -13,13 +13,12 @@ app = FastAPI(
     version="2.7.0",
 )
 
-
 app.middleware("http")(cache_response)
 app.middleware("http")(rate_limit)
 app.middleware("http")(logging_middleware)
 setup_cors(app)
 setup_error_handlers(app)
-
+setup_security_headers(app)
 
 app.include_router(auth.router, prefix="/auth")
 app.include_router(endpoints.router)
@@ -30,7 +29,9 @@ app.include_router(jsonrpc.router, prefix="/jsonrpc")
 app.include_router(void.router)
 app.include_router(troubleshoot.router)
 app.include_router(help.router)
-
+app.include_router(comms_hub.router)
+app.include_router(upload.router)
+app.include_router(stream.router)
 
 @app.get("/health")
 async def health():
