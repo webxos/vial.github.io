@@ -1,11 +1,14 @@
 import json
-from server.models.webxos_wallet import WalletModel
+from fastapi import HTTPException
 
+def parse_json(data: str):
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
 
-def parse_json(data: str) -> WalletModel:
-    parsed_data = json.loads(data)
-    return WalletModel(
-        user_id=parsed_data.get("user_id", ""),
-        balance=parsed_data.get("balance", 0.0),
-        network_id=parsed_data.get("network_id", "")
-    )
+def validate_wallet(data: dict):
+    required_fields = ["user_id", "balance", "network_id"]
+    if not all(field in data for field in required_fields):
+        raise HTTPException(status_code=400, detail="Missing required wallet fields")
+    return data
