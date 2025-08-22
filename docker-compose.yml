@@ -16,12 +16,14 @@ services:
       - SECRET_KEY=your-secret-key-here
       - REPUTATION_LOGGING_ENABLED=true
       - API_PORT=8000
+      - VERCEL_TOKEN=your-vercel-token-here
     depends_on:
       - redis
     volumes:
       - ./server:/app/server
       - ./scripts:/app/scripts
       - ./public:/app/public
+      - ./pages:/app/pages
 
   redis:
     image: redis:6.2
@@ -35,5 +37,19 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./public:/usr/share/nginx/html:ro
+    depends_on:
+      - app
+
+  vercel:
+    image: node:18
+    command: npx vercel dev --token $VERCEL_TOKEN
+    environment:
+      - VERCEL_TOKEN=your-vercel-token-here
+    volumes:
+      - ./public:/app/public
+      - ./pages:/app/pages
+      - ./vercel.json:/app/vercel.json
+    ports:
+      - "3000:3000"
     depends_on:
       - app
