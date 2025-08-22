@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+
 def setup_error_recovery(app: FastAPI):
     print("Error recovery setup")
 
