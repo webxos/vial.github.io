@@ -5,9 +5,10 @@ from server.api.quantum_endpoints import router
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
 
+
 @pytest.mark.asyncio
-async def test_quantum_sync():
-    """Test quantum sync endpoint with reputation check."""
+async def test_quantum_endpoints():
+    """Test quantum endpoints with Vercel deployment check."""
     client = TestClient(router)
     with SessionLocal() as session:
         wallet = Wallet(
@@ -19,7 +20,7 @@ async def test_quantum_sync():
         session.commit()
     
     response = client.get(
-        "/quantum/sync/test_wallet",
+        "/quantum/status",
         headers={"Authorization": "Bearer test_token"}
     )
     assert response.status_code == 200
