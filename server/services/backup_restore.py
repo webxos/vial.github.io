@@ -1,52 +1,52 @@
-# server/services/backup_restore.py
-from fastapi import Depends, HTTPException
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-import logging
-from typing import Dict, Any
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from server.services.database import get_db
+from server.models.webxos_wallet import WalletModel
+from server.logging import logger
+import json
+import os
 
-logger = logging.getLogger(__name__)
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-async def backup_data(db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """Backup wallet and reputation data."""
-    try:
-        wallets = db.query(Wallet).all()
-        backup_data = [
-            {
-                "address": w.address,
-                "balance": w.balance,
-                "staked_amount": w.staked_amount,
-                "reputation": w.reputation
+def setup_backup_restore(app: FastAPI):
+    @app.post("/backup")
+    async def backup_data(db: Session = Depends(get_db)):
+        try:
+            wallets = db.query(WalletModel).all()
+            backup_data = {
+                "wallets": [
+                    {
+                        "user_id": w.user_id,
+                        "balance": w.balance,
+                        "network_id": w.network_id
+                    } for w in wallets
+                ],
+                "timestamp": os.time()
             }
-            for w in wallets
-        ]
-        logger.info("Backup completed")
-        return {"status": "success", "data": backup_data}
-    except Exception as e:
-        logger.error(f"Backup error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+            backup_path = "data/backup.json"
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            with open(backup_path, "w") as f:
+                json.dump(backup_data, f, indent=2)
+            logger.log("Backup completed")
+            return {"status": "backup_completed", "path": backup_path}
+        except Exception as e:
+            logger.log(f"Backup error: {str(e)}")
+            return {"error": str(e)}
 
-async def restore_data(data: Dict[str, Any], db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """Restore wallet and reputation data."""
-    try:
-        for item in data.get("data", []):
-            wallet = Wallet(
-                address=item["address"],
-                balance=item["balance"],
-                staked_amount=item["staked_amount"],
-                reputation=item["reputation"]
-            )
-            db.merge(wallet)
-        db.commit()
-        logger.info("Restore completed")
-        return {"status": "success"}
-    except Exception as e:
-        logger.error(f"Restore error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    @app.post("/restore")
+    async def restore_data(db: Session = Depends(get_db)):
+        try:
+            backup_path = "data/backup.json"
+            if not os.path.exists(backup_path):
+                logger.log("Backup file not found")
+                return {"error": "Backup file not found"}
+            with open(backup_path, "r") as f:
+                backup_data = json.load(f)
+            for wallet_data in backup_data["wallets"]:
+                wallet = WalletModel(**wallet_data)
+                db.merge(wallet)
+            db.commit()
+            logger.log("Restore completed")
+            return {"status": "restore_completed"}
+        except Exception as e:
+            logger.log(f"Restore error: {str(e)}")
+            return {"error": str(e)}
