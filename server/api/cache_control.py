@@ -1,20 +1,26 @@
-from fastapi import Request
-from server.services.advanced_logging import AdvancedLogger
-import time
-import hashlib
+# server/api/cache_control.py
+from fastapi import Request, Response
+from fastapi.responses import JSONResponse
+import redis
+from server.config.settings import settings
+import logging
 
+logger = logging.getLogger(__name__)
 
-logger = AdvancedLogger()
-cache = {}
-
+redis_client = redis.Redis(host=settings.REDIS_HOST, port=6379, db=0)
 
 async def cache_response(request: Request, call_next):
-    cache_key = hashlib.md5(str(request.url).encode()).hexdigest()
-    if cache_key in cache and time.time() - cache[cache_key]["timestamp"] < 300:
-        logger.log("Cache hit", extra={"url": str(request.url)})
-        return cache[cache_key]["response"]
+    """Middleware to cache API responses."""
+    cache_key = f"cache:{request.url.path}:{request.query_params}"
+    cached_response = redis_client.get(cache_key)
+    
+    if cached_response:
+        logger.info(f"Cache hit for {request.url.path}")
+        return JSONResponse(content=cached_response.decode('utf-8'))
     
     response = await call_next(request)
-    cache[cache_key] = {"response": response, "timestamp": time.time()}
-    logger.log("Cache miss, stored response", extra={"url": str(request.url)})
+    if response.status_code == 200:
+        redis_client.setex(cache_key, 300, response.body)
+        logger.info(f"Cached response for {request.url.path}")
+    
     return response
