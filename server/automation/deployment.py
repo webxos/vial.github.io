@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+
 def setup_deployment(app: FastAPI):
     print("Deploying application")
 
