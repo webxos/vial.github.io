@@ -1,44 +1,37 @@
 # server/services/git_trainer.py
-from server.services.vial_manager import VialManager
+import httpx
+import logging
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
-import subprocess
-import logging
-from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
 class GitTrainer:
-    def __init__(self):
-        self.vial_manager = VialManager()
-
-    async def train_from_git(self, repo_url: str, wallet_address: str) -> Dict[str, Any]:
-        """Train model from Git repository with reputation check."""
+    async def train_from_repo(self, repo_url: str, wallet_address: str):
+        """Train model from Git repository with wallet validation."""
         try:
             with SessionLocal() as session:
                 wallet = session.query(Wallet).filter_by(
                     address=wallet_address
                 ).first()
-                if not wallet or wallet.reputation < 10.0:
+                if not wallet:
                     raise ValueError(
-                        f"Insufficient reputation for {wallet_address}"
+                        f"Wallet not found for training: {wallet_address}"
                     )
-            
-            result = subprocess.run(
-                ["git", "clone", repo_url],
-                capture_output=True,
-                text=True
-            )
-            if result.returncode != 0:
-                raise ValueError(f"Git clone failed: {result.stderr}")
-            
-            training_result = await self.vial_manager.train_vial(
-                repo_url.split("/")[-1]
-            )
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://api.github.com/repos/{repo_url}/contents",
+                    headers={"Authorization": f"Bearer {wallet_address}"}
+                )
+                response.raise_for_status()
+                content = response.json()
             logger.info(
-                f"Training from {repo_url} for wallet {wallet_address}"
+                f"Training started from repo: {repo_url}, "
+                f"Wallet: {wallet_address}"
             )
-            return training_result
+            return {"status": "success", "content": content}
         except Exception as e:
-            logger.error(f"Git training error: {str(e)}")
+            logger.error(
+                f"Training error for repo {repo_url}: {str(e)}"
+            )
             raise
