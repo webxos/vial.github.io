@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+
 def setup_sdk(app: FastAPI):
     print("SDK setup")
 
