@@ -7,5 +7,5 @@ logger = logging.getLogger(__name__)
 
 
 class LogHandler:
-    def log(self, message):
-        logger.info(message)
+    def log(self, message, extra=None):
+        logger.info(message, extra=extra or {})
