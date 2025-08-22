@@ -1,11 +1,15 @@
 from fastapi import FastAPI
-from server.api import auth, endpoints, quantum_endpoints, websocket, \
-    copilot_integration, jsonrpc, void, troubleshoot, help, comms_hub, \
-    upload, stream
+from fastapi.middleware.cors import CORSMiddleware
+from server.api import (
+    auth, endpoints, quantum_endpoints, websocket, 
+    copilot_integration, jsonrpc, void, troubleshoot, 
+    help, comms_hub, upload, stream, visual_router
+)
 from server.api.webxos_wallet import router as wallet_router
 from server.api.cache_control import cache_response
 from server.api.rate_limiter import rate_limit
 from server.api.middleware import logging_middleware
+from server.error_handler import setup_error_handlers
 from server.security import setup_cors, setup_security_headers
 from server.services.agent_tasks import setup_agent_tasks
 from server.services.prompt_training import setup_prompt_training
@@ -15,16 +19,32 @@ from server.services.backup_restore import setup_backup_restore
 from server.quantum.quantum_sync import setup_quantum_sync
 from server.automation.deployment import setup_deployment
 from server.automation.task_scheduler import setup_task_scheduler
-from server.logging import logger
+from server.services.advanced_logging import AdvancedLogger
+from server.config.settings import settings
 
-app = FastAPI(title="Vial MCP Controller",
-              description="Modular control plane for AI-driven task management",
-              version="2.9.3")
+
+app = FastAPI(
+    title="Vial MCP Controller",
+    description="Modular control plane for AI-driven task management",
+    version="2.9.3"
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 
 app.middleware("http")(cache_response)
 app.middleware("http")(rate_limit)
 app.middleware("http")(logging_middleware)
 
+
+setup_error_handlers(app)
 setup_cors(app)
 setup_security_headers(app)
 setup_agent_tasks(app)
@@ -35,6 +55,7 @@ setup_backup_restore(app)
 setup_quantum_sync(app)
 setup_deployment(app)
 setup_task_scheduler(app)
+
 
 app.include_router(auth.router, prefix="/auth")
 app.include_router(endpoints.router)
@@ -49,15 +70,16 @@ app.include_router(comms_hub.router)
 app.include_router(upload.router)
 app.include_router(stream.router)
 app.include_router(wallet_router, prefix="/wallet")
+app.include_router(visual_router.router, prefix="/visual")
 
 
-@app.on_startup
+@app.on_event("startup")
 async def startup_event():
     from server.services.vial_manager import VialManager
-    vial_manager = VialManager()
-    vial_manager.create_vial_agents()
-    app.state.vial_manager = vial_manager
-    logger.log("Vial MCP Controller started with 4 agents")
+    app.state.vial_manager = VialManager()
+    app.state.vial_manager.create_vial_agents()
+    app.state.logger = AdvancedLogger()
+    app.state.logger.log("Vial MCP Controller started with 4 agents", extra={"version": "2.9.3"})
 
 
 @app.get("/")
