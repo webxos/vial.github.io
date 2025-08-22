@@ -1,15 +1,20 @@
-from pydantic import BaseModel
-from server.services.advanced_logging import AdvancedLogger
 import torch
+import torch.nn as nn
+from server.services.advanced_logging import AdvancedLogger
 
 
-class Alchemist(BaseModel):
-    agent_count: int = 4
-    status: str = "initialized"
+logger = AdvancedLogger()
 
-    def coordinate_agents(self, vial_id: str):
-        logger = AdvancedLogger()
-        dummy_input = torch.randn(1, 10)
-        result = torch.sigmoid(dummy_input)
-        logger.log("Agents coordinated", extra={"vial_id": vial_id, "result": result.item()})
-        return {"status": "coordinated", "vial_id": vial_id, "result": result.item()}
+
+class MCPAlchemist(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int):
+        super().__init__()
+        self.model = nn.Linear(input_dim, output_dim)
+    
+    def forward(self, x):
+        return torch.sigmoid(self.model(x))
+    
+    def train_model(self, data):
+        logger.log("Model training initiated",
+                   extra={"data_size": len(data)})
+        return {"status": "trained"}
