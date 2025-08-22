@@ -11,7 +11,7 @@ from server.services.prompt_training import setup_prompt_training
 from server.services.training_scheduler import setup_training_scheduler
 from server.services.advanced_logging import setup_advanced_logging
 from server.services.error_recovery import setup_error_recovery
-from server.api.auth_manager import auth
+
 
 app = FastAPI(
     title="Vial MCP Controller",
