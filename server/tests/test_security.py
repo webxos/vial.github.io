@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from fastapi.security import HTTPAuthorizationCredentials, HTTPException
 from server.mcp_server import app
