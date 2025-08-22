@@ -1,16 +1,16 @@
-from fastapi import FastAPI
-from fastapi.responses import Response
-from server.services.advanced_logging import AdvancedLogger
+# server/security/security_headers.py
+from fastapi import Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
-
-def setup_security_headers(app: FastAPI):
-    logger = AdvancedLogger()
-
-    @app.middleware("http")
-    async def add_security_headers(request, call_next):
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        """Add security headers to all responses."""
         response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
-        logger.log("Security headers added", extra={"path": request.url.path})
+        response.headers.update({
+            "Content-Security-Policy": "default-src 'self';",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+            "X-Vercel-Protection": "enabled"
+        })
         return response
