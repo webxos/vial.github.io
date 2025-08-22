@@ -3,6 +3,7 @@ from server.services.prompt_training import PromptTrainer
 from server.services.agent_tasks import AgentTaskManager
 import asyncio
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 class TrainingScheduler:
     def __init__(self, app: FastAPI):
@@ -10,12 +11,16 @@ class TrainingScheduler:
         self.prompt_trainer = PromptTrainer(app)
         self.task_manager = AgentTaskManager(app)
         self.schedule = {}
+        self.executor = ThreadPoolExecutor(max_workers=4)
 
     async def schedule_training(self, task_id: str, interval: int, params: dict):
         while True:
             start_time = datetime.now()
-            await self.task_manager.execute_task(task_id, params)
-            await self.prompt_trainer.train_prompt("Train {context}", params)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(self.executor, lambda: [
+                self.task_manager.execute_task(task_id, params),
+                self.prompt_trainer.train_prompt("Train {context}", params)
+            ])
             elapsed = (datetime.now() - start_time).total_seconds()
             await asyncio.sleep(max(0, interval - elapsed))
 
