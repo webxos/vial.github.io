@@ -1,28 +1,27 @@
+# server/mcp_server.py
 from fastapi import FastAPI
-from fastapi.security import OAuth2PasswordBearer
-from server.services.advanced_logging import AdvancedLogger
-from server.api import visual_router, webxos_wallet
-from jose import jwt, JWTError
-
+from server.api import webxos_wallet, quantum_endpoints, comms_hub
+from server.config.final_config import settings
+from server.services.advanced_logging import AdvancedLogging
 
 app = FastAPI()
-logger = AdvancedLogger()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-
-def validate_token(token: str):
-    try:
-        payload = jwt.decode(token, "your-secret-key", algorithms=["HS256"])
-        logger.log("Token validated",
-                   extra={"user_id": payload.get("user_id")})
-        return payload
-    except JWTError:
-        logger.log("Token validation failed",
-                   extra={"error": "Invalid token"})
-        raise
-
-
-app.include_router(visual_router.router, prefix="/visual")
+# Include API routers
 app.include_router(webxos_wallet.router, prefix="/wallet")
-logger.log("MCP server initialized",
-           extra={"version": "2.9.3"})
+app.include_router(quantum_endpoints.router, prefix="/quantum")
+app.include_router(comms_hub.router, prefix="/comms")
+
+# Setup logging middleware
+AdvancedLogging(app)
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    try:
+        return {
+            "status": "healthy",
+            "database": settings.SQLALCHEMY_DATABASE_URL,
+            "reputation_logging": settings.REPUTATION_LOGGING_ENABLED
+        }
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
