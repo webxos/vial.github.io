@@ -1,4 +1,3 @@
-from fastapi import FastAPI
 
 async def cache_response(request, call_next):
     response = await call_next(request)
