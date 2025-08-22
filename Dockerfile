@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Vercel CLI and docker-compose
 RUN npm install -g vercel@latest
+RUN npm install -g next@14.2.3 react@18.2.0 react-dom@18.2.0 @next-auth/prisma-adapter@1.0.7 ethers@6.13.2
 RUN pip install docker-compose==1.29.2
 
 # Copy requirements and install
@@ -22,6 +23,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install frontend dependencies
 COPY public/ ./public/
+COPY pages/ ./pages/
+COPY vercel.json .
 RUN npm install --prefix public/ three
 
 # Copy application code
@@ -29,7 +32,6 @@ COPY server/ ./server/
 COPY scripts/ ./scripts/
 COPY public/js/threejs_integrations.js ./public/js/threejs_integrations.js
 COPY public/index.html ./public/index.html
-COPY vercel.json .
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -45,4 +47,4 @@ ENV VERCEL_TOKEN=your-vercel-token-here
 EXPOSE 8000
 
 # Command to run the application
-CMD ["sh", "-c", "uvicorn server.mcp_server:app --host 0.0.0.0 --port ${API_PORT}"]
+CMD ["sh", "-c", "uvicorn server.mcp_server:app --host 0.0.0.0 --port ${API_PORT} & vercel dev --token ${VERCEL_TOKEN}"]
