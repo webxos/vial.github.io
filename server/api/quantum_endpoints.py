@@ -3,8 +3,8 @@ from server.quantum.quantum_sync import QuantumSync
 
 router = APIRouter()
 
-quantum_sync = QuantumSync(None)
 
-@router.post("/sync")
-async def sync_quantum(vial_id: str):
-    return quantum_sync.sync_quantum_state(vial_id)
+@router.post("/execute")
+async def execute_quantum_circuit(circuit_data: dict):
+    quantum_sync = QuantumSync(None)
+    return quantum_sync.sync_quantum_state(circuit_data.get("vial_id"))
