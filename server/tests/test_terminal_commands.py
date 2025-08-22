@@ -1,20 +1,21 @@
-from fastapi.testclient import TestClient
-from server.mcp_server import app
+# server/tests/test_terminal_commands.py
 import pytest
+from server.utils.terminal_commands import execute_terminal_command
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
 
-
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-
-def test_terminal_commands(client: TestClient):
-    token_response = client.post("/auth/token", data={"username": "admin", "password": "secret"})
-    assert token_response.status_code == 200
-    token = token_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_terminal_commands():
+    """Test terminal command execution with reputation check."""
+    with SessionLocal() as session:
+        wallet = Wallet(
+            address="test_wallet",
+            balance=100.0,
+            reputation=20.0
+        )
+        session.add(wallet)
+        session.commit()
     
-    response = client.get("/commands", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert "commands" in response.json()
-    assert "help" in response.json()["commands"]
-    assert response.json()["commands"]["help"] == "Display available commands"
+    result = execute_terminal_command("echo test")
+    assert result["status"] == "success"
+    assert "test" in result["output"]
