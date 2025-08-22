@@ -5,6 +5,7 @@ from langchain.llms import OpenAI
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from server.services.vial_manager import VialManager
+from server.services.quantum_sync import QuantumVisualSync
 from server.models.visual_components import VisualConfig
 from server.models.webxos_wallet import WalletModel
 from server.services.database import get_db
@@ -34,6 +35,7 @@ def setup_mcp_alchemist(app: FastAPI):
     vial_manager = VialManager()
     llm = OpenAI(api_key=settings.OPENAI_API_KEY)
     alchemist_model = AlchemistModel()
+    quantum_sync = QuantumVisualSync(vial_manager)
     repo = Repo(os.getcwd())
     tools = [
         Tool(
@@ -55,6 +57,11 @@ def setup_mcp_alchemist(app: FastAPI):
             name="GitCommit",
             func=lambda x: commit_to_git(json.loads(x)),
             description="Commit code to GitHub"
+        ),
+        Tool(
+            name="QuantumSync",
+            func=lambda x: quantum_sync.sync_quantum_state(x),
+            description="Sync quantum state for a vial"
         )
     ]
     agent = initialize_agent(tools, llm, agent="zero-shot-react-description", verbose=True)
@@ -106,8 +113,9 @@ def setup_mcp_alchemist(app: FastAPI):
                     }
                 )
                 db.commit()
-                logger.log(f"Alchemist trained with config: {prompt}")
-                return {"status": "trained", "result": result, "config_id": config.id}
+                quantum_result = quantum_sync.create_quantum_circuit_from_visual(config.components)
+                logger.log(f"Alchemist trained with config: {prompt}, quantum hash: {quantum_result['quantum_hash']}")
+                return {"status": "trained", "result": result, "config_id": config.id, "quantum_hash": quantum_result["quantum_hash"]}
             logger.log(f"Alchemist trained: {prompt}")
             return {"status": "trained", "result": result, "prediction": prediction.tolist()}
         except Exception as e:
@@ -115,7 +123,7 @@ def setup_mcp_alchemist(app: FastAPI):
             return {"error": str(e)}
 
     @app.post("/alchemist/wallet/export")
-    async def export_wallet(user_id: str, db: Session = Depends(get_db)):
+    async def export_wallet(user_id: str, svg_style: str = "default", db: Session = Depends(get_db)):
         try:
             wallet = db.query(WalletModel).filter(WalletModel.user_id == user_id).first()
             if not wallet:
@@ -135,16 +143,16 @@ def setup_mcp_alchemist(app: FastAPI):
                 "vials": [
                     {
                         "name": f"vial{i}",
-                        "status": vial_manager.get_vial_status(f"vial{i}"),
+                        "status": vial_manager.get_vial_status(f"vial{i}")["status"],
                         "language": "Python",
                         "balance": 18004.25,
                         "address": str(uuid.uuid4()),
                         "hash": "042e2b6c16cc0471417e0bca0161be72258214efcf46953a63c6343b187887ce",
-                        "svg_diagram": generate_svg_diagram(f"vial{i}")
+                        "svg_diagram": generate_svg_diagram(f"vial{i}", svg_style)
                     } for i in range(1, 5)
                 ]
             }
-            logger.log(f"Exported wallet with SVG for user: {user_id}")
+            logger.log(f"Exported wallet with SVG style {svg_style} for user: {user_id}")
             return export_data
         except Exception as e:
             logger.log(f"Wallet export error: {str(e)}")
@@ -247,10 +255,11 @@ def commit_to_git(data: dict) -> dict:
         logger.log(f"Git commit error: {str(e)}")
         return {"error": str(e)}
 
-def generate_svg_diagram(vial_id: str) -> str:
+def generate_svg_diagram(vial_id: str, style: str = "default") -> str:
     try:
+        fill_color = "#3498db" if style == "default" else "#e74c3c" if style == "alert" else "#2ecc71"
         return f"""<svg width="200" height="200">
-            <rect x="10" y="10" width="180" height="180" fill="#3498db"/>
+            <rect x="10" y="10" width="180" height="180" fill="{fill_color}"/>
             <text x="50" y="100" fill="white">{vial_id}</text>
         </svg>"""
     except Exception as e:
