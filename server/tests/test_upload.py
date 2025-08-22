@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from server.mcp_server import app
-from server.api.upload import UploadManager
 
 
 @pytest.fixture
