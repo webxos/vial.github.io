@@ -1,7 +1,6 @@
-from fastapi import Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 
-async def cache_response(request: Request, call_next):
-    response: Response = await call_next(request)
+async def cache_response(request, call_next):
+    response = await call_next(request)
     response.headers["Cache-Control"] = "public, max-age=3600"
     return response
