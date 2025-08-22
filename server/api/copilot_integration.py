@@ -1,21 +1,32 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from server.services.database import get_db
-from server.services.advanced_logging import AdvancedLogger
-
+from fastapi import APIRouter, Depends, HTTPException
+from server.services.git_trainer import GitTrainer
+from server.security import require_auth
+from server.logging import logger
+import requests
 
 router = APIRouter()
-logger = AdvancedLogger()
 
 
-@router.post("/copilot/generate-code")
-async def generate_code(component: dict, db: Session = Depends(get_db)):
+@router.post("/copilot/generate")
+async def generate_code(config: dict, user=Depends(require_auth)):
     try:
-        code = {"endpoint": f"def {component['title'].lower()}_handler(): pass"}
-        logger.log("Code generated",
-                   extra={"component_id": component.get("id")})
-        return {"status": "generated", "code": code}
+        git_trainer = GitTrainer()
+        prompt = config.get("prompt", "")
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt required")
+        response = requests.post(
+            "https://api.github.com/copilot/generate",
+            headers={"Authorization": f"Bearer {settings.GITHUB_TOKEN}"},
+            json={"prompt": prompt, "language": "python"}
+        )
+        response.raise_for_status()
+        code = response.json().get("code")
+        commit_result = await git_trainer.commit_with_mcp(
+            message=f"Copilot: {prompt[:50]}",
+            training_data={"code": code}
+        )
+        logger.log(f"Copilot code generated for user: {user['id']}")
+        return {"code": code, "commit": commit_result}
     except Exception as e:
-        logger.log("Code generation failed",
-                   extra={"error": str(e)})
-        raise
+        logger.log(f"Copilot error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
