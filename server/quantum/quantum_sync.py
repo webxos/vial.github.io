@@ -1,31 +1,17 @@
-from qiskit import QuantumCircuit, Aer, execute
-from pydantic import BaseModel
+from fastapi import APIRouter
+from server.services.advanced_logging import AdvancedLogger
+from qiskit import QuantumCircuit
 
 
-class Component(BaseModel):
-    id: str
-    type: str
-    position: dict
+router = APIRouter()
+logger = AdvancedLogger()
 
 
-class QuantumVisualSync:
-    def __init__(self, vial_id: str):
-        self.vial_id = vial_id
-    
-    def sync_quantum_state(self, vial_id: str) -> dict:
-        qc = QuantumCircuit(2, 2)
-        qc.h(0)
-        qc.cx(0, 1)
-        backend = Aer.get_backend('qasm_simulator')
-        result = execute(qc, backend, shots=1).result()
-        return {"vial_id": vial_id, "quantum_state": str(result.get_counts())}
-    
-    def create_quantum_circuit_from_visual(self, components: list[Component]) -> dict:
-        num_qubits = max(len(components), 2)
-        qc = QuantumCircuit(num_qubits, num_qubits)
-        visualization = {"nodes": [], "edges": []}
-        for comp in components:
-            if comp.type == "quantum_gate":
-                qc.h(0)
-            visualization["nodes"].append({"id": comp.id, "label": comp.type, "position": comp.position})
-        return {"circuit": str(qc), "visualization": visualization}
+@router.post("/quantum/sync-state")
+async def sync_quantum_state(vial_id: str):
+    circuit = QuantumCircuit(1)
+    circuit.h(0)
+    logger.log("Quantum state synchronized",
+               extra={"vial_id": vial_id,
+                      "state": "superposition"})
+    return {"status": "synced", "vial_id": vial_id}
