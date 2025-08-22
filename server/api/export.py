@@ -13,8 +13,15 @@ logger = AdvancedLogger()
 async def export_json(config_id: str, db: Session = Depends(get_db)):
     config = db.query(VisualConfig).filter(VisualConfig.id == config_id).first()
     if not config:
-        logger.log("JSON export failed: Config not found", extra={"config_id": config_id})
+        logger.log("JSON export failed",
+                   extra={"config_id": config_id})
         return {"error": "Config not found"}
-    json_data = {"id": config.id, "name": config.name, "components": config.components, "connections": config.connections}
-    logger.log("JSON exported", extra={"config_id": config_id})
+    json_data = {
+        "id": config.id,
+        "name": config.name,
+        "components": config.components,
+        "connections": config.connections
+    }
+    logger.log("JSON exported",
+               extra={"config_id": config_id})
     return {"status": "exported", "json_data": json_data}
