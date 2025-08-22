@@ -8,13 +8,19 @@ from server.utils import parse_json, validate_wallet
 from server.logging import logger
 from pydantic import BaseModel
 
-router = APIRouter()
-
 
 class DAOConfig(BaseModel):
     name: str
     tokens: int
     voting_period: int
+
+
+class StakeRequest(BaseModel):
+    user_id: str
+    amount: float
+
+
+router = APIRouter()
 
 
 @router.post("/export")
@@ -49,7 +55,7 @@ async def export_wallet(user_id: str, db: Session = Depends(get_db)):
         }
         export_data["vials"].append(vial_data)
         export_data["visualization"]["nodes"].append({"id": f"vial{i}", "label": f"Vial {i}"})
-    logger.log(f"Exported wallet for user: {user_id}")
+    logger.log(f"Exported wallet for user: {user_id}", extra={"user_id": user_id})
     return export_data
 
 
@@ -63,10 +69,11 @@ async def import_wallet(file_content: str, db: Session = Depends(get_db)):
                             network_id=validated_data["network_id"])
         db.merge(wallet)
         db.commit()
-        logger.log(f"Imported wallet for user: {validated_data['user_id']}")
+        logger.log(f"Imported wallet for user: {validated_data['user_id']}",
+                  extra={"user_id": validated_data["user_id"]})
         return {"status": "imported", "wallet": validated_data}
     except Exception as e:
-        logger.log(f"Import failed: {str(e)}")
+        logger.log(f"Import failed: {str(e)}", extra={"error": str(e)})
         return {"error": str(e)}
 
 
@@ -78,7 +85,22 @@ async def create_dao(dao_config: DAOConfig, db: Session = Depends(get_db)):
         "name": dao_config.name,
         "tokens": dao_config.tokens,
         "voting_period": dao_config.voting_period,
-        "created_at": datetime.utcnow().isoformat() + "Z"
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "visualization": {"nodes": [{"id": dao_id, "label": dao_config.name}]}
     }
-    logger.log(f"Created DAO: {dao_config.name}")
+    logger.log(f"Created DAO: {dao_config.name}", extra={"dao_id": dao_id})
     return {"status": "created", "dao": dao_data}
+
+
+@router.post("/stake")
+async def stake_tokens(request: StakeRequest, db: Session = Depends(get_db)):
+    wallet = db.query(WalletModel).filter(WalletModel.user_id == request.user_id).first()
+    if not wallet or wallet.balance < request.amount:
+        logger.log(f"Stake failed: Insufficient balance for {request.user_id}",
+                  extra={"user_id": request.user_id})
+        return {"error": "Insufficient balance"}
+    wallet.balance -= request.amount
+    db.commit()
+    logger.log(f"Staked {request.amount} for user: {request.user_id}",
+              extra={"user_id": request.user_id, "amount": request.amount})
+    return {"status": "staked", "amount": request.amount}
