@@ -1,55 +1,33 @@
 # server/monitoring/logging_dashboard.py
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
+from server.security.auth import oauth2_scheme
 import logging
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.get("/logs")
-async def get_logs() -> List[Dict[str, Any]]:
-    """Retrieve logs for dashboard."""
+async def get_logs(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+    """Retrieve logs with wallet and reputation data."""
     try:
         with SessionLocal() as session:
             wallets = session.query(Wallet).all()
-            log_data = [
+            logs = [
                 {
-                    "address": wallet.address,
-                    "balance": wallet.balance,
-                    "staked_amount": wallet.staked_amount,
-                    "dao_proposal": wallet.dao_proposal
+                    "address": w.address,
+                    "balance": w.balance,
+                    "reputation": w.reputation
                 }
-                for wallet in wallets
+                for w in wallets
             ]
-            logger.info("Logs retrieved for dashboard")
-            return log_data
+        logger.info(
+            f"Logs retrieved: {len(logs)} wallets "
+            f"with reputation data"
+        )
+        return {"status": "success", "logs": logs}
     except Exception as e:
-        logger.error(f"Error retrieving logs: {str(e)}")
-        raise
-
-@router.get("/logs/visual")
-async def get_visual_logs():
-    """Retrieve logs for visual dashboard."""
-    try:
-        with SessionLocal() as session:
-            wallets = session.query(Wallet).all()
-            svg_content = (
-                '<svg width="800" height="600" '
-                'xmlns="http://www.w3.org/2000/svg">'
-            )
-            for wallet in wallets:
-                svg_content += (
-                    f'<circle cx="{wallet.balance * 10}" cy="100" r="20" '
-                    f'fill="blue"/><text x="{wallet.balance * 10 + 25}" '
-                    f'y="105" fill="black">{wallet.address}</text>'
-                )
-            svg_content += '</svg>'
-            return Response(
-                content=svg_content,
-                media_type="image/svg+xml"
-            )
-    except Exception as e:
-        logger.error(f"Error generating visual logs: {str(e)}")
+        logger.error(f"Log retrieval error: {str(e)}")
         raise
