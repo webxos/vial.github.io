@@ -1,16 +1,37 @@
-from server.services.advanced_logging import AdvancedLogger
+# server/utils/terminal_commands.py
+import subprocess
+from server.services.database import SessionLocal
+from server.models.webxos_wallet import Wallet
+import logging
 
+logger = logging.getLogger(__name__)
 
-logger = AdvancedLogger()
-
-
-def execute_terminal_command(command: str):
-    commands = {
-        "help": {"description": "Display available commands", "output": "Available commands: help, clear, components, deploy"},
-        "clear": {"description": "Clear terminal", "output": "Terminal cleared"},
-        "components": {"description": "List components", "output": "Components: api_endpoint, llm_model, database, quantum_gate"},
-        "deploy": {"description": "Deploy to GitHub Pages", "output": "Deployment initiated"}
-    }
-    result = commands.get(command, {"description": "Unknown command", "output": "Command not found"})
-    logger.log("Terminal command executed", extra={"command": command, "output": result["output"]})
-    return result
+def execute_terminal_command(command: str) -> dict:
+    """Execute terminal command with wallet validation."""
+    try:
+        with SessionLocal() as session:
+            wallet = session.query(Wallet).filter_by(
+                address="test_wallet"
+            ).first()
+            if not wallet or wallet.reputation < 5.0:
+                raise ValueError(
+                    f"Insufficient reputation for command execution"
+                )
+        
+        result = subprocess.run(
+            command.split(),
+            capture_output=True,
+            text=True
+        )
+        logger.info(
+            f"Command executed: {command}, "
+            f"output: {result.stdout}"
+        )
+        return {
+            "status": "success",
+            "output": result.stdout,
+            "error": result.stderr
+        }
+    except Exception as e:
+        logger.error(f"Command execution error: {str(e)}")
+        raise
