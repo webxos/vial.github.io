@@ -4,7 +4,6 @@ from server.services.agent_tasks import AgentTaskManager
 import asyncio
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-import time
 
 
 class TrainingScheduler:
