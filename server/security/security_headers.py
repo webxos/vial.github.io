@@ -1,4 +1,3 @@
-from fastapi import FastAPI
 
 async def add_security_headers(request, call_next):
     response = await call_next(request)
