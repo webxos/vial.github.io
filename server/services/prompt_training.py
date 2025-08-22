@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from langchain.prompts import PromptTemplate
 from server.models.mcp_alchemist import Alchemist
 from server.services.git_trainer import GitTrainer
-import asyncio
+
 
 class PromptTrainer:
     def __init__(self, app: FastAPI):
@@ -15,6 +15,7 @@ class PromptTrainer:
         trained_output = await self.alchemist.process_prompt(prompt, context)
         await self.git_trainer.save_training_data(trained_output)
         return trained_output
+
 
 def setup_prompt_training(app: FastAPI):
     trainer = PromptTrainer(app)
