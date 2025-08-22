@@ -5,9 +5,10 @@ from server.api.stream import router
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
 
+
 @pytest.mark.asyncio
-async def test_stream_endpoint():
-    """Test streaming endpoint with reputation check."""
+async def test_stream_diagram():
+    """Test streaming diagram updates with wallet data."""
     client = TestClient(router)
     with SessionLocal() as session:
         wallet = Wallet(
@@ -18,10 +19,9 @@ async def test_stream_endpoint():
         session.add(wallet)
         session.commit()
     
-    token = "test_token"
     response = client.get(
-        "/stream/data",
-        headers={"Authorization": f"Bearer {token}"}
+        "/stream/diagram",
+        headers={"Authorization": "Bearer test_token"}
     )
     assert response.status_code == 200
-    assert "data" in response.json()
+    assert "reputation" in response.json()
