@@ -8,6 +8,8 @@ export default function Home() {
   const canvasRef = useRef(null);
   const [gitCommand, setGitCommand] = useState('');
   const [troubleshootResult, setTroubleshootResult] = useState(null);
+  const [svgStyle, setSvgStyle] = useState('default');
+  const [metrics, setMetrics] = useState(null);
 
   useEffect(() => {
     const scene = new THREE.Scene();
@@ -31,10 +33,25 @@ export default function Home() {
     };
     animate();
 
-    const ws = new WebSocket('ws://localhost:8000/ws');
+    const ws = new WebSocket('ws://localhost:8000/alchemist/ws');
     ws.onmessage = (event) => {
-      console.log(`WebSocket message: ${event.data}`);
+      const data = JSON.parse(event.data);
+      console.log(`WebSocket message: ${JSON.stringify(data)}`);
     };
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ tool: "vial.status.get", params: { vial_id: "vial1" } }));
+    };
+
+    const fetchMetrics = async () => {
+      try {
+        const response = await fetch('/api/alchemist/metrics');
+        const data = await response.json();
+        setMetrics(data);
+      } catch (error) {
+        console.error('Metrics fetch error:', error);
+      }
+    };
+    fetchMetrics();
 
     return () => {
       renderer.dispose();
@@ -71,6 +88,20 @@ export default function Home() {
     }
   };
 
+  const handleExportWallet = async () => {
+    try {
+      const response = await fetch('/api/alchemist/wallet/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: 'test', svg_style: svgStyle })
+      });
+      const result = await response.json();
+      console.log('Wallet export result:', result);
+    } catch (error) {
+      console.error('Wallet export error:', error);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <Head>
@@ -87,8 +118,12 @@ export default function Home() {
       <div className={styles.main}>
         <div className={styles.toolbar}>
           <button onClick={handleTroubleshoot}>Troubleshoot</button>
-          <button>Save Configuration</button>
-          <button>Export SVG</button>
+          <button onClick={handleExportWallet}>Export Wallet</button>
+          <select value={svgStyle} onChange={(e) => setSvgStyle(e.target.value)}>
+            <option value="default">Default</option>
+            <option value="alert">Alert</option>
+            <option value="success">Success</option>
+          </select>
         </div>
         <div className={styles.canvas} ref={canvasRef} data-testid="canvas"></div>
         <textarea
@@ -106,6 +141,13 @@ export default function Home() {
                 <li key={index}>{option}</li>
               ))}
             </ul>
+          </div>
+        )}
+        {metrics && (
+          <div className={styles.metrics}>
+            <h3>Metrics</h3>
+            <p>Tool Calls: {metrics.tool_calls}</p>
+            <p>Average Duration: {metrics.avg_duration} seconds</p>
           </div>
         )}
       </div>
