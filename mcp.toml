@@ -1,27 +1,23 @@
-[name]
-id = "mcp-alchemist"
-label = "MCP Alchemist (WebXOS)"
-
 [server]
-command = "python"
-args = ["-m", "server.mcp.server"]
-transport = "stdio"
+name = "mcp-alchemist"
+version = "2.9.3"
+endpoint = "ws://localhost:8000/alchemist/ws"
+stdio_command = "python -m server.mcp_server"
 
-[env]
-PYTHONPATH = "."
-VIAL_ENV = "prod"
+[tools]
+vial_status_get = { name = "vial.status.get", description = "Get status of a vial by ID", handler = "server.services.mcp_alchemist" }
+vial_config_generate = { name = "vial.config.generate", description = "Generate visual config from prompt", handler = "server.services.mcp_alchemist" }
+deploy_vercel = { name = "deploy.vercel", description = "Deploy to Vercel with config", handler = "server.services.mcp_alchemist" }
+git_commit_push = { name = "git.commit.push", description = "Commit code to GitHub", handler = "server.services.mcp_alchemist" }
+quantum_circuit_build = { name = "quantum.circuit.build", description = "Build quantum circuit from components", handler = "server.services.mcp_alchemist" }
 
-[capabilities]
-resources = true
-prompts = true
-tools = true
+[resources]
+backup_dir = "resources/backups"
+svg_dir = "resources/svg"
+code_dir = "resources/code"
+connections_dir = "resources/connections"
 
-[permissions]
-"vial.status.get" = "allow"
-"vial.config.generate" = "allow"
-"deploy.vercel" = "prompt"
-"git.commit.push" = "prompt"
-"quantum.sync.state" = "allow"
-"wallet.export" = "allow"
-"copilot.generate" = "prompt"
-"ops.troubleshoot" = "allow"
+[auth]
+method = "oauth2"
+token_url = "/alchemist/auth/token"
+scopes = ["wallet:read", "wallet:export", "git:push", "vercel:deploy", "vial:train", "ops:troubleshoot", "quantum:circuit"]
