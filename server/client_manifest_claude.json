@@ -1,0 +1,24 @@
+{
+  "client_id": "claude",
+  "name": "Claude Desktop",
+  "version": "1.0.0",
+  "endpoint": "/v1/mcp/ws",
+  "capabilities": {
+    "transport": ["websocket", "json-rpc"],
+    "tools": ["vial", "config", "agentic_search"],
+    "auth": ["oauth2"],
+    "features": ["real-time-updates", "session-management"]
+  },
+  "requirements": {
+    "python": "3.11+",
+    "node": "20+",
+    "dependencies": ["fastapi", "crewai", "serpapi"]
+  },
+  "env_vars": [
+    "DATABASE_URL",
+    "MONGO_URI",
+    "JWT_SECRET_KEY",
+    "ANTHROPIC_API_KEY",
+    "SERPAPI_API_KEY"
+  ]
+}
