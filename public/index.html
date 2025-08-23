@@ -2,176 +2,129 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vial MCP Diagram Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vial MCP Controller</title>
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="/manifest.json">
     <style>
-        body { margin: 0; background: #000000; color: #00ff00; font-family: monospace; }
-        #canvas { width: 100vw; height: 80vh; }
-        #console { width: 100vw; height: 20vh; background: #111111; border-top: 2px solid #00ff00; }
-        #console-input { width: 100%; background: #111111; color: #00ff00; border: none; }
-        .button { background: #00ff00; color: #000000; padding: 5px; margin: 5px; cursor: pointer; }
-        svg rect, svg line { stroke: #00ff00; fill: none; }
-        svg text { fill: #00ff00; font-size: 12px; }
-        .draggable { cursor: move; }
+        body { background: black; color: #00ff00; font-family: monospace; }
+        #canvas { width: 100%; height: 600px; }
+        .controls { margin: 20px; }
+        input { background: #111; color: #00ff00; border: 1px solid #00ff00; padding: 5px; }
+        button { background: #00ff00; color: black; border: none; padding: 5px 10px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div>
-        <button class="button" onclick="addBox('API Server')">Add API Server</button>
-        <button class="button" onclick="addBox('Agent')">Add Agent</button>
-        <button class="button" onclick="addBox('Endpoint')">Add Endpoint</button>
-        <button class="button" onclick="startLine()">Draw Line</button>
-        <button class="button" onclick="exportDiagram()">Export Diagram</button>
-        <button class="button" onclick="deployDiagram()">Deploy to GitHub Pages</button>
-        <button class="button" onclick="showHelp()">Help</button>
+    <div class="controls">
+        <input id="task-input" type="text" placeholder="Enter task (e.g., Generate quantum circuit)">
+        <button onclick="submitTask()">Submit Task</button>
+        <button onclick="login()">Login</button>
+        <div id="wallet-status">Wallet: Not authenticated</div>
     </div>
-    <svg id="canvas"></svg>
-    <div id="console">
-        <input id="console-input" type="text" placeholder="/help for commands">
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script>
-        const svg = document.getElementById('canvas');
-        let elements = [];
-        let currentLine = null;
-        let selectedElement = null;
+    <div id="canvas"></div>
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.153.0/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.153.0/examples/jsm/controls/OrbitControls.js';
 
-        function addBox(type) {
-            if (!validateDiagram(type)) {
-                alert('Invalid diagram structure: Ensure input/output flow.');
-                return;
+        const socket = new WebSocket('ws://localhost:8000/mcp/ws');
+        let scene, camera, renderer, controls;
+        let components = [];
+        let token = localStorage.getItem('token');
+
+        socket.onopen = () => {
+            console.log('WebSocket connected');
+            if (token) socket.send(JSON.stringify({ token }));
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.result && data.result.circuit) {
+                addComponent({ id: data.request_id, type: 'quantum', title: 'Quantum Circuit', svg: data.result.circuit });
+            } else if (data.result && data.result.status) {
+                updateWalletStatus(data.result);
             }
-            const id = `box-${elements.length}`;
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', 50); rect.setAttribute('y', 50);
-            rect.setAttribute('width', 100); rect.setAttribute('height', 50);
-            rect.setAttribute('class', 'draggable');
-            rect.dataset.id = id;
-            rect.dataset.type = type;
-            svg.appendChild(rect);
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', 60); text.setAttribute('y', 75);
-            text.textContent = type;
-            svg.appendChild(text);
-            elements.push({ id, type, rect, text });
-            makeDraggable(rect);
+            console.log('WebSocket message:', data);
+        };
+
+        socket.onerror = (error) => console.error('WebSocket error:', error);
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / 600, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas') });
+            renderer.setSize(window.innerWidth, 600);
+            controls = new OrbitControls(camera, renderer.canvas);
+            camera.position.z = 5;
+            animate();
         }
 
-        function startLine() {
-            if (currentLine) return;
-            currentLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            currentLine.setAttribute('x1', 0); currentLine.setAttribute('y1', 0);
-            currentLine.setAttribute('x2', 0); currentLine.setAttribute('y2', 0);
-            svg.appendChild(currentLine);
-            svg.addEventListener('click', handleLineClick);
+        function addComponent({ id, type, title, svg }) {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(Math.random() * 4 - 2, Math.random() * 4 - 2, 0);
+            mesh.userData = { id, type, title, svg };
+            scene.add(mesh);
+            components.push(mesh);
+            document.getElementById('canvas').addEventListener('click', onComponentClick);
         }
 
-        function handleLineClick(event) {
-            if (!currentLine) return;
-            const rect = svg.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            if (!currentLine.getAttribute('x1')) {
-                currentLine.setAttribute('x1', x);
-                currentLine.setAttribute('y1', y);
-            } else {
-                currentLine.setAttribute('x2', x);
-                currentLine.setAttribute('y2', y);
-                elements.push({ type: 'line', line: currentLine });
-                currentLine = null;
-                svg.removeEventListener('click', handleLineClick);
+        function onComponentClick(event) {
+            const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / 600) * 2 + 1
+            );
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(components);
+            if (intersects.length > 0) {
+                const component = intersects[0].object.userData;
+                alert(`Component: ${component.title} (${component.type})`);
             }
         }
 
-        function makeDraggable(element) {
-            let isDragging = false;
-            let currentX, currentY;
-            element.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                currentX = e.clientX; currentY = e.clientY;
-                selectedElement = element;
-            });
-            document.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                const rect = svg.getBoundingClientRect();
-                const dx = e.clientX - currentX;
-                const dy = e.clientY - currentY;
-                const x = parseFloat(element.getAttribute('x')) + dx;
-                const y = parseFloat(element.getAttribute('y')) + dy;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                const text = elements.find(el => el.rect === element)?.text;
-                if (text) {
-                    text.setAttribute('x', x + 10);
-                    text.setAttribute('y', y + 25);
-                }
-                currentX = e.clientX; currentY = e.clientY;
-            });
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-                selectedElement = null;
-            });
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
         }
 
-        function validateDiagram(type) {
-            if (type === 'API Server' && elements.some(el => el.type === 'API Server')) {
-                return false; // Only one API server allowed
-            }
-            if (elements.length === 0 && type !== 'Input') {
-                return false; // Must start with Input
-            }
-            return true;
-        }
-
-        async function exportDiagram() {
-            const svgContent = svg.outerHTML;
-            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'diagram.svg';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        async function deployDiagram() {
+        async function login() {
             try {
-                const walletAddress = sessionStorage.getItem('wallet_address') || 'e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d';
-                const response = await fetch('/wallet/export/' + walletAddress, {
-                    headers: { 'Authorization': `Bearer ${sessionStorage.getItem('access_token')}` }
+                const response = await fetch('/alchemist/auth/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'user', password: 'pass' })
                 });
-                if (!response.ok) throw new Error('Wallet validation failed');
-                const svgContent = svg.outerHTML;
-                console.log('Deploying diagram to GitHub Pages for wallet:', walletAddress);
-                alert('Diagram deployed! Fork the repo at vial.github.io to integrate with WebXOS wallet.');
+                const data = await response.json();
+                localStorage.setItem('token', data.access_token);
+                token = data.access_token;
+                socket.send(JSON.stringify({ token }));
+                updateWalletStatus({ balance: 0, active: true });
             } catch (error) {
-                console.error('Deployment error:', error);
-                alert('Deployment failed: ' + error.message);
+                console.error('Login error:', error);
             }
         }
 
-        function showHelp() {
-            const commands = [
-                '/add <type> - Add box (Input, Output, API Server, Agent, Endpoint)',
-                '/line - Start drawing a line',
-                '/export - Export diagram as SVG',
-                '/deploy - Deploy diagram to GitHub Pages',
-                '/help - Show this menu'
-            ];
-            alert(commands.join('\n'));
+        function updateWalletStatus(status) {
+            document.getElementById('wallet-status').textContent =
+                `Wallet: Balance=${status.balance} WebXOS, Active=${status.active}`;
         }
 
-        document.getElementById('console-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const command = e.target.value.trim();
-                e.target.value = '';
-                if (command === '/help') showHelp();
-                else if (command.startsWith('/add ')) addBox(command.split(' ')[1]);
-                else if (command === '/line') startLine();
-                else if (command === '/export') exportDiagram();
-                else if (command === '/deploy') deployDiagram();
-                else alert('Unknown command. Type /help for commands.');
+        async function submitTask() {
+            const task = document.getElementById('task-input').value;
+            if (!token) return alert('Please login first');
+            try {
+                socket.send(JSON.stringify({
+                    tool: task.includes('quantum') ? 'quantum.circuit.build' : 'vial.status.get',
+                    params: task.includes('quantum') ? { qubits: 2, gates: ['h', 'cx'] } : { vial_id: 'vial_123' }
+                }));
+            } catch (error) {
+                console.error('Task error:', error);
             }
-        });
+        }
+
+        init();
     </script>
 </body>
 </html>
