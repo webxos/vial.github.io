@@ -1,49 +1,29 @@
-# Dockerfile.full
-FROM python:3.11-slim
-
+# Build stage
+FROM python:3.11 AS builder
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Vercel CLI and Next.js
-RUN npm install -g vercel@latest next@14.2.3 react@18.2.0 react-dom@18.2.0 @next-auth/prisma-adapter@1.0.7 ethers@6.13.2
-
-# Copy requirements and install
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs npm git curl rustc cargo && \
+    cargo install tauri-cli && \
+    rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json .npmrc ./
+RUN echo "registry=https://registry.npmjs.org/" > .npmrc && \
+    npm install && npm ci
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir torch qiskit && \
+    pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN pip install flake8 bandit safety && \
+    flake8 server/ --max-line-length=88 && \
+    bandit -r server/ -f json && \
+    safety check -r requirements.txt
 
-# Install frontend dependencies
-COPY public/ ./public/
-COPY pages/ ./pages/
-COPY vercel.json .
-RUN npm install --prefix public/ three
-
-# Copy application code
-COPY server/ ./server/
-COPY scripts/ ./scripts/
-COPY public/js/threejs_integrations.js ./public/js/threejs_integrations.js
-COPY public/index.html ./public/index.html
-
-# Environment variables
+# Runtime stage
+FROM python:3.11
+WORKDIR /app
+COPY --from=builder /app /app
+EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
-ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
-ENV REDIS_HOST=redis
-ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
-ENV SECRET_KEY=your-secret-key-here
-ENV REPUTATION_LOGGING_ENABLED=true
-ENV API_PORT=8000
-ENV VERCEL_TOKEN=your-vercel-token-here
-ENV NEXTAUTH_URL=http://localhost:3000
-ENV NEXTAUTH_SECRET=your-nextauth-secret-here
-
-# Expose ports
-EXPOSE 8000 3000
-
-# Command to run the application
-CMD ["sh", "-c", "uvicorn server.mcp_server:app --host 0.0.0.0 --port ${API_PORT} & npx next start"]
+# Placeholder: OBS/SVG and Tauri dev setup
+# RUN npm install obs-websocket-js
+# CMD ["tauri", "dev"]
+CMD ["uvicorn", "server.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
