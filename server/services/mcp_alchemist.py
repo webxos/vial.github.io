@@ -9,15 +9,14 @@ from server.services.database import get_db
 from sqlalchemy.orm import Session
 from tenacity import retry, stop_after_attempt, wait_exponential
 from pymongo import MongoClient
+from server.logging import logger
 import uuid
 import os
-
 
 class SwarmAgentConfig(BaseModel):
     name: str
     instructions: str
     functions: list[str] = []
-
 
 class Alchemist:
     def __init__(self):
@@ -58,7 +57,7 @@ class Alchemist:
             deploy_agent = Agent(
                 name="DeployAgent",
                 instructions="Handle deployment tasks to Vercel and Git operations.",
-                functions=[MCPTools.deploy_vercel, MCPTools.git_commit_push]
+                functions=[MCPTools.git_commit_push]
             )
 
             def route_to_agent(task: str):
@@ -76,7 +75,6 @@ class Alchemist:
                 functions=[route_to_agent]
             )
 
-            # Store task prompt in MongoDB for troubleshooting
             self.db.prompts.insert_one({
                 "task": task,
                 "context": context,
@@ -93,7 +91,6 @@ class Alchemist:
             await self.cache.set_cache(CacheEntry(key=f"task:{request_id}", value={"result": result}))
             logger.log(f"Task delegated: {task}", request_id=request_id)
 
-            # Persist agent state
             db_agent = SwarmAgentModel(
                 name=response.agent.name,
                 instructions=response.agent.instructions,
@@ -116,7 +113,7 @@ class Alchemist:
         request_id = str(uuid.uuid4())
         try:
             history = list(self.db.prompts.find({"request_id": request_id}))
-            logger.log(f"Prompt history retrieved for request: {request_id}", request_id=request_id)
+            logger.log(f"Prompt history retrieved: {request_id}", request_id=request_id)
             return history
         except Exception as e:
             logger.log(f"Prompt history error: {str(e)}", request_id=request_id)
