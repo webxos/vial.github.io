@@ -1,49 +1,37 @@
-from sqlalchemy import create_engine, Column, String, Text, DateTime
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from typing import List, Dict, Any
 from server.logging_config import logger
+import sqlite3
 import uuid
-import datetime
-import os
-
-Base = declarative_base()
-
-class ErrorLog(Base):
-    __tablename__ = "error_logs"
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    request_id = Column(String, index=True)
-    message = Column(Text)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 class ErrorLogger:
     def __init__(self):
-        db_url = os.getenv("ERROR_LOG_DB", "sqlite:///./error_logs.db")
-        self.engine = create_engine(db_url, connect_args={"check_same_thread": False})
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+        self.conn = sqlite3.connect("logs.db")
+        self.cursor = self.conn.cursor()
+        self.cursor.execute(
+            """CREATE TABLE IF NOT EXISTS logs
+            (id TEXT, timestamp TEXT, message TEXT, request_id TEXT)"""
+        )
+        self.conn.commit()
 
     def log_error(self, message: str, request_id: str) -> None:
-        try:
-            with self.Session() as session:
-                error_log = ErrorLog(request_id=request_id, message=message)
-                session.add(error_log)
-                session.commit()
-                logger.info(f"Logged error to SQLite: {message}", request_id=request_id)
-        except Exception as e:
-            logger.error(f"SQLite logging error: {str(e)}", request_id=request_id)
+        timestamp = "2025-08-23T12:01:00Z"
+        log_id = str(uuid.uuid4())
+        self.cursor.execute(
+            "INSERT INTO logs (id, timestamp, message, request_id) VALUES (?, ?, ?, ?)",
+            (log_id, timestamp, message, request_id)
+        )
+        self.conn.commit()
+        logger.error(f"Logged error: {message}", request_id=request_id)
 
-    def get_logs(self, request_id: str = None) -> List[Dict[str, Any]]:
-        try:
-            with self.Session() as session:
-                query = session.query(ErrorLog)
-                if request_id:
-                    query = query.filter_by(request_id=request_id)
-                logs = [
-                    {"id": log.id, "request_id": log.request_id, "message": log.message, "timestamp": log.timestamp.isoformat()}
-                    for log in query.all()
-                ]
-                logger.info(f"Retrieved {len(logs)} error logs", request_id=str(uuid.uuid4()))
-                return logs
-        except Exception as e:
-            logger.error(f"Error retrieving logs: {str(e)}", request_id=str(uuid.uuid4()))
-            return []
+    def get_logs(self, request_id: str) -> List[Dict[str, Any]]:
+        self.cursor.execute("SELECT * FROM logs WHERE request_id = ?", (request_id,))
+        rows = self.cursor.fetchall()
+        logs = [
+            {"id": row[0], "timestamp": row[1], "message": row[2], "request_id": row[3]}
+            for row in rows
+        ]
+        logger.info(f"Retrieved {len(logs)} logs for request_id {request_id}", request_id=request_id)
+        return logs
+
+    def __del__(self):
+        self.conn.close()
