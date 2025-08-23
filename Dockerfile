@@ -1,23 +1,26 @@
-# Stage 1: Builder
-FROM python:3.11 as builder
-
+# Build stage
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs npm git && \
+    rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json .npmrc ./
+RUN echo "registry=https://registry.npmjs.org/" > .npmrc && \
+    npm install && npm ci --omit=dev
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+COPY server/ ./server/
+RUN pip install flake8 bandit && \
+    flake8 server/ --max-line-length=88 && \
+    bandit -r server/ -f json
 
-# Stage 2: Runtime
+# Runtime stage
 FROM python:3.11-slim
-
 WORKDIR /app
-
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-COPY server/ server/
-COPY public/js/threejs_integrations.js public/js/  # Fixed extension from .py
-COPY . .
-
+COPY --from=builder /app /app
 EXPOSE 8000
-
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+ENV PYTHONUNBUFFERED=1
+# Placeholder: OBS WebSocket for SVG video streaming
+# COPY scripts/setup_obs.js .
+# RUN npm install obs-websocket-js
+CMD ["uvicorn", "server.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
