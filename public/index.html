@@ -4,127 +4,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vial MCP Controller</title>
-    <meta name="theme-color" content="#000000">
-    <link rel="manifest" href="/manifest.json">
     <style>
-        body { background: black; color: #00ff00; font-family: monospace; }
-        #canvas { width: 100%; height: 600px; }
-        .controls { margin: 20px; }
-        input { background: #111; color: #00ff00; border: 1px solid #00ff00; padding: 5px; }
-        button { background: #00ff00; color: black; border: none; padding: 5px 10px; cursor: pointer; }
+        body {
+            background: black;
+            color: #00ff00;
+            font-family: monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        #console-output {
+            height: 200px;
+            overflow-y: scroll;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #console-input {
+            background: #111;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            width: 100%;
+            padding: 5px;
+        }
+        button {
+            background: #00ff00;
+            color: black;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        #balance-reputation {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <input id="task-input" type="text" placeholder="Enter task (e.g., Generate quantum circuit)">
-        <button onclick="submitTask()">Submit Task</button>
-        <button onclick="login()">Login</button>
-        <div id="wallet-status">Wallet: Not authenticated</div>
+    <h1>Vial MCP Controller</h1>
+    <div id="console-output">Vial MCP Controller initialized. Use /help for commands.</div>
+    <div id="balance-reputation">$WEBXOS Balance: 0.0000 | Reputation: 0</div>
+    <input id="console-input" type="text" placeholder="Enter command (e.g., /import wallet.md)">
+    <div>
+        <button onclick="executeCommand()">Execute</button>
+        <button onclick="importWallet()">Import</button>
+        <button onclick="exportWallet()">Export</button>
+        <button onclick="gitCommand()">Git Commit</button>
+        <button onclick="showHelp()">Help</button>
     </div>
-    <div id="canvas"></div>
-    <script type="module">
-        import * as THREE from 'https://unpkg.com/three@0.153.0/build/three.module.js';
-        import { OrbitControls } from 'https://unpkg.com/three@0.153.0/examples/jsm/controls/OrbitControls.js';
-
-        const socket = new WebSocket('ws://localhost:8000/mcp/ws');
-        let scene, camera, renderer, controls;
-        let components = [];
-        let token = localStorage.getItem('token');
-
-        socket.onopen = () => {
-            console.log('WebSocket connected');
-            if (token) socket.send(JSON.stringify({ token }));
-        };
-
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.result && data.result.circuit) {
-                addComponent({ id: data.request_id, type: 'quantum', title: 'Quantum Circuit', svg: data.result.circuit });
-            } else if (data.result && data.result.status) {
-                updateWalletStatus(data.result);
-            }
-            console.log('WebSocket message:', data);
-        };
-
-        socket.onerror = (error) => console.error('WebSocket error:', error);
-
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / 600, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas') });
-            renderer.setSize(window.innerWidth, 600);
-            controls = new OrbitControls(camera, renderer.domElement);
-            camera.position.z = 5;
-            animate();
-        }
-
-        function addComponent({ id, type, title, svg }) {
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set(Math.random() * 4 - 2, Math.random() * 4 - 2, 0);
-            mesh.userData = { id, type, title, svg };
-            scene.add(mesh);
-            components.push(mesh);
-            document.getElementById('canvas').addEventListener('click', onComponentClick);
-        }
-
-        function onComponentClick(event) {
-            const mouse = new THREE.Vector2(
-                (event.clientX / window.innerWidth) * 2 - 1,
-                -(event.clientY / 600) * 2 + 1
-            );
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(components);
-            if (intersects.length > 0) {
-                const component = intersects[0].object.userData;
-                alert(`Component: ${component.title} (${component.type})`);
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-
-        async function login() {
-            try {
-                const response = await fetch('/alchemist/auth/token', {
+    <script>
+        async function executeCommand() {
+            const input = document.getElementById('console-input').value;
+            const output = document.getElementById('console-output');
+            if (input.startsWith('/import')) {
+                importWallet(input.split(' ')[1]);
+            } else if (input.startsWith('/git')) {
+                gitCommand(input.split(' ').slice(1).join(' '));
+            } else {
+                const response = await fetch('/api/console', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: 'user', password: 'pass' })
+                    body: JSON.stringify({ command: input })
                 });
                 const data = await response.json();
-                localStorage.setItem('token', data.access_token);
-                token = data.access_token;
-                socket.send(JSON.stringify({ token }));
-                updateWalletStatus({ balance: 0, active: true });
-            } catch (error) {
-                console.error('Login error:', error);
+                output.innerHTML += `<p>${data.result}</p>`;
             }
         }
 
-        function updateWalletStatus(status) {
-            document.getElementById('wallet-status').textContent =
-                `Wallet: Balance=${status.balance} WebXOS, Active=${status.active}`;
+        async function importWallet(file = null) {
+            const output = document.getElementById('console-output');
+            const fileInput = file || prompt('Enter .md file path');
+            const response = await fetch('/api/wallet/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file: fileInput })
+            });
+            const data = await response.json();
+            output.innerHTML += `<p>Imported wallet: ${data.network_id}</p>`;
+            updateBalanceReputation(data);
         }
 
-        async function submitTask() {
-            const task = document.getElementById('task-input').value;
-            if (!token) return alert('Please login first');
-            try {
-                socket.send(JSON.stringify({
-                    tool: task.includes('quantum') ? 'quantum.circuit.build' : 'vial.status.get',
-                    params: task.includes('quantum') ? { qubits: 2, gates: ['h', 'cx'] } : { vial_id: 'vial_123' }
-                }));
-            } catch (error) {
-                console.error('Task error:', error);
-            }
+        async function exportWallet() {
+            const output = document.getElementById('console-output');
+            const response = await fetch('/api/wallet/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+            });
+            const data = await response.json();
+            output.innerHTML += `<p>Exported wallet: ${data.file}</p>`;
         }
 
-        init();
+        async function gitCommand(command = 'commit -m "Update"') {
+            const output = document.getElementById('console-output');
+            const response = await fetch('/api/git', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                body: JSON.stringify({ command })
+            });
+            const data = await response.json();
+            output.innerHTML += `<p>Git: ${data.result}</p>`;
+        }
+
+        function updateBalanceReputation(data) {
+            const balanceReputation = document.getElementById('balance-reputation');
+            balanceReputation.innerHTML = `$WEBXOS Balance: ${data.balance} | Reputation: ${data.reputation}`;
+        }
+
+        function showHelp() {
+            const output = document.getElementById('console-output');
+            output.innerHTML += `<p>Commands: /import <file>, /git <command>, /help</p>`;
+        }
     </script>
 </body>
 </html>
