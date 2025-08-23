@@ -1,28 +1,26 @@
-# Dockerfile.alchemist
-FROM python:3.11-slim
-
+# Build stage
+FROM nvidia/cuda:11.8.0-base-ubuntu22.04 AS builder
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3-pip nodejs npm git && \
+    rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json .npmrc ./
+RUN echo "registry=https://registry.npmjs.org/" > .npmrc && \
+    npm install && npm ci --omit=dev
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir torch qiskit && \
+    pip install --no-cache-dir -r requirements.txt
+COPY server/models/mcp_alchemist.py ./server/models/
+RUN pip install flake8 bandit && \
+    flake8 server/models/ --max-line-length=88 && \
+    bandit -r server/models/ -f json
 
-# Copy application code
-COPY server/models/mcp_alchemist.py ./server/models/mcp_alchemist.py
-COPY server/services/ ./server/services/
-COPY server/config/ ./server/config/
-COPY server/utils/ ./server/utils/
-
-# Environment variables
+# Runtime stage
+FROM nvidia/cuda:11.8.0-base-ubuntu22.04
+WORKDIR /app
+COPY --from=builder /app /app
+EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
-ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
-ENV REPUTATION_LOGGING_ENABLED=true
-
-# Command to run the alchemist
-CMD ["python", "server/models/mcp_alchemist.py"]
+# Placeholder: OBS integration for quantum visualization
+# RUN npm install obs-websocket-js
+CMD ["uvicorn", "server.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
