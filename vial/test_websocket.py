@@ -6,12 +6,14 @@ import json
 import uuid
 import websockets
 
+
 @pytest.fixture
 def client():
     return TestClient(app)
 
+
 @pytest.mark.asyncio
-async async def test_websocket_task_execution():
+async def test_websocket_task_execution():
     request_id = str(uuid.uuid4())
     async with websockets.connect("ws://localhost:8000/v1/mcp/ws?token=test_token") as websocket:
         await websocket.send(json.dumps({
@@ -25,8 +27,9 @@ async async def test_websocket_task_execution():
         assert data["request_id"] == request_id
         logger.info("WebSocket task execution test passed", request_id=request_id)
 
+
 @pytest.mark.asyncio
-async async def test_websocket_session_save():
+async def test_websocket_session_save():
     request_id = str(uuid.uuid4())
     async with websockets.connect("ws://localhost:8000/v1/mcp/ws?token=test_token") as websocket:
         await websocket.send(json.dumps({
