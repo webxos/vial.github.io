@@ -1,55 +1,29 @@
-# server/automation/deployment.py
-from fastapi import FastAPI
-from server.config.settings import settings
-from server.services.database import SessionLocal
-from server.models.visual_components import ComponentModel
-from server.models.webxos_wallet import Wallet
-import logging
 import subprocess
+from server.logging_config import logger
+import uuid
 
-logger = logging.getLogger(__name__)
+class DeploymentManager:
+    def __init__(self):
+        self.env_vars = {
+            "DATABASE_URL": "postgresql://user:password@postgres:5432/vial_mcp",
+            "MONGO_URI": "mongodb://mongo:27017/vial_mcp",
+            "JWT_SECRET_KEY": "your-secret-key"
+        }
 
-def deploy_application(app: FastAPI) -> bool:
-    """Deploy application with validation."""
-    try:
-        # Validate database
-        with SessionLocal() as session:
-            session.query(Wallet).first()
-            components = session.query(ComponentModel).all()
-            if not components:
-                logger.error("No visual components found")
-                return False
-        
-        # Validate WebXOS wallet configuration
-        if not settings.WEBXOS_WALLET_ADDRESS:
-            logger.error("WEBXOS_WALLET_ADDRESS not set")
-            return False
-        
-        # Placeholder for reputation reward system
-        def process_reputation_rewards():
-            # Future implementation: Calculate rewards based on reputation
-            pass
-        
-        # Run deployment script
-        result = subprocess.run(
-            ["bash", "./scripts/deploy.sh"],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
-            logger.error(
-                f"Deployment script failed: {result.stderr}"
-            )
-            return False
-        
-        # Validate API health
-        response = app.test_client().get("/health")
-        if response.status_code != 200:
-            logger.error("Health check failed")
-            return False
-        
-        logger.info("Deployment successful")
-        return True
-    except Exception as e:
-        logger.error(f"Deployment error: {str(e)}")
-        return False
+    def deploy(self, request_id: str = str(uuid.uuid4())) -> dict:
+        try:
+            subprocess.run(["docker-compose", "up", "--build", "-d"], check=True)
+            logger.info("Deployment successful", request_id=request_id)
+            return {"status": "deployed", "request_id": request_id}
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Deployment error: {str(e)}", request_id=request_id)
+            raise
+
+    def rollback(self, request_id: str = str(uuid.uuid4())) -> dict:
+        try:
+            subprocess.run(["docker-compose", "down"], check=True)
+            logger.info("Rollback successful", request_id=request_id)
+            return {"status": "rolled_back", "request_id": request_id}
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Rollback error: {str(e)}", request_id=request_id)
+            raise
