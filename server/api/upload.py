@@ -1,30 +1,24 @@
-from fastapi import APIRouter, UploadFile, File, Depends
-from sqlalchemy.orm import Session
-from server.services.database import get_db
-from server.services.advanced_logging import AdvancedLogger
-from server.models.visual_components import VisualConfig
-import json
-
+from fastapi import APIRouter, UploadFile, Depends
+from server.webxos_wallet import WebXOSWallet
+from server.logging_config import logger
+from fastapi.security import OAuth2PasswordBearer
+import uuid
 
 router = APIRouter()
-logger = AdvancedLogger()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
-
-@router.post("/upload-config")
-async def upload_config(file: UploadFile = File(...), db: Session = Depends(get_db)):
+@router.post("/upload/wallet")
+async def upload_wallet(file: UploadFile, token: str = Depends(oauth2_scheme)):
+    request_id = str(uuid.uuid4())
     try:
+        if not file.filename.endswith(".md"):
+            raise ValueError("File must be a .md wallet file")
         content = await file.read()
-        config_data = json.loads(content.decode('utf-8'))
-        db_config = VisualConfig(
-            id=config_data.get("id"),
-            name=config_data.get("name"),
-            components=config_data.get("components"),
-            connections=config_data.get("connections")
-        )
-        db.add(db_config)
-        db.commit()
-        logger.log("Configuration uploaded", extra={"config_id": db_config.id})
-        return {"status": "uploaded", "config_id": db_config.id}
+        markdown = content.decode("utf-8")
+        wallet = WebXOSWallet()
+        result = wallet.import_wallet(markdown)
+        logger.info(f"Uploaded wallet for {result['network_id']}", request_id=request_id)
+        return {"status": "success", "network_id": result["network_id"], "request_id": request_id}
     except Exception as e:
-        logger.log("Configuration upload failed", extra={"error": str(e)})
-        return {"error": str(e)}
+        logger.error(f"Wallet upload error: {str(e)}", request_id=request_id)
+        return {"status": "error", "detail": str(e), "request_id": request_id}
