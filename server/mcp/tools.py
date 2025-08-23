@@ -1,15 +1,30 @@
 from mcp import Tool, ToolParameter, ToolResult
 from server.services.vial_manager import VialManager
-from server.services.quantum_sync import QuantumVisualSync
+from server.quantum.qiskit_engine import QiskitEngine
 from server.services.mcp_alchemist import generate_config_from_prompt, deploy_to_vercel, commit_to_git
 from server.logging import logger
 import httpx
 import json
+import uuid
+from datetime import datetime
+
+
+async def log_audit(tool_name: str, params: dict, result: dict, user_id: str):
+    audit_entry = {
+        "tool": tool_name,
+        "params": params,
+        "result": result,
+        "user_id": user_id,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    with open("audit.log", "a") as f:
+        f.write(json.dumps(audit_entry) + "\n")
+    logger.log(f"Audit logged for {tool_name}", request_id=str(uuid.uuid4()))
 
 
 def build_tool_list():
     vial_manager = VialManager()
-    quantum_sync = QuantumVisualSync(vial_manager)
+    qiskit_engine = QiskitEngine()
     async_client = httpx.AsyncClient(timeout=10.0)
     repo = Repo(os.getcwd())
 
@@ -47,13 +62,13 @@ def build_tool_list():
             handler=lambda params: commit_to_git(params["data"], repo, async_client)
         ),
         Tool(
-            name="quantum.sync.state",
-            description="Sync quantum state for a vial",
+            name="quantum.circuit.build",
+            description="Build quantum circuit from components",
             parameters=[
-                ToolParameter(name="vial_id", type="string", description="Vial identifier")
+                ToolParameter(name="components", type="array", description="List of visual components")
             ],
-            handler=lambda params: quantum_sync.sync_quantum_state(params["vial_id"])
+            handler=lambda params: qiskit_engine.build_circuit_from_components(params["components"])
         )
     ]
-    logger.log(f"Built {len(tools)} MCP tools")
+    logger.log(f"Built {len(tools)} MCP tools", request_id=str(uuid.uuid4()))
     return tools
