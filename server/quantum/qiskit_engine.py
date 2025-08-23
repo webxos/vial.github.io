@@ -1,39 +1,50 @@
-from qiskit import QuantumCircuit, transpile
+import os
+import logging
+from typing import Dict, Any, Optional
+from pydantic import BaseModel
+from qiskit import QuantumCircuit, Aer, execute
 from qiskit_aer import AerSimulator
-from server.models.visual_components import ComponentModel
-from server.logging import logger
-import hashlib
+from mcp import tool
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from tenacity import retry, stop_after_attempt, wait_exponential
 
+logger = logging.getLogger(__name__)
 
-class QiskitEngine:
-    def __init__(self):
-        self.backend = AerSimulator()
+class QuantumTask(BaseModel):
+    qubits: int = 2
+    depth: int = 1
+    shots: int = 1024
 
-    def build_circuit_from_components(self, components: list[ComponentModel]) -> dict:
-        try:
-            qc = QuantumCircuit(4, 4)
-            for component in components:
-                if component.type == "agent":
-                    vial_id = component.config.get("vial_id", "default")
-                    qc.h(hash(vial_id) % 4)
-                elif component.type == "api_endpoint":
-                    qc.x(hash(component.id) % 4)
-            transpiled_qc = transpile(qc, self.backend, optimization_level=1)
-            qasm = transpiled_qc.qasm()
-            quantum_hash = hashlib.sha256(qasm.encode()).hexdigest()[:64]
-            logger.log(f"Built quantum circuit: {quantum_hash}")
-            return {"qasm": qasm, "quantum_hash": quantum_hash}
-        except Exception as e:
-            logger.log(f"Circuit build error: {str(e)}")
-            return {"error": str(e)}
+class QuantumResult(BaseModel):
+    counts: Dict[str, int]
+    signature: Optional[str] = None
 
-    def run_circuit(self, qasm: str) -> dict:
-        try:
-            qc = QuantumCircuit.from_qasm_str(qasm)
-            result = self.backend.run(qc, shots=1).result()
-            counts = result.get_counts()
-            logger.log(f"Circuit executed: {counts}")
-            return {"counts": counts}
-        except Exception as e:
-            logger.log(f"Circuit run error: {str(e)}")
-            return {"error": str(e)}
+def sign_result(counts: Dict[str, int], private_key: str) -> str:
+    """Sign quantum result for wallet .md export."""
+    private_key_bytes = bytes.fromhex(private_key)
+    key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
+    data = str(counts).encode()
+    return key.sign(data).hex()
+
+@tool("quantum_sync")
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+async def run_quantum_task(task: QuantumTask) -> QuantumResult:
+    """Run a quantum circuit and return signed results."""
+    try:
+        circuit = QuantumCircuit(task.qubits, task.qubits)
+        circuit.h(range(task.qubits))  # Apply Hadamard gates
+        circuit.measure_all()
+        
+        simulator = AerSimulator()
+        job = execute(circuit, simulator, shots=task.shots)
+        result = job.result()
+        counts = result.get_counts()
+        
+        private_key = os.getenv("WALLET_ENCRYPTION_KEY", "")
+        signature = sign_result(counts, private_key) if private_key else None
+        
+        return QuantumResult(counts=counts, signature=signature)
+    except Exception as e:
+        logger.error(f"Quantum task failed: {str(e)}")
+        raise
