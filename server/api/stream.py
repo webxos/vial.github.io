@@ -1,36 +1,27 @@
-# server/api/stream.py
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from server.services.vial_manager import VialManager
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-import logging
-import asyncio
+from server.mcp.auth import oauth2_scheme
+from server.services.mcp_alchemist import Alchemist
+from server.logging import logger
+import uuid
+import json
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
-@router.get("/stream/wallet/{address}")
-async def stream_wallet_updates(address: str):
-    """Stream real-time wallet updates."""
-    async def generate():
-        with SessionLocal() as session:
-            while True:
-                wallet = session.query(Wallet).filter_by(address=address).first()
-                if wallet:
-                    yield f"data: {{\"balance\": {wallet.balance}, \"address\": \"{wallet.address}\"}}\n\n"
-                await asyncio.sleep(1)
-    
-    return StreamingResponse(generate(), media_type="text/event-stream")
-
-@router.get("/stream/vial/{vial_id}")
-async def stream_vial_training(vial_id: str):
-    """Stream vial training logs."""
-    async def generate():
-        vial_manager = VialManager()
-        for _ in range(5):  # Simulate 5 training steps
-            status = await vial_manager.train_vial(vial_id)
-            yield f"data: {status}\n\n"
-            await asyncio.sleep(1)
-    
-    return StreamingResponse(generate(), media_type="text/event-stream")
+@router.get("/stream/tasks")
+async def stream_tasks(token: str = Depends(oauth2_scheme)):
+    request_id = str(uuid.uuid4())
+    try:
+        from server.mcp.auth import map_oauth_to_mcp_session
+        await map_oauth_to_mcp_session(token, request_id)
+        async def task_stream():
+            alchemist = Alchemist()
+            tasks = ["vial_status_get", "quantum_circuit_build", "git_commit_push"]
+            for task in tasks:
+                result = await alchemist.delegate_task(task, {"params": {}})
+                yield f"data: {json.dumps({'task': task, 'result': result, 'request_id': request_id})}\n\n"
+                logger.log(f"Streamed task: {task}", request_id=request_id)
+        return StreamingResponse(task_stream(), media_type="text/event-stream")
+    except Exception as e:
+        logger.log(f"Stream error: {str(e)}", request_id=request_id)
+        raise HTTPException(status_code=500, detail=str(e))
