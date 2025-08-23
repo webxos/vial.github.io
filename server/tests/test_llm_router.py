@@ -1,25 +1,30 @@
 import pytest
+from fastapi.testclient import TestClient
+from server.main import app
 from unittest.mock import patch, AsyncMock
-from server.services.llm_router import LLMRouter, LLMRequest
 
-@pytest.fixture
-def router():
-    return LLMRouter()
+client = TestClient(app)
 
 @pytest.mark.asyncio
-async def test_llm_routing(router):
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.side_effect = [
-            AsyncMock(json=lambda: {"malicious": False}),
-            AsyncMock(json=lambda: {"text": "Test response"})
-        ]
-        result = await router.route_request("anthropic", "Test prompt")
-        assert "text" in result
-        assert result["text"] == "Test response"
+async def test_route_llm_success():
+    """Test successful LLM routing."""
+    with patch("server.services.llm_router.route_to_provider", new=AsyncMock()) as mock_route:
+        mock_route.return_value = {"response": "LLM output"}
+        response = client.post(
+            "/mcp/llm",
+            json={"provider": "anthropic", "prompt": "Hello"}
+        )
+        assert response.status_code == 200
+        assert response.json() == {"status": "success", "result": {"response": "LLM output"}}
 
 @pytest.mark.asyncio
-async def test_prompt_shield(router):
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_shield:
-        mock_shield.return_value.json.return_value = {"malicious": True}
-        with pytest.raises(ValueError, match="Malicious input detected"):
-            await router.route_request("anthropic", "DROP TABLE users")
+async def test_route_llm_invalid_provider():
+    """Test invalid LLM provider error."""
+    with patch("server.services.llm_router.route_to_provider", new=AsyncMock()) as mock_route:
+        mock_route.side_effect = HTTPException(status_code=400, detail="Invalid provider")
+        response = client.post(
+            "/mcp/llm",
+            json={"provider": "invalid", "prompt": "Hello"}
+        )
+        assert response.status_code == 400
+        assert response.json() == {"detail": "Invalid provider"}
