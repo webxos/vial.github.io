@@ -1,27 +1,40 @@
+import pytest
 from fastapi.testclient import TestClient
-from ..mcp_server import app
-from ..services.database import get_db
-from ..models.webxos_wallet import WalletModel
+from server.mcp_server import app
+from server.services.mcp_alchemist import Alchemist
 
+@pytest.fixture
+def client():
+    return TestClient(app)
 
-def test_full_workflow():
-    client = TestClient(app)
-    # Authentication
-    auth_response = client.post("/auth/token", data={"username": "test", "password": "test"})
-    assert auth_response.status_code == 200
-    token = auth_response.json()["access_token"]
+@pytest.mark.asyncio
+async def test_vial_status_integration(client):
+    response = await client.post(
+        "/mcp/vial_status_get",
+        json={"vial_id": "test_vial"},
+        headers={"Authorization": "Bearer test_token"}
+    )
+    assert response.status_code == 200
+    assert response.json().get("vial_id") == "test_vial"
+    assert "balance" in response.json()
 
-    # Train agents
-    train_response = client.post("/agent/train", json={"vial_id": "all"}, headers={"Authorization": f"Bearer {token}"})
-    assert train_response.status_code == 200
-    assert train_response.json()["status"] == "training_complete"
+@pytest.mark.asyncio
+async def test_quantum_circuit_integration(client):
+    response = await client.post(
+        "/quantum/circuit",
+        json={"qubits": 2, "gates": ["h", "cx"]},
+        headers={"Authorization": "Bearer test_token"}
+    )
+    assert response.status_code == 200
+    assert "circuit" in response.json()
 
-    # Export wallet
-    export_response = client.post("/wallet/export", json={"user_id": "test"}, headers={"Authorization": f"Bearer {token}"})
-    assert export_response.status_code == 200
-    assert "vials" in export_response.json()
-
-    # Quantum sync
-    quantum_response = client.post("/quantum/sync", json={"vial_id": "vial1"}, headers={"Authorization": f"Bearer {token}"})
-    assert quantum_response.status_code == 200
-    assert "quantum_state" in quantum_response.json()
+@pytest.mark.asyncio
+async def test_wallet_reward_integration(client):
+    response = await client.post(
+        "/wallet/reward",
+        json={"vial_id": "test_vial", "amount": 10.0},
+        headers={"Authorization": "Bearer test_token"}
+    )
+    assert response.status_code == 200
+    assert response.json().get("status") == "success"
+    assert "new_balance" in response.json()
