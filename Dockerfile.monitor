@@ -1,29 +1,20 @@
-# Dockerfile.monitor
-FROM python:3.11-slim
-
+# Build stage
+FROM prom/prometheus:v2.47.0 AS builder
 WORKDIR /app
+RUN apk add --no-cache nodejs npm git
+COPY package.json package-lock.json .npmrc ./
+RUN echo "registry=https://registry.npmjs.org/" > .npmrc && \
+    npm install && npm ci --omit=dev
+COPY prometheus.yml .
+COPY scripts/monitor_metrics.js .
+RUN npm install prom-client
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt prometheus-client==0.20.0
-
-# Copy monitoring code
-COPY server/monitoring/ ./server/monitoring/
-
-# Environment variables
-ENV PYTHONUNBUFFERED=1
-ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
-ENV REDIS_HOST=redis
-ENV REPUTATION_LOGGING_ENABLED=true
-ENV PROMETHEUS_PORT=9090
-
-# Expose ports
+# Runtime stage
+FROM prom/prometheus:v2.47.0
+WORKDIR /app
+COPY --from=builder /app /app
 EXPOSE 9090
-
-# Command to run the monitoring service
-CMD ["python", "server/monitoring/prometheus_metrics.py"]
+HEALTHCHECK CMD curl -f http://localhost:9090/-/healthy || exit 1
+# Placeholder: OBS/SVG video metrics
+# RUN npm install obs-websocket-js
+CMD ["--config.file=/app/prometheus.yml"]
