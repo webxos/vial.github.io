@@ -1,6 +1,5 @@
 from fastapi import APIRouter, WebSocket
 from server.logging import logger
-from server.services.vial_manager import VialManager
 from server.api.websocket import broadcast_message
 
 router = APIRouter()

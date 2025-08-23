@@ -15,7 +15,7 @@ def execute_terminal_command(command: str) -> dict:
             ).first()
             if not wallet or wallet.reputation < 5.0:
                 raise ValueError(
-                    f"Insufficient reputation for command execution"
+                    "Insufficient reputation for command execution"
                 )
         
         result = subprocess.run(

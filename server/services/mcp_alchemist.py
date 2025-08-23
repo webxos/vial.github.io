@@ -9,6 +9,7 @@ from server.services.database import get_db
 from sqlalchemy.orm import Session
 from tenacity import retry, stop_after_attempt, wait_exponential
 from pymongo import MongoClient
+from server.logging import logger
 import uuid
 import os
 

@@ -4,6 +4,9 @@ from server.mcp_server import app
 from server.mcp.auth import map_oauth_to_mcp_session
 from jose import jwt
 from server.config import settings
+from datetime import datetime
+from uuid import uuid4 as _uuid4
+from fastapi import HTTPException
 
 
 @pytest.fixture
@@ -18,7 +21,7 @@ def test_map_oauth_to_mcp_session():
         "exp": int(datetime.utcnow().timestamp()) + 3600
     }
     token = jwt.encode(token_data, settings.JWT_SECRET, algorithm="HS256")
-    request_id = str(uuid.uuid4())
+    request_id = str(_uuid4())
     session = map_oauth_to_mcp_session(token, request_id)
     assert session["user_id"] == "test_user"
     assert "session_id" in session
@@ -26,7 +29,7 @@ def test_map_oauth_to_mcp_session():
 
 
 def test_map_oauth_invalid_token():
-    request_id = str(uuid.uuid4())
+    request_id = str(_uuid4())
     with pytest.raises(HTTPException) as exc:
         map_oauth_to_mcp_session("invalid_token", request_id)
     assert exc.value.status_code == 401

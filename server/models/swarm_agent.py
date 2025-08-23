@@ -1,6 +1,5 @@
 from sqlalchemy import Column, String, Integer, Boolean, JSON
 from sqlalchemy.ext.declarative import declarative_base
-from server.logging import logger
 import uuid
 
 

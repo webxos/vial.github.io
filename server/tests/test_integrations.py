@@ -1,7 +1,5 @@
 from fastapi.testclient import TestClient
 from ..mcp_server import app
-from ..services.database import get_db
-from ..models.webxos_wallet import WalletModel
 
 
 def test_full_workflow():

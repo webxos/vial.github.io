@@ -1,8 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from server.logging import logger
 import uuid
-import json
 
 
 class MCPToolSchema(BaseModel):

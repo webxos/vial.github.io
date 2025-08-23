@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from server.logging import logger

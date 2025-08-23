@@ -1,5 +1,4 @@
 # server/security/security_headers.py
-from fastapi import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

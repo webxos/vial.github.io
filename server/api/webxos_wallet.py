@@ -120,7 +120,7 @@ async def export_wallet(
             raise HTTPException(status_code=404, detail="Wallet not found")
         
         quantum_sync = QuantumSync()
-        quantum_result = await quantum_sync.sync_wallet(address)
+        await quantum_sync.sync_wallet(address)
         
         return {
             "address": wallet.address,

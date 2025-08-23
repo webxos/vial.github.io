@@ -2,7 +2,6 @@
 from server.services.vial_manager import VialManager
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)

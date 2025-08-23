@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from server.services.vial_manager import VialManager
 from server.logging import logger
-import asyncio
 
 
 def setup_error_recovery(app: FastAPI):

@@ -2,7 +2,6 @@ import pytest
 from server.api.mcp_tools import MCPTools
 from server.services.mcp_alchemist import Alchemist
 from server.models.webxos_wallet import WalletModel
-from server.services.database import get_db
 from sqlalchemy.orm import Session
 import uuid
 

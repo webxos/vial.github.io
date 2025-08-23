@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-from ..api.websocket import router
 from ..mcp_server import app
 
 

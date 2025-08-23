@@ -1,12 +1,10 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from server.api import (
     auth, endpoints, quantum_endpoints, websocket,
     jsonrpc, void, troubleshoot, help, comms_hub, upload, stream, visual_router, webxos_wallet
 )
 from server.services.mcp_alchemist import setup_mcp_alchemist
-from server.services.backup_restore import BackupRestoreService
-from server.services.vial_manager import VialManager
 from server.mcp.auth import map_oauth_to_mcp_session
 from server.mcp.tools import build_tool_list
 from server.logging import logger
@@ -15,7 +13,6 @@ import json
 import sys
 import uuid
 import os
-from fastapi.security import OAuth2PasswordBearer
 
 
 app = FastAPI(

@@ -1,12 +1,12 @@
 # server/analytics/usage_analytics.py
 from fastapi import FastAPI, Request
-from sqlalchemy.orm import Session
 from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
 import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
 
 class UsageAnalytics:
     def __init__(self, app: FastAPI):
@@ -28,13 +28,12 @@ class UsageAnalytics:
                     ).first()
                     if wallet:
                         logger.info(
-                            f"Wallet {wallet.address} accessed {request.url.path} "
-                            f"in {duration:.2f}s"
+                            f"Wallet {wallet.address} accessed "
+                            f"{request.url.path} in {duration:.2f}s"
                         )
 
             return response
 
     async def log_component_usage(self, component_id: str, action: str):
         """Log usage of visual API router components."""
-        with SessionLocal() as session:
-            logger.info(f"Component {component_id} performed {action}")
+        logger.info(f"Component {component_id} performed {action}")

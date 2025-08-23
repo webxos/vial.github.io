@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 from server.config import settings
 from server.logging import logger
 
@@ -22,8 +22,6 @@ def get_db():
 
 def init_db():
     try:
-        from server.models.visual_components import VisualConfig
-        from server.models.webxos_wallet import WalletModel
         from sqlalchemy import MetaData, Table, Column, String, JSON, DateTime
         metadata = MetaData()
         Table(

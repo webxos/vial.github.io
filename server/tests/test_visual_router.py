@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from ..mcp_server import app
-from ..models.visual_components import ComponentModel, ConnectionModel, Position3D, ComponentType, ConnectionType
+from ..models.visual_components import ComponentType
 
 
 def test_visual_config_creation():

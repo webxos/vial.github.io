@@ -31,7 +31,7 @@ async def vial_config_generate(params: dict) -> dict:
         prompt = params.get("prompt")
         alchemist = Alchemist()
         config = await alchemist.generate_config(prompt)
-        logger.log(f"Generated config from prompt", request_id=request_id)
+        logger.log("Generated config from prompt", request_id=request_id)
         return {"config": config}
     except Exception as e:
         logger.log(f"Config generation error: {str(e)}", request_id=request_id)
@@ -41,7 +41,6 @@ async def vial_config_generate(params: dict) -> dict:
 async def deploy_vercel(params: dict) -> dict:
     request_id = str(uuid.uuid4())
     try:
-        config = params.get("config")
         repo = Repo(os.getcwd())
         repo.git.add(all=True)
         repo.git.commit(m="Deploy to Vercel")

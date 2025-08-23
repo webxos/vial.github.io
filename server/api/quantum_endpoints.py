@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from server.services.mcp_alchemist import Alchemist
 from server.logging import logger
 from qiskit import QuantumCircuit
+from server.mcp.auth import oauth2_scheme
 import uuid
-import json
 import os
 
 
@@ -26,13 +25,15 @@ async def build_quantum_circuit(
     try:
         from server.mcp.auth import map_oauth_to_mcp_session
         await map_oauth_to_mcp_session(token, request_id)
-        alchemist = Alchemist()
         circuit = QuantumCircuit(request.num_qubits)
         for comp in request.components:
             gate_type = comp.get("gate")
             qubits = comp.get("qubits", [])
             if gate_type not in request.gate_types:
-                raise HTTPException(status_code=400, detail=f"Invalid gate: {gate_type}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid gate: {gate_type}",
+                )
             if gate_type == "h":
                 circuit.h(qubits[0])
             elif gate_type == "cx":
@@ -42,7 +43,10 @@ async def build_quantum_circuit(
         os.makedirs(os.path.dirname(circuit_path), exist_ok=True)
         with open(circuit_path, "w") as f:
             f.write(circuit_data)
-        logger.log(f"Quantum circuit built: {circuit_path}", request_id=request_id)
+        logger.log(
+            f"Quantum circuit built: {circuit_path}",
+            request_id=request_id,
+        )
         return {"status": "built", "circuit_path": circuit_path}
     except Exception as e:
         logger.log(f"Quantum circuit error: {str(e)}", request_id=request_id)

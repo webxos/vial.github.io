@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 from server.mcp_server import app
-from server.services.mcp_alchemist import Alchemist
 from server.logging import logger
 import pytest
 import uuid

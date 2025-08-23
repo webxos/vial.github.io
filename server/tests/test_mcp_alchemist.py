@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 from server.mcp_server import app
 from server.models.webxos_wallet import WalletModel
-from server.services.database import get_db
 import uuid
 import os
 import json

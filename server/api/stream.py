@@ -1,5 +1,5 @@
 # server/api/stream.py
-from fastapi import APIRouter, Response
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from server.services.vial_manager import VialManager
 from server.services.database import SessionLocal
