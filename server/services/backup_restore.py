@@ -1,52 +1,52 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
+import os
+import json
+import uuid
+from datetime import datetime
 from server.services.database import get_db
 from server.models.webxos_wallet import WalletModel
+from server.models.visual_components import VisualConfig
 from server.logging import logger
-import json
-import os
+from sqlalchemy.orm import Session
 
 
-def setup_backup_restore(app: FastAPI):
-    @app.post("/backup")
-    async def backup_data(db: Session = Depends(get_db)):
+class BackupRestoreService:
+    def __init__(self):
+        self.backup_dir = "resources/backups"
+
+    async def backup_database(self, user_id: str, db: Session) -> dict:
+        request_id = str(uuid.uuid4())
         try:
-            wallets = db.query(WalletModel).all()
+            os.makedirs(self.backup_dir, exist_ok=True)
+            backup_path = f"{self.backup_dir}/{user_id}_{datetime.utcnow().isoformat()}.json"
+            wallets = db.query(WalletModel).filter(WalletModel.user_id == user_id).all()
+            configs = db.query(VisualConfig).all()
             backup_data = {
-                "wallets": [
-                    {
-                        "user_id": w.user_id,
-                        "balance": w.balance,
-                        "network_id": w.network_id
-                    } for w in wallets
-                ],
-                "timestamp": os.time()
+                "wallets": [w.__dict__ for w in wallets],
+                "configs": [c.__dict__ for c in configs],
+                "timestamp": datetime.utcnow().isoformat()
             }
-            backup_path = "data/backup.json"
-            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
             with open(backup_path, "w") as f:
-                json.dump(backup_data, f, indent=2)
-            logger.log("Backup completed")
-            return {"status": "backup_completed", "path": backup_path}
+                json.dump(backup_data, f)
+            logger.log(f"Database backup created at {backup_path}", request_id=request_id)
+            return {"status": "backed_up", "backup_path": backup_path}
         except Exception as e:
-            logger.log(f"Backup error: {str(e)}")
+            logger.log(f"Backup error: {str(e)}", request_id=request_id)
             return {"error": str(e)}
 
-    @app.post("/restore")
-    async def restore_data(db: Session = Depends(get_db)):
+    async def restore_database(self, backup_path: str, db: Session) -> dict:
+        request_id = str(uuid.uuid4())
         try:
-            backup_path = "data/backup.json"
-            if not os.path.exists(backup_path):
-                logger.log("Backup file not found")
-                return {"error": "Backup file not found"}
             with open(backup_path, "r") as f:
                 backup_data = json.load(f)
-            for wallet_data in backup_data["wallets"]:
-                wallet = WalletModel(**wallet_data)
-                db.merge(wallet)
+            db.query(WalletModel).delete()
+            db.query(VisualConfig).delete()
+            for wallet in backup_data["wallets"]:
+                db.add(WalletModel(**wallet))
+            for config in backup_data["configs"]:
+                db.add(VisualConfig(**config))
             db.commit()
-            logger.log("Restore completed")
-            return {"status": "restore_completed"}
+            logger.log(f"Database restored from {backup_path}", request_id=request_id)
+            return {"status": "restored", "backup_path": backup_path}
         except Exception as e:
-            logger.log(f"Restore error: {str(e)}")
+            logger.log(f"Restore error: {str(e)}", request_id=request_id)
             return {"error": str(e)}
