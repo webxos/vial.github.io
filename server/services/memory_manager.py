@@ -19,7 +19,7 @@ class MemoryManager:
                 "build_progress": session_data.get("build_progress", []),
                 "quantum_logic": session_data.get("quantum_logic", {}),
                 "task_memory": session_data.get("task_memory", []),
-                "timestamp": "2025-08-23T03:35:00Z",
+                "timestamp": "2025-08-23T03:41:00Z",
                 "request_id": request_id
             }
             self.db.sessions.update_one({"token": token}, {"$set": session}, upsert=True)
@@ -57,10 +57,10 @@ class MemoryManager:
         try:
             relationship = {
                 "task_name": task_name,
-                "quantum_logic": related_data.get("quantum_logic", {}),
+                "quantum_logic": related_data.get("quantum_logic", {"qubits": 0, "gates": []}),
                 "training_data": related_data.get("training_data", {}),
                 "related_tasks": related_data.get("related_tasks", []),
-                "timestamp": "2025-08-23T03:35:00Z",
+                "timestamp": "2025-08-23T03:41:00Z",
                 "request_id": request_id
             }
             self.db.task_relationships.insert_one(relationship)
@@ -69,4 +69,17 @@ class MemoryManager:
         except Exception as e:
             self.error_logger.log_error(f"Task relationship save error: {str(e)}", request_id)
             logger.error(f"Task relationship save error: {str(e)}", request_id=request_id)
+            raise
+
+    async def get_quantum_logic(self, task_name: str, request_id: str) -> Dict[str, Any]:
+        try:
+            relationship = self.db.task_relationships.find_one({"task_name": task_name})
+            if relationship and relationship.get("quantum_logic"):
+                logger.info(f"Retrieved quantum logic for {task_name}", request_id=request_id)
+                return relationship["quantum_logic"]
+            logger.info(f"No quantum logic found for {task_name}", request_id=request_id)
+            return {"qubits": 0, "gates": []}
+        except Exception as e:
+            self.error_logger.log_error(f"Quantum logic retrieval error: {str(e)}", request_id)
+            logger.error(f"Quantum logic retrieval error: {str(e)}", request_id=request_id)
             raise
