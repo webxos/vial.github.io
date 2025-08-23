@@ -1,91 +1,101 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
-from server.services.database import get_db
 from server.models.visual_components import ComponentModel, ConnectionModel
+from server.services.database import get_db
 from server.logging import logger
-
-router = APIRouter()
-
-
-class VisualConfig(BaseModel):
-    components: List[ComponentModel]
-    connections: List[ConnectionModel]
+import uuid
+import datetime
+import json
+import os
 
 
-@router.get("/components/available")
+app = FastAPI()
+
+
+class DiagramExportRequest(BaseModel):
+    components: list[ComponentModel]
+    connections: list[ConnectionModel]
+    style: str = "default"
+
+
+@app.get("/components/available")
 async def get_available_components():
-    return {
-        "components": [
-            {"type": "api_endpoint", "title": "API Endpoint"},
-            {"type": "llm_model", "title": "LLM Model"},
-            {"type": "database", "title": "Database"},
-            {"type": "tool", "title": "Tool"},
-            {"type": "agent", "title": "Agent"}
-        ]
-    }
-
-
-@router.post("/components/validate")
-async def validate_component(component: ComponentModel):
+    request_id = str(uuid.uuid4())
     try:
-        if not component.type in [c["type"] for c in (await get_available_components())["components"]]:
-            raise ValueError(f"Invalid component type: {component.type}")
-        logger.log(f"Validated component: {component.id}")
-        return {"status": "valid", "component": component}
+        component_types = ["api_endpoint", "llm_model", "database", "tool", "agent"]
+        logger.log("Fetched available components", request_id=request_id)
+        return {"component_types": component_types}
     except Exception as e:
-        logger.log(f"Component validation error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/connections/create")
-async def create_connection(connection: ConnectionModel):
-    try:
-        logger.log(f"Created connection: {connection.from_component} -> {connection.to_component}")
-        return {"status": "created", "connection": connection}
-    except Exception as e:
-        logger.log(f"Connection creation error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/save-config")
-async def save_config(config: VisualConfig, db=Depends(get_db)):
-    try:
-        config_data = config.dict()
-        db.execute(
-            "INSERT INTO visual_configs (id, name, components, connections, created_at, updated_at) "
-            "VALUES (:id, :name, :components, :connections, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            {
-                "id": str(uuid.uuid4()),
-                "name": "config_" + datetime.utcnow().isoformat(),
-                "components": json.dumps([c.dict() for c in config.components]),
-                "connections": json.dumps([c.dict() for c in config.connections])
-            }
-        )
-        db.commit()
-        logger.log("Saved visual configuration")
-        return {"status": "saved", "config_id": config_data["id"]}
-    except Exception as e:
-        logger.log(f"Config save error: {str(e)}")
+        logger.log(f"Error fetching components: {str(e)}", request_id=request_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/diagram/export")
-async def export_diagram(config_id: str, db=Depends(get_db)):
+@app.post("/components/validate")
+async def validate_component(component: ComponentModel):
+    request_id = str(uuid.uuid4())
     try:
-        config = db.execute(
-            "SELECT components, connections FROM visual_configs WHERE id = :id",
-            {"id": config_id}
-        ).fetchone()
-        if not config:
-            raise ValueError("Config not found")
-        components = json.loads(config["components"])
-        svg = f"""<svg width="400" height="400">
-            <rect x="0" y="0" width="400" height="400" fill="#f0f0f0"/>
-            {"".join(f'<rect x="{c["position"]["x"]}" y="{c["position"]["y"]}" width="50" height="50" fill="#3498db"/><text x="{c["position"]["x"]+10}" y="{c["position"]["y"]+30}" fill="white">{c["title"]}</text>' for c in components)}
-        </svg>"""
-        logger.log(f"Exported SVG diagram for config: {config_id}")
-        return {"svg": svg}
+        if component.type not in ["api_endpoint", "llm_model", "database", "tool", "agent"]:
+            raise HTTPException(status_code=400, detail="Invalid component type")
+        logger.log(f"Validated component: {component.id}", request_id=request_id)
+        return {"status": "valid", "component_id": component.id}
     except Exception as e:
-        logger.log(f"Diagram export error: {str(e)}")
+        logger.log(f"Component validation error: {str(e)}", request_id=request_id)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/connections/create")
+async def create_connection(connection: ConnectionModel, db=Depends(get_db)):
+    request_id = str(uuid.uuid4())
+    try:
+        connection_id = str(uuid.uuid4())
+        connection_data = {
+            "id": connection_id,
+            "from_component": connection.from_component,
+            "to_component": connection.to_component,
+            "type": connection.type,
+            "created_at": datetime.datetime.utcnow().isoformat()
+        }
+        with open(f"resources/connections/{connection_id}.json", "w") as f:
+            json.dump(connection_data, f)
+        logger.log(f"Created connection: {connection_id}", request_id=request_id)
+        return {"status": "created", "connection_id": connection_id}
+    except Exception as e:
+        logger.log(f"Connection creation error: {str(e)}", request_id=request_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/diagram/export")
+async def export_diagram(request: DiagramExportRequest, db=Depends(get_db)):
+    request_id = str(uuid.uuid4())
+    try:
+        fill_color = (
+            "#3498db" if request.style == "default" else
+            "#e74c3c" if request.style == "alert" else "#2ecc71"
+        )
+        svg_content = ['<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">']
+        for component in request.components:
+            x, y = component.position.x, component.position.y
+            svg_content.append(
+                f'<rect x="{x}" y="{y}" width="100" height="50" fill="{fill_color}" stroke="black"/>'
+            )
+            svg_content.append(
+                f'<text x="{x + 10}" y="{y + 30}" fill="white">{component.title}</text>'
+            )
+        for connection in request.connections:
+            from_comp = next(c for c in request.components if c.id == connection.from_component)
+            to_comp = next(c for c in request.components if c.id == connection.to_component)
+            svg_content.append(
+                f'<line x1="{from_comp.position.x + 50}" y1="{from_comp.position.y + 50}" '
+                f'x2="{to_comp.position.x + 50}" y2="{to_comp.position.y + 50}" '
+                f'stroke="white" stroke-width="2"/>'
+            )
+        svg_content.append("</svg>")
+        svg_path = f"resources/svg/diagram_{uuid.uuid4()}.svg"
+        os.makedirs(os.path.dirname(svg_path), exist_ok=True)
+        with open(svg_path, "w") as f:
+            f.write("\n".join(svg_content))
+        logger.log(f"Exported SVG diagram to {svg_path}", request_id=request_id)
+        return {"status": "exported", "svg_path": svg_path}
+    except Exception as e:
+        logger.log(f"Diagram export error: {str(e)}", request_id=request_id)
         raise HTTPException(status_code=500, detail=str(e))
