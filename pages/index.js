@@ -1,171 +1,94 @@
-import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import Head from 'next/head';
-import styles from '../styles/Home.module.css';
+import React, { useState, useEffect } from 'react';
+import { render } from 'react-dom';
+import * as d3 from 'd3';
 
-export default function Home() {
-  const canvasRef = useRef(null);
-  const [gitCommand, setGitCommand] = useState('');
-  const [troubleshootResult, setTroubleshootResult] = useState(null);
-  const [svgStyle, setSvgStyle] = useState('default');
-  const [metrics, setMetrics] = useState(null);
-  const [svgExport, setSvgExport] = useState(null);
+const App = () => {
+  const [diagram, setDiagram] = useState(null);
+  const [task, setTask] = useState('');
+  const [ws, setWs] = useState(null);
 
   useEffect(() => {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    canvasRef.current.appendChild(renderer.domElement);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    camera.position.z = 5;
-
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
-
-    const animate = () => {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
+    const socket = new WebSocket('ws://localhost:8000/mcp/ws');
+    socket.onopen = () => {
+      console.log('WebSocket connected');
+      socket.send(JSON.stringify({
+        token: localStorage.getItem('token')
+      }));
     };
-    animate();
-
-    const ws = new WebSocket('ws://localhost:8000/alchemist/ws');
-    ws.onmessage = (event) => {
+    socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log(`WebSocket message: ${JSON.stringify(data)}`);
-      if (data.result && data.result.steps) {
-        setTroubleshootResult(data.result);
+      if (data.result && data.result.circuit) {
+        setDiagram(data.result.circuit);
       }
+      console.log('WebSocket message:', data);
     };
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ tool: "vial.status.get", params: { vial_id: "vial1" } }));
-    };
+    socket.onerror = (error) => console.error('WebSocket error:', error);
+    setWs(socket);
 
-    const fetchMetrics = async () => {
+    const fetchDiagram = async () => {
       try {
-        const response = await fetch('/api/alchemist/metrics');
+        const response = await fetch('/visual/diagram/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            components: [{ id: '1', type: 'api_endpoint', title: 'API', position: { x: 50, y: 50, z: 0 } }],
+            connections: []
+          })
+        });
         const data = await response.json();
-        setMetrics(data);
+        setDiagram(data.svg_content);
       } catch (error) {
-        console.error('Metrics fetch error:', error);
+        console.error('Error fetching diagram:', error);
       }
     };
-    fetchMetrics();
+    fetchDiagram();
 
-    return () => {
-      renderer.dispose();
-      ws.close();
-    };
+    return () => socket.close();
   }, []);
 
-  const handleTroubleshoot = async () => {
+  const handleTaskSubmit = async () => {
     try {
-      const response = await fetch('/api/alchemist/troubleshoot', {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          tool: task.includes('quantum') ? 'quantum.circuit.build' : 'vial.status.get',
+          params: task.includes('quantum') ? { qubits: 2, gates: ['h', 'cx'] } : { vial_id: 'vial_123' }
+        }));
+      }
+      const response = await fetch('/swarm/task', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'User reported issue' })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ task, context: { user: 'anonymous' } })
       });
-      const result = await response.json();
-      setTroubleshootResult(result);
+      const data = await response.json();
+      console.log('Swarm task result:', data.result);
     } catch (error) {
-      console.error('Troubleshoot error:', error);
-    }
-  };
-
-  const handleGitCommand = async () => {
-    try {
-      const response = await fetch('/api/alchemist/git', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: gitCommand })
-      });
-      const result = await response.json();
-      console.log('Git command result:', result);
-      setGitCommand('');
-    } catch (error) {
-      console.error('Git command error:', error);
-    }
-  };
-
-  const handleExportWallet = async () => {
-    try {
-      const response = await fetch('/api/alchemist/wallet/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: 'test', svg_style: svgStyle })
-      });
-      const result = await response.json();
-      console.log('Wallet export result:', result);
-      setSvgExport(result.resource_path);
-    } catch (error) {
-      console.error('Wallet export error:', error);
-    }
-  };
-
-  const handleSvgDownload = () => {
-    if (svgExport) {
-      const link = document.createElement('a');
-      link.href = `/api/file/${svgExport.split('/').pop()}`;
-      link.download = svgExport.split('/').pop();
-      link.click();
+      console.error('Error submitting task:', error);
     }
   };
 
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Vial MCP Controller</title>
-      </Head>
-      <div className={styles.sidebar}>
-        <h2>Components</h2>
-        <div className={styles.component} draggable>API Endpoint</div>
-        <div className={styles.component} draggable>LLM Model</div>
-        <div className={styles.component} draggable>Database</div>
-        <div className={styles.component} draggable>Tool</div>
-        <div className={styles.component} draggable>Agent</div>
-      </div>
-      <div className={styles.main}>
-        <div className={styles.toolbar}>
-          <button onClick={handleTroubleshoot}>Troubleshoot</button>
-          <button onClick={handleExportWallet}>Export Wallet</button>
-          <button onClick={handleSvgDownload} disabled={!svgExport}>Download SVG</button>
-          <select value={svgStyle} onChange={(e) => setSvgStyle(e.target.value)}>
-            <option value="default">Default</option>
-            <option value="alert">Alert</option>
-            <option value="success">Success</option>
-          </select>
-        </div>
-        <div className={styles.canvas} ref={canvasRef} data-testid="canvas"></div>
-        <textarea
-          className={styles.console}
-          value={gitCommand}
-          onChange={(e) => setGitCommand(e.target.value)}
-          placeholder="Enter Git commands (e.g., git commit -m 'Update')"
+    <div>
+      <h1>Vial MCP Controller</h1>
+      <div>
+        <input
+          type="text"
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+          placeholder="Enter task (e.g., Generate quantum circuit)"
         />
-        {troubleshootResult && (
-          <div className={styles.troubleshoot}>
-            <h3>Troubleshooting Steps</h3>
-            <p>{troubleshootResult.steps}</p>
-            <ul>
-              {troubleshootResult.options.map((option, index) => (
-                <li key={index}>{option}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {metrics && (
-          <div className={styles.metrics}>
-            <h3>Metrics</h3>
-            <p>Tool Calls: {JSON.stringify(metrics.tool_calls)}</p>
-            <p>Average Duration: {JSON.stringify(metrics.avg_duration)}</p>
-          </div>
-        )}
+        <button onClick={handleTaskSubmit}>Submit Task</button>
       </div>
+      {diagram && (
+        <div
+          style={{ width: '100%', height: '500px' }}
+          dangerouslySetInnerHTML={{ __html: diagram }}
+        />
+      )}
     </div>
   );
-}
+};
+
+render(<App />, document.getElementById('root'));
