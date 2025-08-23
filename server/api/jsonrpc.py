@@ -1,51 +1,37 @@
-# server/api/jsonrpc.py
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse
-from server.services.vial_manager import VialManager
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-import logging
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from server.services.mcp_alchemist import Alchemist
+from server.logging import logger
+import uuid
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+
+class JsonRpcRequest(BaseModel):
+    jsonrpc: str = "2.0"
+    method: str
+    params: dict
+    id: str
 
 @router.post("/jsonrpc")
-async def jsonrpc_endpoint(request: Request):
-    """Handle JSON-RPC 2.0 requests for wallet and vial operations."""
+async def jsonrpc_endpoint(request: JsonRpcRequest):
+    request_id = str(uuid.uuid4())
     try:
-        data = await request.json()
-        method = data.get("method")
-        request_id = data.get("id", 1)
-
-        with SessionLocal() as session:
-            if method == "wallet.get_balance":
-                wallet_address = data.get("params", {}).get("address")
-                wallet = session.query(Wallet).filter_by(address=wallet_address).first()
-                if not wallet:
-                    raise HTTPException(status_code=404, detail="Wallet not found")
-                return JSONResponse({
-                    "jsonrpc": "2.0",
-                    "result": {"balance": wallet.balance, "address": wallet.address},
-                    "id": request_id
-                })
-
-            elif method == "vial.train":
-                vial_id = data.get("params", {}).get("vial_id")
-                vial_manager = VialManager()
-                result = await vial_manager.train_vial(vial_id)
-                return JSONResponse({
-                    "jsonrpc": "2.0",
-                    "result": result,
-                    "id": request_id
-                })
-
-            else:
-                raise HTTPException(status_code=400, detail="Method not supported")
-
-    except Exception as e:
-        logger.error(f"JSON-RPC error: {str(e)}")
-        return JSONResponse({
+        if request.jsonrpc != "2.0":
+            raise HTTPException(status_code=400, detail="Invalid JSON-RPC version")
+        alchemist = Alchemist()
+        result = await alchemist.delegate_task(request.method, request.params)
+        logger.info(f"JSON-RPC method {request.method} executed", request_id=request_id)
+        return {
             "jsonrpc": "2.0",
-            "error": {"code": -32600, "message": str(e)},
-            "id": request_id
-        })
+            "result": result,
+            "id": request.id,
+            "request_id": request_id
+        }
+    except Exception as e:
+        logger.error(f"JSON-RPC error: {str(e)}", request_id=request_id)
+        return {
+            "jsonrpc": "2.0",
+            "error": {"code": -32603, "message": str(e)},
+            "id": request.id,
+            "request_id": request_id
+        }
