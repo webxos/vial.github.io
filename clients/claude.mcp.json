@@ -1,0 +1,17 @@
+{
+  "manifest_version": "1.0.0",
+  "client": "claude",
+  "tools": [
+    "llm_generate",
+    "wordpress_create_post",
+    "wordpress_get_posts"
+  ],
+  "auth": {
+    "method": "api_key",
+    "key_env": "ANTHROPIC_API_KEY"
+  },
+  "environment": {
+    "api_endpoint": "${API_ENDPOINT}",
+    "timeout": "${API_TIMEOUT}"
+  }
+}
