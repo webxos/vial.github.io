@@ -1,4 +1,7 @@
-# .gitignore
+# Node.js
+node_modules/
+npm-debug.log
+package-lock.json
 
 # Python
 __pycache__/
@@ -12,30 +15,30 @@ venv/
 dist/
 build/
 
-# Database
+# Sensitive
+.env
 *.db
 *.sqlite3
+secrets/
+credentials/
 
-# Environment variables
-.env
-
-# Logs
+# Build outputs
+.next/
+out/
+dist/
 *.log
 
 # Docker
 *.dockerignore
-docker-compose.override.yml
+Dockerfile.*
 
-# IDEs
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
+# OBS/SVG temporary files
+*.mp4
+*.jpg
+obs_temp/
 
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Node.js
-node_modules/
-npm-debug.log
+# Tauri build outputs
+target/
+*.AppImage
+*.deb
+*.rpm
