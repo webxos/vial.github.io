@@ -1,94 +1,89 @@
-import React, { useState, useEffect } from 'react';
-import { render } from 'react-dom';
-import * as d3 from 'd3';
+import { useState, useEffect } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
+import * as THREE from 'https://unpkg.com/three@0.153.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.153.0/examples/jsm/controls/OrbitControls.js';
+import { create3DComponent, createConnection, setupScene } from '../public/js/threejs_integrations.js';
+import styles from '../styles/Home.module.css';
 
-const App = () => {
-  const [diagram, setDiagram] = useState(null);
+export default function Home() {
+  const { data: session } = useSession();
+  const [walletStatus, setWalletStatus] = useState('Not authenticated');
   const [task, setTask] = useState('');
-  const [ws, setWs] = useState(null);
+  let scene, camera, renderer, components = [];
 
   useEffect(() => {
-    const socket = new WebSocket('ws://localhost:8000/mcp/ws');
-    socket.onopen = () => {
-      console.log('WebSocket connected');
-      socket.send(JSON.stringify({
-        token: localStorage.getItem('token')
-      }));
+    const canvas = document.getElementById('canvas');
+    const { scene: s, camera: c, renderer: r } = setupScene(canvas);
+    scene = s;
+    camera = c;
+    renderer = r;
+
+    const ws = new WebSocket('ws://localhost:8000/mcp/ws');
+    ws.onopen = () => {
+      if (session?.accessToken) {
+        ws.send(JSON.stringify({ token: session.accessToken }));
+      }
     };
-    socket.onmessage = (event) => {
+    ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.result && data.result.circuit) {
-        setDiagram(data.result.circuit);
-      }
-      console.log('WebSocket message:', data);
-    };
-    socket.onerror = (error) => console.error('WebSocket error:', error);
-    setWs(socket);
-
-    const fetchDiagram = async () => {
-      try {
-        const response = await fetch('/visual/diagram/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            components: [{ id: '1', type: 'api_endpoint', title: 'API', position: { x: 50, y: 50, z: 0 } }],
-            connections: []
-          })
+      if (data.result?.circuit) {
+        const component = create3DComponent(scene, {
+          id: data.request_id,
+          type: 'quantum',
+          title: 'Quantum Circuit',
+          position: { x: Math.random() * 4 - 2, y: Math.random() * 4 - 2, z: 0 },
+          svg: data.result.circuit
         });
-        const data = await response.json();
-        setDiagram(data.svg_content);
-      } catch (error) {
-        console.error('Error fetching diagram:', error);
+        components.push(component);
+      }
+      if (data.result?.status) {
+        setWalletStatus(`Balance: ${data.result.balance} WebXOS, Active: ${data.result.active}`);
       }
     };
-    fetchDiagram();
-
-    return () => socket.close();
-  }, []);
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+    return () => ws.close();
+  }, [session]);
 
   const handleTaskSubmit = async () => {
-    try {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          tool: task.includes('quantum') ? 'quantum.circuit.build' : 'vial.status.get',
-          params: task.includes('quantum') ? { qubits: 2, gates: ['h', 'cx'] } : { vial_id: 'vial_123' }
-        }));
-      }
-      const response = await fetch('/swarm/task', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ task, context: { user: 'anonymous' } })
-      });
-      const data = await response.json();
-      console.log('Swarm task result:', data.result);
-    } catch (error) {
-      console.error('Error submitting task:', error);
+    if (!session) {
+      alert('Please sign in');
+      return;
     }
+    const ws = new WebSocket('ws://localhost:8000/mcp/ws');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        token: session.accessToken,
+        tool: task.includes('quantum') ? 'quantum.circuit.build' : 'vial.status.get',
+        params: task.includes('quantum') ? { qubits: 2, gates: ['h', 'cx'] } : { vial_id: 'vial_123' }
+      }));
+    };
   };
 
   return (
-    <div>
-      <h1>Vial MCP Controller</h1>
-      <div>
-        <input
-          type="text"
-          value={task}
-          onChange={(e) => setTask(e.target.value)}
-          placeholder="Enter task (e.g., Generate quantum circuit)"
-        />
-        <button onClick={handleTaskSubmit}>Submit Task</button>
-      </div>
-      {diagram && (
-        <div
-          style={{ width: '100%', height: '500px' }}
-          dangerouslySetInnerHTML={{ __html: diagram }}
-        />
-      )}
+    <div className={styles.container}>
+      <main className={styles.main}>
+        <h1 className={styles.title}>Vial MCP Controller</h1>
+        <div className={styles.controls}>
+          {session ? (
+            <>
+              <p>Signed in as {session.user.name}</p>
+              <button onClick={() => signOut()}>Sign out</button>
+            </>
+          ) : (
+            <button onClick={() => signIn()}>Sign in</button>
+          )}
+          <input
+            type="text"
+            value={task}
+            onChange={(e) => setTask(e.target.value)}
+            placeholder="Enter task (e.g., Generate quantum circuit)"
+            className={styles.input}
+          />
+          <button onClick={handleTaskSubmit} className={styles.button}>Submit Task</button>
+          <p>Wallet: {walletStatus}</p>
+        </div>
+        <canvas id="canvas" className={styles.canvas}></canvas>
+      </main>
     </div>
   );
-};
-
-render(<App />, document.getElementById('root'));
+}
