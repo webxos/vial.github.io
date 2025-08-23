@@ -1,27 +1,27 @@
-name: Linting
-
+name: Vial MCP Linting
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
-
+    branches: [ main ]
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
-
-      - name: Install dependencies
+          python-version: '3.11'
+      - name: Install Python dependencies
         run: pip install flake8
-
-      - name: Run linting
-        run: flake8 . --max-line-length=88 --extend-ignore=E203
+      - name: Run Flake8
+        run: flake8 . --max-line-length=120 --extend-ignore=E203,W503
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install JavaScript dependencies
+        run: npm install eslint
+      - name: Run ESLint
+        run: npx eslint pages/ public/js/
