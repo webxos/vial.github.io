@@ -1,19 +1,18 @@
 name: Publish to PyPI
 on:
   release:
-    types: [ published ]
+    types: [published]
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: |
-          pip install build twine
+        run: pip install build twine
       - name: Build package
         run: python -m build
       - name: Publish to PyPI
@@ -21,3 +20,16 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: python -m twine upload dist/*
+      - name: Verify package
+        run: pip install vial-mcp --no-cache-dir
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'PyPI publish failed! Check logs.'
+            })
