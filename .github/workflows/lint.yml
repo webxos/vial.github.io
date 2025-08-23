@@ -1,27 +1,30 @@
-name: Vial MCP Linting
+name: Linting
 on:
   push:
-    branches: [ main ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main, develop]
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install Node.js dependencies
+        run: |
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+          npm install
+          npm ci --omit=dev
       - name: Install Python dependencies
         run: pip install flake8
-      - name: Run Flake8
-        run: flake8 . --max-line-length=120 --extend-ignore=E203,W503
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - name: Install JavaScript dependencies
-        run: npm install eslint
       - name: Run ESLint
-        run: npx eslint pages/ public/js/
+        run: npx eslint public/js/ src/tools/
+      - name: Run Flake8
+        run: flake8 server/ --max-line-length=88
