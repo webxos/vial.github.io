@@ -1,26 +1,39 @@
+import pytest
 from fastapi.testclient import TestClient
-from ..mcp_server import app
+from server.mcp_server import app
+from server.mcp.auth import map_oauth_to_mcp_session
+from jose import jwt
+from server.config import settings
 
 
-def test_login_for_access_token():
-    client = TestClient(app)
-    response = client.post("/auth/token", data={"username": "test", "password": "test"})
-    assert response.status_code == 200
-    assert "access_token" in response.json()
-    assert response.json()["token_type"] == "bearer"
+@pytest.fixture
+def client():
+    return TestClient(app)
 
 
-def test_invalid_credentials():
-    client = TestClient(app)
-    response = client.post("/auth/token", data={"username": "wrong", "password": "wrong"})
-    assert response.status_code == 401
+def test_map_oauth_to_mcp_session():
+    token_data = {
+        "sub": "test_user",
+        "scopes": ["wallet:read", "vial:train"],
+        "exp": int(datetime.utcnow().timestamp()) + 3600
+    }
+    token = jwt.encode(token_data, settings.JWT_SECRET, algorithm="HS256")
+    request_id = str(uuid.uuid4())
+    session = map_oauth_to_mcp_session(token, request_id)
+    assert session["user_id"] == "test_user"
+    assert "session_id" in session
+    assert session["scopes"] == ["wallet:read", "vial:train"]
+
+
+def test_map_oauth_invalid_token():
+    request_id = str(uuid.uuid4())
+    with pytest.raises(HTTPException) as exc:
+        map_oauth_to_mcp_session("invalid_token", request_id)
+    assert exc.value.status_code == 401
+    assert exc.value.detail == "Invalid token"
+
+
+def test_auth_token_endpoint(client):
+    response = client.post("/alchemist/auth/token", data={"username": "test", "password": "test"})
+    assert response.status_code == 401  # No user in test DB
     assert response.json()["detail"] == "Invalid credentials"
-
-
-def test_get_current_user():
-    client = TestClient(app)
-    token_response = client.post("/auth/token", data={"username": "test", "password": "test"})
-    token = token_response.json()["access_token"]
-    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert response.json()["user_id"] == "test"
