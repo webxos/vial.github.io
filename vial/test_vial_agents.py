@@ -1,34 +1,38 @@
 import pytest
-from unittest.mock import patch
-from server.services.mcp_alchemist import Alchemist
-from server.webxos_wallet import WebXOSWallet
+from server.services.agent_tasks import AgentTasks
+from server.logging_config import logger
+import uuid
 
 @pytest.fixture
-def alchemist():
-    return Alchemist()
+def agent_tasks():
+    return AgentTasks()
 
-@pytest.fixture
-def wallet():
-    return WebXOSWallet()
 
-def test_train_vial(alchemist):
-    network_id = "54965687-3871-4f3d-a803-ac9840af87c4"
-    vial_id = "vial1"
-    result = alchemist.train_vial({"vial_id": vial_id, "network_id": network_id}, str(uuid.uuid4()))
+@pytest.mark.asyncio
+async def test_create_agent(agent_tasks):
+    request_id = str(uuid.uuid4())
+    params = {"vial_id": "vial1", "x_position": 10}
+    result = await agent_tasks.execute_task("create_agent", params, request_id)
+    assert result["status"] == "success"
+    assert result["vial_id"] == "vial1"
+    logger.info(f"Create agent test passed", request_id=request_id)
+
+
+@pytest.mark.asyncio
+async def test_execute_svg_task(agent_tasks):
+    request_id = str(uuid.uuid4())
+    task = {"task_name": "create_endpoint", "params": {"vial_id": "vial2", "endpoint": "/v1/test"}}
+    result = await agent_tasks.execute_svg_task(task, request_id)
+    assert result["status"] == "success"
+    assert result["endpoint"] == "/v1/test"
+    logger.info(f"Execute SVG task test passed", request_id=request_id)
+
+
+@pytest.mark.asyncio
+async def test_train_model(agent_tasks):
+    request_id = str(uuid.uuid4())
+    params = {"vial_id": "vial3", "epochs": 10}
+    result = await agent_tasks.execute_task("train_model", params, request_id)
     assert result["status"] == "trained"
-    assert "request_id" in result
-
-def test_coordinate_agents(alchemist, wallet):
-    network_id = "54965687-3871-4f3d-a803-ac9840af87c4"
-    wallet.import_wallet("""
-# Vial Wallet Export
-**Timestamp**: 2025-08-23T01:21:00Z
-**User ID**: 54965687-3871-4f3d-a803-ac9840af87c4
-**Wallet Address**: 54965687-3871-4f3d-a803-ac9840af87c4
-**Balance**: 764.0000 $WEBXOS
-**Vials**: vial1, vial2, vial3, vial4
-""")
-    result = alchemist.coordinate_agents({"network_id": network_id}, str(uuid.uuid4()))
-    assert result["status"] == "coordinated"
-    assert len(result["results"]) == 4
-    assert "request_id" in result
+    assert "accuracy" in result
+    logger.info(f"Train model test passed", request_id=request_id)
