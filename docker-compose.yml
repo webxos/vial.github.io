@@ -1,45 +1,49 @@
-import os
-import logging
-from typing import Optional
-from pydantic import BaseModel
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.kdf.argon2 import Argon2ID
-from cryptography.exceptions import InvalidKey
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-logger = logging.getLogger(__name__)
-
-class EncryptionParams(BaseModel):
-    data: bytes
-    key: Optional[bytes] = None
-    iv: Optional[bytes] = None
-
-class CryptoEngine:
-    def __init__(self):
-        self.key_derivator = Argon2ID(salt=os.urandom(16), memory_cost=65536, time_cost=3, parallelism=4)
-
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
-    def encrypt(self, params: EncryptionParams) -> EncryptionParams:
-        """Encrypt data with AES-256-GCM, derive key with Argon2id."""
-        try:
-            if not params.key:
-                params.key = self.key_derivator.derive(os.getenv("ENCRYPTION_SECRET", "").encode())
-            if not params.iv:
-                params.iv = os.urandom(12)
-            cipher = Cipher(algorithms.AES(params.key), modes.GCM(params.iv))
-            encryptor = cipher.encryptor()
-            ciphertext = encryptor.update(params.data) + encryptor.finalize()
-            return EncryptionParams(data=ciphertext, key=params.key, iv=params.iv)
-        except InvalidKey as e:
-            logger.error(f"Encryption failed: {str(e)}")
-            raise
-
-    def decrypt(self, params: EncryptionParams) -> bytes:
-        """Decrypt AES-256-GCM encrypted data."""
-        try:
-            cipher = Cipher(algorithms.AES(params.key), modes.GCM(params.iv))
-            decryptor = cipher.decryptor()
-            return decryptor.update(params.data) + decryptor.finalize()
-        except InvalidKey as e:
-            logger.error(f"Decryption failed: {str(e)}")
-            raise
+version: '3.8'
+services:
+  backend:
+    build: ../server
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  frontend:
+    build: ../public
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=vial_mcp
+    ports:
+      - "5432:5432"
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+networks:
+  vial_network:
+    driver: bridge
+volumes:
+  postgres_data:
+  mongo_data:
