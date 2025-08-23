@@ -1,38 +1,48 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import * as THREE from 'https://unpkg.com/three@0.153.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.153.0/examples/jsm/controls/OrbitControls.js';
 
-export function setupThreeJsCanvas(canvasElement, components = []) {
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: canvasElement });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  camera.position.z = 5;
-
-  components.forEach(comp => {
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshBasicMaterial({ color: comp.color || 0x00ff00 });
+export function create3DComponent(scene, componentData) {
+    const { id, type, title, position, svg } = componentData;
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(comp.position?.x || 0, comp.position?.y || 0, comp.position?.z || 0);
+    mesh.position.set(position.x || 0, position.y || 0, position.z || 0);
+    mesh.userData = { id, type, title, svg };
     scene.add(mesh);
-  });
+    return mesh;
+}
 
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  animate();
+export function updateComponentPosition(mesh, x, y, z) {
+    mesh.position.set(x, y, z);
+}
 
-  return {
-    addComponent: (comp) => {
-      const geometry = new THREE.BoxGeometry();
-      const material = new THREE.MeshBasicMaterial({ color: comp.color || 0x00ff00 });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(comp.position?.x || 0, comp.position?.y || 0, comp.position?.z || 0);
-      scene.add(mesh);
-    },
-    dispose: () => renderer.dispose()
-  };
+export function createConnection(scene, source, target, type) {
+    const material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+    const points = [
+        source.position,
+        target.position
+    ];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geometry, material);
+    line.userData = { type };
+    scene.add(line);
+    return line;
+}
+
+export function setupScene(canvas) {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 600, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas });
+    renderer.setSize(window.innerWidth, 600);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    camera.position.z = 5;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+    return { scene, camera, renderer };
 }
