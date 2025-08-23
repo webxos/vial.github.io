@@ -1,32 +1,28 @@
-# Dockerfile.final
-FROM python:3.11-slim
-
+# Build stage
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs npm git && \
+    rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json .npmrc ./
+RUN echo "registry=https://registry.npmjs.org/" > .npmrc && \
+    npm install && npm ci --omit=dev
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
 COPY server/ ./server/
-COPY scripts/ ./scripts/
+RUN pip install flake8 bandit safety && \
+    flake8 server/ --max-line-length=88 && \
+    bandit -r server/ -f json && \
+    safety check -r requirements.txt
 
-# Environment variables
-ENV PYTHONUNBUFFERED=1
-ENV SQLALCHEMY_DATABASE_URL=postgresql://user:password@host:5432/vial
-ENV REDIS_HOST=redis
-ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
-ENV SECRET_KEY=your-secret-key-here
-ENV REPUTATION_LOGGING_ENABLED=true
-ENV API_PORT=8000
-
-# Expose ports
+# Runtime stage
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /app /app
 EXPOSE 8000
-
-# Command to run the application
-CMD ["uvicorn", "server.mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PYTHONUNBUFFERED=1
+HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1
+# Placeholder: OBS/SVG video and Tauri support
+# RUN npm install obs-websocket-js
+# COPY scripts/setup_tauri.sh .
+CMD ["uvicorn", "server.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
