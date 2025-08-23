@@ -1,50 +1,31 @@
-# Dockerfile
-FROM python:3.11-slim
-
+# Stage 1: Build backend
+FROM python:3.11-slim AS backend-builder
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    nodejs \
-    npm \
-    docker.io \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Vercel CLI and docker-compose
-RUN npm install -g vercel@latest
-RUN npm install -g next@14.2.3 react@18.2.0 react-dom@18.2.0 @next-auth/prisma-adapter@1.0.7 ethers@6.13.2
-RUN pip install docker-compose==1.29.2
-
-# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+COPY server/ ./server/
+COPY vial/ ./vial/
 
-# Install frontend dependencies
+# Stage 2: Build frontend
+FROM node:18-slim AS frontend-builder
+WORKDIR /app
+COPY package.json .
 COPY public/ ./public/
 COPY pages/ ./pages/
-COPY vercel.json .
-RUN npm install --prefix public/ three
+COPY styles/ ./styles/
+RUN npm install && npm run build
 
-# Copy application code
-COPY server/ ./server/
+# Stage 3: Final image
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=backend-builder /app /app
+COPY --from=backend-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=frontend-builder /app/.next ./.next
+COPY --from=frontend-builder /app/node_modules ./node_modules
+COPY --from=frontend-builder /app/package.json ./package.json
 COPY scripts/ ./scripts/
-COPY public/js/threejs_integrations.js ./public/js/threejs_integrations.js
 COPY public/index.html ./public/index.html
-
-# Environment variables
-ENV PYTHONUNBUFFERED=1
-ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
-ENV REDIS_HOST=redis
-ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
-ENV SECRET_KEY=your-secret-key-here
-ENV REPUTATION_LOGGING_ENABLED=true
-ENV API_PORT=8000
-ENV VERCEL_TOKEN=your-vercel-token-here
-
-# Expose ports
-EXPOSE 8000
-
-# Command to run the application
-CMD ["sh", "-c", "uvicorn server.mcp_server:app --host 0.0.0.0 --port ${API_PORT} & vercel dev --token ${VERCEL_TOKEN}"]
+ENV PYTHONPATH=/app
+ENV PORT=3000
+EXPOSE 3000 8000 9090
+CMD ["sh", "-c", "uvicorn server.mcp_server:app --host 0.0.0.0 --port 8000 & npm start"]
