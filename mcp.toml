@@ -1,23 +1,39 @@
-[server]
-name = "mcp-alchemist"
-version = "2.9.3"
-endpoint = "ws://localhost:8000/alchemist/ws"
-stdio_command = "python -m server.mcp_server"
-
 [tools]
-vial_status_get = { name = "vial.status.get", description = "Get status of a vial by ID", handler = "server.services.mcp_alchemist" }
-vial_config_generate = { name = "vial.config.generate", description = "Generate visual config from prompt", handler = "server.services.mcp_alchemist" }
-deploy_vercel = { name = "deploy.vercel", description = "Deploy to Vercel with config", handler = "server.services.mcp_alchemist" }
-git_commit_push = { name = "git.commit.push", description = "Commit code to GitHub", handler = "server.services.mcp_alchemist" }
-quantum_circuit_build = { name = "quantum.circuit.build", description = "Build quantum circuit from components", handler = "server.services.mcp_alchemist" }
+# Existing tools...
+vial_status = { name = "vial.status", description = "Get vial status", handler = "server.services.vial_manager" }
+config_generate = { name = "config.generate", description = "Generate config", handler = "server.services.config" }
+deploy_vercel = { name = "deploy.vercel", description = "Deploy to Vercel", handler = "server.services.vercel" }
+git_commit = { name = "git.commit", description = "Git commit (allowlisted)", handler = "server.services.git_ops" }
+quantum_sync = { name = "quantum.sync", description = "Sync quantum state", handler = "server.quantum.qiskit_engine" }
+job_submit = { name = "job.submit", description = "Submit job", handler = "server.services.jobs" }
+job_status = { name = "job.status", description = "Get job status", handler = "server.services.jobs" }
 
-[resources]
-backup_dir = "resources/backups"
-svg_dir = "resources/svg"
-code_dir = "resources/code"
-connections_dir = "resources/connections"
+# WordPress tools
+wordpress_create_post = { name = "wordpress.post.create", description = "Create WordPress post", handler = "server.wordpress.tools.posts" }
+wordpress_update_post = { name = "wordpress.post.update", description = "Update WordPress post", handler = "server.wordpress.tools.posts" }
+wordpress_get_posts = { name = "wordpress.post.get", description = "Get WordPress posts", handler = "server.wordpress.tools.posts" }
+wordpress_create_page = { name = "wordpress.page.create", description = "Create WordPress page", handler = "server.wordpress.tools.pages" }
+wordpress_update_page = { name = "wordpress.page.update", description = "Update WordPress page", handler = "server.wordpress.tools.pages" }
+wordpress_get_pages = { name = "wordpress.page.get", description = "Get WordPress pages", handler = "server.wordpress.tools.pages" }
+wordpress_create_user = { name = "wordpress.user.create", description = "Create WordPress user", handler = "server.wordpress.tools.users" }
+wordpress_update_user = { name = "wordpress.user.update", description = "Update WordPress user", handler = "server.wordpress.tools.users" }
+wordpress_get_users = { name = "wordpress.user.get", description = "Get WordPress users", handler = "server.wordpress.tools.users" }
+wordpress_delete_user = { name = "wordpress.user.delete", description = "Delete WordPress user", handler = "server.wordpress.tools.users" }
+wordpress_upload_media = { name = "wordpress.media.upload", description = "Upload WordPress media", handler = "server.wordpress.tools.media" }
+wordpress_get_media = { name = "wordpress.media.get", description = "Get WordPress media", handler = "server.wordpress.tools.media" }
+wordpress_delete_media = { name = "wordpress.media.delete", description = "Delete WordPress media", handler = "server.wordpress.tools.media" }
+wordpress_install_plugin = { name = "wordpress.plugin.install", description = "Install WordPress plugin", handler = "server.wordpress.tools.plugins" }
+wordpress_activate_plugin = { name = "wordpress.plugin.activate", description = "Activate WordPress plugin", handler = "server.wordpress.tools.plugins" }
+wordpress_deactivate_plugin = { name = "wordpress.plugin.deactivate", description = "Deactivate WordPress plugin", handler = "server.wordpress.tools.plugins" }
+wordpress_uninstall_plugin = { name = "wordpress.plugin.uninstall", description = "Uninstall WordPress plugin", handler = "server.wordpress.tools.plugins" }
+wordpress_get_plugins = { name = "wordpress.plugin.get", description = "Get WordPress plugins", handler = "server.wordpress.tools.plugins" }
+wordpress_install_theme = { name = "wordpress.theme.install", description = "Install WordPress theme", handler = "server.wordpress.tools.themes" }
+wordpress_activate_theme = { name = "wordpress.theme.activate", description = "Activate WordPress theme", handler = "server.wordpress.tools.themes" }
+wordpress_uninstall_theme = { name = "wordpress.theme.uninstall", description = "Uninstall WordPress theme", handler = "server.wordpress.tools.themes" }
+wordpress_get_themes = { name = "wordpress.theme.get", description = "Get WordPress themes", handler = "server.wordpress.tools.themes" }
 
-[auth]
-method = "oauth2"
-token_url = "/alchemist/auth/token"
-scopes = ["wallet:read", "wallet:export", "git:push", "vercel:deploy", "vial:train", "ops:troubleshoot", "quantum:circuit"]
+[auth.wordpress]
+method = "application_password"
+base_url = "${WORDPRESS_BASE_URL}"
+username = "${WORDPRESS_USERNAME}"
+password = "${WORDPRESS_APP_PASSWORD}"
