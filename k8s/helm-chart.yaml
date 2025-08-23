@@ -1,0 +1,61 @@
+apiVersion: v2
+name: vial-mcp
+description: Helm chart for Vial MCP Server
+version: 0.1.0
+appVersion: 1.0.0
+
+templates:
+  deployment.yaml:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: vial-mcp
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: vial-mcp
+      template:
+        metadata:
+          labels:
+            app: vial-mcp
+        spec:
+          containers:
+          - name: mcp-server
+            image: vial/mcp-server:latest
+            ports:
+            - containerPort: 8000
+            envFrom:
+            - configMapRef:
+                name: vial-mcp-config
+  service.yaml:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: vial-mcp
+    spec:
+      selector:
+        app: vial-mcp
+      ports:
+      - port: 80
+        targetPort: 8000
+      type: LoadBalancer
+  hpa.yaml:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: vial-mcp
+    spec:
+      scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: vial-mcp
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 70
