@@ -10,6 +10,7 @@ export default function Home() {
   const [troubleshootResult, setTroubleshootResult] = useState(null);
   const [svgStyle, setSvgStyle] = useState('default');
   const [metrics, setMetrics] = useState(null);
+  const [svgExport, setSvgExport] = useState(null);
 
   useEffect(() => {
     const scene = new THREE.Scene();
@@ -37,6 +38,9 @@ export default function Home() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log(`WebSocket message: ${JSON.stringify(data)}`);
+      if (data.result && data.result.steps) {
+        setTroubleshootResult(data.result);
+      }
     };
     ws.onopen = () => {
       ws.send(JSON.stringify({ tool: "vial.status.get", params: { vial_id: "vial1" } }));
@@ -97,8 +101,18 @@ export default function Home() {
       });
       const result = await response.json();
       console.log('Wallet export result:', result);
+      setSvgExport(result.resource_path);
     } catch (error) {
       console.error('Wallet export error:', error);
+    }
+  };
+
+  const handleSvgDownload = () => {
+    if (svgExport) {
+      const link = document.createElement('a');
+      link.href = `/api/file/${svgExport.split('/').pop()}`;
+      link.download = svgExport.split('/').pop();
+      link.click();
     }
   };
 
@@ -119,6 +133,7 @@ export default function Home() {
         <div className={styles.toolbar}>
           <button onClick={handleTroubleshoot}>Troubleshoot</button>
           <button onClick={handleExportWallet}>Export Wallet</button>
+          <button onClick={handleSvgDownload} disabled={!svgExport}>Download SVG</button>
           <select value={svgStyle} onChange={(e) => setSvgStyle(e.target.value)}>
             <option value="default">Default</option>
             <option value="alert">Alert</option>
@@ -146,8 +161,8 @@ export default function Home() {
         {metrics && (
           <div className={styles.metrics}>
             <h3>Metrics</h3>
-            <p>Tool Calls: {metrics.tool_calls}</p>
-            <p>Average Duration: {metrics.avg_duration} seconds</p>
+            <p>Tool Calls: {JSON.stringify(metrics.tool_calls)}</p>
+            <p>Average Duration: {JSON.stringify(metrics.avg_duration)}</p>
           </div>
         )}
       </div>
