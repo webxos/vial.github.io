@@ -1,39 +1,41 @@
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, Depends, HTTPException
+from server.services.mcp_alchemist import Alchemist
+from server.api.mcp_tools import MCPTools
 from server.logging import logger
+from server.mcp.auth import oauth2_scheme
 import json
+import uuid
+
 
 router = APIRouter()
-connected_clients = []
 
 
-async def broadcast_message(message: str):
-    for client in connected_clients:
-        try:
-            await client.send_json({"message": message})
-        except Exception as e:
-            logger.log(f"Broadcast error: {str(e)}")
-            connected_clients.remove(client)
-
-
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    connected_clients.append(websocket)
+@router.websocket("/mcp/ws")
+async def websocket_endpoint(websocket: WebSocket, token: str = Depends(oauth2_scheme)):
+    request_id = str(uuid.uuid4())
     try:
+        await websocket.accept()
+        from server.mcp.auth import map_oauth_to_mcp_session
+        await map_oauth_to_mcp_session(token, request_id)
+        alchemist = Alchemist()
+
         while True:
-            data = await websocket.receive_json()
-            vial_id = data.get("vial_id")
-            message = data.get("message")
-            if vial_id and message:
-                await broadcast_message(f"{vial_id}: {message}")
-                logger.log(f"WebSocket message from {vial_id}: {message}")
-                await websocket.send_json({
-                    "status": "sent",
-                    "vial_id": vial_id
-                })
-            else:
-                await websocket.send_json({"error": "Invalid data"})
+            data = await websocket.receive_text()
+            request = json.loads(data)
+            tool_name = request.get("tool")
+            params = request.get("params", {})
+            result = await MCPTools.execute_tool(tool_name, params)
+            await websocket.send_text(json.dumps({
+                "status": "success",
+                "result": result,
+                "request_id": request_id
+            }))
+            logger.log(f"WebSocket MCP tool executed: {tool_name}", request_id=request_id)
     except Exception as e:
-        logger.log(f"WebSocket error: {str(e)}")
-        connected_clients.remove(websocket)
+        logger.log(f"WebSocket error: {str(e)}", request_id=request_id)
+        await websocket.send_text(json.dumps({
+            "status": "error",
+            "detail": str(e),
+            "request_id": request_id
+        }))
         await websocket.close()
