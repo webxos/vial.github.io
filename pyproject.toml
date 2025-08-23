@@ -26,5 +26,11 @@ dependencies = [
     "uvloop>=0.19.0",
     "langchain>=0.2.0",
     "langchain-anthropic>=0.1.0",
-    "langchain-community>=0.2.0"
+    "langchain-community>=0.2.0",
+    "typer>=0.12.0",
+    "openai-swarm>=0.1.0",
+    "pymongo>=4.6.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0"
 ]
