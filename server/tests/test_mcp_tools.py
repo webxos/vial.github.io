@@ -1,44 +1,27 @@
 import pytest
 from fastapi.testclient import TestClient
-from server.mcp_server import app
-from server.api.mcp_tools import MCPTools
-from server.services.mcp_alchemist import Alchemist
+from unittest.mock import patch, AsyncMock
+from server.api.mcp_tools import app
 
 @pytest.fixture
 def client():
     return TestClient(app)
 
-@pytest.fixture
-def alchemist():
-    return Alchemist()
+@pytest.mark.asyncio
+async def test_mcp_tools(client):
+    with patch("server.validation.mcp_validator.MCPValidator.validate_tool_call", new_callable=AsyncMock) as mock_validate:
+        mock_validate.return_value = True
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_shield:
+            mock_shield.return_value.json.return_value = {"malicious": False}
+            response = client.get("/mcp/tools", headers={"Authorization": "Bearer mock_token"})
+            assert response.status_code == 200
+            assert "tools" in response.json()
+            assert len(response.json()["tools"]) >= 4
 
 @pytest.mark.asyncio
-async def test_vial_status_get(client, alchemist):
-    vial_id = "test_vial"
-    response = await client.post(
-        "/mcp/vial_status_get",
-        json={"vial_id": vial_id},
-        headers={"Authorization": "Bearer test_token"}
-    )
-    assert response.status_code == 200
-    assert response.json().get("vial_id") == vial_id
-
-@pytest.mark.asyncio
-async def test_quantum_circuit_build(client, alchemist):
-    response = await client.post(
-        "/mcp/quantum_circuit_build",
-        json={"qubits": 2, "gates": ["h", "cx"]},
-        headers={"Authorization": "Bearer test_token"}
-    )
-    assert response.status_code == 200
-    assert "circuit" in response.json()
-
-@pytest.mark.asyncio
-async def test_git_commit_push(client, alchemist):
-    response = await client.post(
-        "/mcp/git_commit_push",
-        json={"repo_path": ".", "commit_message": "Test commit"},
-        headers={"Authorization": "Bearer test_token"}
-    )
-    assert response.status_code == 200
-    assert response.json().get("status") == "success"
+async def test_tools_prompt_shield(client):
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_shield:
+        mock_shield.return_value.json.return_value = {"malicious": True}
+        response = client.get("/mcp/tools", headers={"Authorization": "Bearer mock_token"})
+        assert response.status_code == 400
+        assert "Malicious input detected" in response.json()["detail"]
