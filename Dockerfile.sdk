@@ -1,26 +1,25 @@
-# Dockerfile.sdk
-FROM python:3.11-slim
-
+# Build stage
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt httpx==0.27.0
-
-# Copy SDK code
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs npm git && \
+    rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json .npmrc ./
+RUN echo "registry=https://registry.npmjs.org/" > .npmrc && \
+    npm install @modelcontextprotocol/sdk@1.17.4 && \
+    npm ci --omit=dev
+COPY requirements-sdk.txt .
+RUN pip install --no-cache-dir -r requirements-sdk.txt
 COPY server/sdk/ ./server/sdk/
+RUN pip install flake8 bandit && \
+    flake8 server/sdk/ --max-line-length=88 && \
+    bandit -r server/sdk/ -f json
 
-# Environment variables
+# Runtime stage
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /app /app
 ENV PYTHONUNBUFFERED=1
-ENV SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
-ENV WEBXOS_WALLET_ADDRESS=e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d
-ENV SECRET_KEY=your-secret-key-here
-ENV API_PORT=8000
-
-# Command to run the SDK
-CMD ["python", "server/sdk/vial_sdk.py"]
+# Placeholder: OBS/SVG SDK for video tools
+# RUN npm install obs-websocket-js
+CMD ["python", "-m", "server.sdk.main"]
