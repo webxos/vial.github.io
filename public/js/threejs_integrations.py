@@ -19,8 +19,8 @@ export function updateComponentPosition(mesh, x, y, z) {
 export function createConnection(scene, source, target, type) {
     const material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
     const points = [
-        source.position,
-        target.position
+        new THREE.Vector3(source.position.x, source.position.y, source.position.z),
+        new THREE.Vector3(target.position.x, target.position.y, target.position.z)
     ];
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const line = new THREE.Line(geometry, material);
@@ -44,5 +44,10 @@ export function setupScene(canvas) {
     }
 
     animate();
-    return { scene, camera, renderer };
+    return {
+        scene,
+        camera,
+        renderer,
+        dispose: () => renderer.dispose()
+    };
 }
