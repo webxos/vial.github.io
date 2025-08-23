@@ -1,0 +1,51 @@
+mcp_alchemist:
+  version: 1.0.0
+  roles:
+    - name: Coordinator
+      description: Manages vial agent tasks and global commands
+      capabilities:
+        - task_orchestration
+        - git_integration
+        - langgraph_execution
+      tags: [coordinator, orchestration, {{network_id}}]
+    - name: Trainer
+      description: Trains vial agents using PyTorch/TensorFlow
+      capabilities:
+        - model_training
+        - data_processing
+      tags: [trainer, ml, {{vial_id}}]
+    - name: QuantumProcessor
+      description: Handles quantum circuit tasks with Qiskit
+      capabilities:
+        - quantum_computing
+        - circuit_design
+      tags: [quantum, qiskit, {{network_id}}]
+  global_commands:
+    - command: sync_agents
+      description: Synchronizes all vial agents for a network
+      params:
+        network_id: "{{network_id}}"
+      endpoint: /v1/jsonrpc
+      method: agent_coord
+    - command: train_all
+      description: Trains all vial agents
+      params:
+        network_id: "{{network_id}}"
+        vials: [vial1, vial2, vial3, vial4]
+      endpoint: /v1/jsonrpc
+      method: vial_train
+  mongodb:
+    uri: "{{MONGO_URI}}"
+    database: vial_mcp
+    collections:
+      - pretrained_prompts
+      - agent_logs
+  svg_ui:
+    enabled: true
+    components:
+      - type: vial_node
+        template: "{{vial_id}}_node"
+        attributes:
+          x: "{{x_position}}"
+          y: "{{y_position}}"
+          color: "#00ff00"
