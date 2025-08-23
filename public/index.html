@@ -1,118 +1,165 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vial MCP Controller</title>
-    <style>
-        body {
-            background: black;
-            color: #00ff00;
-            font-family: monospace;
-            margin: 0;
-            padding: 20px;
-        }
-        #console-output {
-            height: 200px;
-            overflow-y: scroll;
-            border: 1px solid #00ff00;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-        #console-input {
-            background: #111;
-            color: #00ff00;
-            border: 1px solid #00ff00;
-            width: 100%;
-            padding: 5px;
-        }
-        button {
-            background: #00ff00;
-            color: black;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        #balance-reputation {
-            margin: 10px 0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vial MCP Controller</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #ffffff;
+    }
+    #root {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .console {
+      background-color: #2d2d2d;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 20px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    .console p {
+      margin: 0;
+      color: #00ff00;
+    }
+    .balance {
+      font-size: 1.2em;
+      color: #00cc00;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      color: #fff;
+    }
+    .modal-content button {
+      background-color: #00cc00;
+      border: none;
+      padding: 10px;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .button-group button {
+      background-color: #444;
+      border: 1px solid #666;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .button-group button:hover {
+      background-color: #00cc00;
+    }
+    canvas {
+      width: 100%;
+      max-width: 800px;
+      height: 400px;
+      border: 1px solid #444;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Vial MCP Controller</h1>
-    <div id="console-output">Vial MCP Controller initialized. Use /help for commands.</div>
-    <div id="balance-reputation">$WEBXOS Balance: 0.0000 | Reputation: 0</div>
-    <input id="console-input" type="text" placeholder="Enter command (e.g., /import wallet.md)">
-    <div>
-        <button onclick="executeCommand()">Execute</button>
-        <button onclick="importWallet()">Import</button>
-        <button onclick="exportWallet()">Export</button>
-        <button onclick="gitCommand()">Git Commit</button>
-        <button onclick="showHelp()">Help</button>
+  <div id="root">
+    <h1 class="text-3xl font-bold mb-4">Vial MCP Controller</h1>
+    <div class="console">
+      <p>Vial MCP Controller initialized. Use /help for API commands.</p>
+      <p class="balance">$WEBXOS Balance: 0.0000 | Reputation: 0</p>
     </div>
-    <script>
-        async function executeCommand() {
-            const input = document.getElementById('console-input').value;
-            const output = document.getElementById('console-output');
-            if (input.startsWith('/import')) {
-                importWallet(input.split(' ')[1]);
-            } else if (input.startsWith('/git')) {
-                gitCommand(input.split(' ').slice(1).join(' '));
-            } else {
-                const response = await fetch('/api/console', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: input })
-                });
-                const data = await response.json();
-                output.innerHTML += `<p>${data.result}</p>`;
-            }
-        }
-
-        async function importWallet(file = null) {
-            const output = document.getElementById('console-output');
-            const fileInput = file || prompt('Enter .md file path');
-            const response = await fetch('/api/wallet/import', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ file: fileInput })
-            });
-            const data = await response.json();
-            output.innerHTML += `<p>Imported wallet: ${data.network_id}</p>`;
-            updateBalanceReputation(data);
-        }
-
-        async function exportWallet() {
-            const output = document.getElementById('console-output');
-            const response = await fetch('/api/wallet/export', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-            });
-            const data = await response.json();
-            output.innerHTML += `<p>Exported wallet: ${data.file}</p>`;
-        }
-
-        async function gitCommand(command = 'commit -m "Update"') {
-            const output = document.getElementById('console-output');
-            const response = await fetch('/api/git', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                body: JSON.stringify({ command })
-            });
-            const data = await response.json();
-            output.innerHTML += `<p>Git: ${data.result}</p>`;
-        }
-
-        function updateBalanceReputation(data) {
-            const balanceReputation = document.getElementById('balance-reputation');
-            balanceReputation.innerHTML = `$WEBXOS Balance: ${data.balance} | Reputation: ${data.reputation}`;
-        }
-
-        function showHelp() {
-            const output = document.getElementById('console-output');
-            output.innerHTML += `<p>Commands: /import <file>, /git <command>, /help</p>`;
-        }
-    </script>
+    <div class="button-group">
+      <button onclick="openModal()">API Access</button>
+      <button onclick="authenticate()">Authenticate</button>
+      <button onclick="voidAction()">Void</button>
+      <button onclick="troubleshoot()">Troubleshoot</button>
+      <button onclick="quantumLink()">Quantum Link</button>
+      <button onclick="exportWallet()">Export</button>
+      <button onclick="importWallet()">Import</button>
+    </div>
+    <canvas id="three-canvas"></canvas>
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h2>API Access Credentials</h2>
+        <button onclick="generateCredentials()">Generate New Credentials</button>
+        <button onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import { setupScene } from '/js/threejs_integrations.js';
+    const canvas = document.getElementById('three-canvas');
+    if (canvas) setupScene(canvas);
+    function openModal() {
+      document.getElementById('modal').style.display = 'flex';
+    }
+    function closeModal() {
+      document.getElementById('modal').style.display = 'none';
+    }
+    async function generateCredentials() {
+      const response = await fetch('/v1/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ network_id: '54965687-3871-4f3d-a803-ac9840af87c4', session_id: 'test-session' })
+      });
+      const data = await response.json();
+      alert('Token: ' + data.token);
+    }
+    async function exportWallet() {
+      const response = await fetch('/v1/wallet/export', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer test_token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ network_id: '54965687-3871-4f3d-a803-ac9840af87c4' })
+      });
+      const data = await response.json();
+      alert('Wallet Exported: ' + data.markdown);
+    }
+    async function importWallet() {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.md';
+      fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch('/v1/upload/wallet', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer test_token' },
+          body: formData
+        });
+        const data = await response.json();
+        alert('Wallet Imported: ' + data.network_id);
+      };
+      fileInput.click();
+    }
+    function authenticate() { alert('Authenticate clicked'); }
+    function voidAction() { alert('Void clicked'); }
+    function troubleshoot() { alert('Troubleshoot clicked'); }
+    function quantumLink() { alert('Quantum Link clicked'); }
+  </script>
+  <script type="module" src="/_next/static/chunks/main.js"></script>
 </body>
 </html>
