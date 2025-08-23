@@ -2,7 +2,6 @@ import os
 import json
 import uuid
 from datetime import datetime
-from server.services.database import get_db
 from server.models.webxos_wallet import WalletModel
 from server.models.visual_components import VisualConfig
 from server.logging import logger
@@ -17,7 +16,10 @@ class BackupRestoreService:
         request_id = str(uuid.uuid4())
         try:
             os.makedirs(self.backup_dir, exist_ok=True)
-            backup_path = f"{self.backup_dir}/{user_id}_{datetime.utcnow().isoformat()}.json"
+            backup_path = (
+                f"{self.backup_dir}/{user_id}_"
+                f"{datetime.utcnow().isoformat()}.json"
+            )
             wallets = db.query(WalletModel).filter(WalletModel.user_id == user_id).all()
             configs = db.query(VisualConfig).all()
             backup_data = {
