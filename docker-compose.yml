@@ -1,45 +1,65 @@
 version: '3.8'
 services:
-  vial-mcp:
+  backend:
     build: .
     ports:
       - "8000:8000"
     environment:
-      - MONGO_URI=${MONGO_URI}
-      - SQLALCHEMY_DATABASE_URL=sqlite:///vial.db
-      - JWT_SECRET=${JWT_SECRET}
-      - DEBUG=${DEBUG}
-      - VERCEL_API_TOKEN=${VERCEL_API_TOKEN}
-      - VERCEL_PROJECT_ID=${VERCEL_PROJECT_ID}
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
+      - PYTHONPATH=/app
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGO_URI=mongodb://mongo:27017
+      - DATABASE_URL=postgresql+psycopg://user:password@db:5432/vial_mcp
+      - WEB3_PROVIDER=${WEB3_PROVIDER}
     depends_on:
-      - mongodb
+      - db
       - redis
-    restart: unless-stopped
-  mongodb:
-    image: mongo:7-jammy
-    ports:
-      - "27017:27017"
+      - mongo
     volumes:
-      - mongodb_data:/data/db
-    restart: unless-stopped
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-  nextjs-frontend:
-    build:
-      context: ./public
-      dockerfile: Dockerfile.nextjs
+      - .:/app
+
+  frontend:
+    build: .
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://vial-mcp:8000
+      - NEXTAUTH_URL=http://localhost:3000
     depends_on:
-      - vial-mcp
-    restart: unless-stopped
+      - backend
+    command: npm start
+
+  node-gateway:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+    depends_on:
+      - backend
+    command: node node/gateway.js
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=vial_mcp
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+
+  mongo:
+    image: mongo:4.4
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+
 volumes:
-  mongodb_data:
+  pgdata:
+  mongodata:
