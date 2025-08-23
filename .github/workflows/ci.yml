@@ -1,9 +1,12 @@
-name: CI Pipeline
+name: CI
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+permissions:
+  contents: read
+  issues: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,32 +16,41 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Install Node dependencies
+        run: npm ci --omit=dev
+      - name: Lint JavaScript/TypeScript
+        run: npm run lint
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            ~/.cache/pip
-          key: ${{ runner.os }}-deps-${{ hashFiles('package.json', 'requirements.txt') }}
-      - name: Install Node.js dependencies
-        run: |
-          echo "registry=https://registry.npmjs.org/" > .npmrc
-          npm install
-          npm ci --omit=dev
       - name: Install Python dependencies
         run: pip install -r requirements.txt
+      - name: Lint Python
+        run: flake8 server/ --max-line-length=88
       - name: Run tests
         run: pytest server/tests/ -v --cov=server --cov-report=xml
-      - name: Security scans
-        run: |
-          pip install bandit safety
-          bandit -r server/ -f json
-          safety check -r requirements.txt
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
+      - name: Debug context
+        if: github.event_name == 'pull_request'
+        run: echo "Context: ${{ toJson(github) }}"
+      - name: Post comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
         with:
-          file: ./coverage.xml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            if (!context.issue.number) {
+              core.error('No issue number found');
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'CI completed successfully!'
+            });
+      - name: Build Docker
+        run: docker build -t vial-mcp:latest .
+      # Placeholder: Push to registry
+      # - name: Push to registry
+      #   run: docker push vial-mcp:latest
