@@ -8,38 +8,32 @@ import uuid
 def client():
     return TestClient(app)
 
-@pytest.mark.asyncio
-async def test_quantum_circuit_endpoint(client):
-    request_id = str(uuid.uuid4())
-    response = client.post(
-        "/v1/jsonrpc",
-        json={
-            "jsonrpc": "2.0",
-            "method": "quantum_circuit",
-            "params": {"qubits": 4, "network_id": "54965687-3871-4f3d-a803-ac9840af87c4"},
-            "id": "1"
-        },
-        headers={"Authorization": "Bearer test_token"}
-    )
-    assert response.status_code == 200
-    assert response.json()["result"]["status"] == "circuit_built"
-    assert "circuit" in response.json()["result"]
-    logger.info("Quantum circuit endpoint test passed", request_id=request_id)
 
 @pytest.mark.asyncio
-async def test_jsonrpc_handler(client):
+async def test_execute_quantum_circuit(client):
     request_id = str(uuid.uuid4())
-    response = client.post(
-        "/v1/jsonrpc",
-        json={
-            "jsonrpc": "2.0",
-            "method": "agent_coord",
-            "params": {"network_id": "54965687-3871-4f3d-a803-ac9840af87c4"},
-            "id": "1"
-        },
-        headers={"Authorization": "Bearer test_token"}
-    )
+    params = {"vial_id": "vial1", "qubits": 2}
+    response = client.post("/v1/quantum/execute_circuit", json=params)
     assert response.status_code == 200
-    assert response.json()["result"]["status"] == "coordinated"
-    assert len(response.json()["result"]["results"]) == 4
-    logger.info("JSON-RPC handler test passed", request_id=request_id)
+    assert response.json()["result"]["status"] == "executed"
+    assert "circuit_id" in response.json()["result"]
+    logger.info(f"Execute quantum circuit test passed", request_id=request_id)
+
+
+@pytest.mark.asyncio
+async def test_get_circuit_status(client):
+    request_id = str(uuid.uuid4())
+    circuit_id = str(uuid.uuid4())
+    response = client.get(f"/v1/quantum/circuit_status/{circuit_id}")
+    assert response.status_code == 200
+    assert response.json()["status"]["circuit_id"] == circuit_id
+    logger.info(f"Get circuit status test passed", request_id=request_id)
+
+
+@pytest.mark.asyncio
+async def test_invalid_quantum_params(client):
+    request_id = str(uuid.uuid4())
+    params = {"vial_id": "vial1", "qubits": -1}
+    response = client.post("/v1/quantum/execute_circuit", json=params)
+    assert response.status_code == 500
+    logger.info(f"Invalid quantum params test passed", request_id=request_id)
