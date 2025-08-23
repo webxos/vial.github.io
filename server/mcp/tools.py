@@ -1,111 +1,73 @@
-from pydantic import BaseModel
-from server.services.mcp_alchemist import Alchemist
-from server.logging import logger
+from mcp import Tool, ToolParameter
 from git import Repo
 import os
+from server.services.mcp_alchemist import Alchemist
+from server.logging import logger
 import uuid
 
+class MCPTools:
+    @staticmethod
+    @Tool(
+        name="vial_status_get",
+        description="Retrieve status and balance of a vial by ID.",
+        parameters=[
+            ToolParameter(name="vial_id", type="string", description="Unique vial identifier")
+        ]
+    )
+    async def vial_status_get(vial_id: str, alchemist: Alchemist = Depends(Alchemist)):
+        request_id = str(uuid.uuid4())
+        try:
+            status = await alchemist.get_vial_status(vial_id)
+            logger.log(f"Vial status retrieved for {vial_id}", request_id=request_id)
+            return status
+        except Exception as e:
+            logger.log(f"Error retrieving vial status: {str(e)}", request_id=request_id)
+            raise
 
-class Tool(BaseModel):
-    name: str
-    description: str
-    handler: callable
+    @staticmethod
+    @Tool(
+        name="quantum_circuit_build",
+        description="Build a quantum circuit with specified qubits and gates.",
+        parameters=[
+            ToolParameter(name="qubits", type="integer", description="Number of qubits"),
+            ToolParameter(name="gates", type="array", description="List of gate operations")
+        ]
+    )
+    async def quantum_circuit_build(qubits: int, gates: list, alchemist: Alchemist = Depends(Alchemist)):
+        request_id = str(uuid.uuid4())
+        try:
+            from qiskit import QuantumCircuit
+            circuit = QuantumCircuit(qubits)
+            for gate in gates:
+                if gate == "h":
+                    circuit.h(range(qubits))
+                elif gate == "cx":
+                    circuit.cx(0, 1)
+            svg = circuit.draw(output="svg")
+            logger.log("Quantum circuit built", request_id=request_id)
+            return {"circuit": svg}
+        except Exception as e:
+            logger.log(f"Error building quantum circuit: {str(e)}", request_id=request_id)
+            raise
 
-
-async def vial_status_get(params: dict) -> dict:
-    request_id = str(uuid.uuid4())
-    try:
-        vial_id = params.get("vial_id")
-        alchemist = Alchemist()
-        status = await alchemist.get_vial_status(vial_id)
-        logger.log(f"Retrieved status for vial: {vial_id}", request_id=request_id)
-        return {"status": status}
-    except Exception as e:
-        logger.log(f"Error getting vial status: {str(e)}", request_id=request_id)
-        return {"error": str(e)}
-
-
-async def vial_config_generate(params: dict) -> dict:
-    request_id = str(uuid.uuid4())
-    try:
-        prompt = params.get("prompt")
-        alchemist = Alchemist()
-        config = await alchemist.generate_config(prompt)
-        logger.log(f"Generated config from prompt", request_id=request_id)
-        return {"config": config}
-    except Exception as e:
-        logger.log(f"Config generation error: {str(e)}", request_id=request_id)
-        return {"error": str(e)}
-
-
-async def deploy_vercel(params: dict) -> dict:
-    request_id = str(uuid.uuid4())
-    try:
-        config = params.get("config")
-        repo = Repo(os.getcwd())
-        repo.git.add(all=True)
-        repo.git.commit(m="Deploy to Vercel")
-        repo.git.push()
-        logger.log("Deployed to Vercel", request_id=request_id)
-        return {"status": "deployed"}
-    except Exception as e:
-        logger.log(f"Vercel deployment error: {str(e)}", request_id=request_id)
-        return {"error": str(e)}
-
-
-async def git_commit_push(params: dict) -> dict:
-    request_id = str(uuid.uuid4())
-    try:
-        message = params.get("message", "Automated commit")
-        repo = Repo(os.getcwd())
-        repo.git.add(all=True)
-        repo.git.commit(m=message)
-        repo.git.push()
-        logger.log(f"Committed and pushed: {message}", request_id=request_id)
-        return {"status": "committed"}
-    except Exception as e:
-        logger.log(f"Git commit error: {str(e)}", request_id=request_id)
-        return {"error": str(e)}
-
-
-async def quantum_circuit_build(params: dict) -> dict:
-    request_id = str(uuid.uuid4())
-    try:
-        components = params.get("components", [])
-        alchemist = Alchemist()
-        circuit = await alchemist.build_quantum_circuit(components)
-        logger.log("Built quantum circuit", request_id=request_id)
-        return {"circuit": circuit}
-    except Exception as e:
-        logger.log(f"Quantum circuit build error: {str(e)}", request_id=request_id)
-        return {"error": str(e)}
-
-
-def build_tool_list() -> list[Tool]:
-    return [
-        Tool(
-            name="vial.status.get",
-            description="Get status of a vial by ID",
-            handler=vial_status_get
-        ),
-        Tool(
-            name="vial.config.generate",
-            description="Generate visual config from prompt",
-            handler=vial_config_generate
-        ),
-        Tool(
-            name="deploy.vercel",
-            description="Deploy to Vercel with config",
-            handler=deploy_vercel
-        ),
-        Tool(
-            name="git.commit.push",
-            description="Commit code to GitHub",
-            handler=git_commit_push
-        ),
-        Tool(
-            name="quantum.circuit.build",
-            description="Build quantum circuit from components",
-            handler=quantum_circuit_build
-        )
-    ]
+    @staticmethod
+    @Tool(
+        name="git_commit_push",
+        description="Commit and push changes to a Git repository.",
+        parameters=[
+            ToolParameter(name="repo_path", type="string", description="Path to Git repository"),
+            ToolParameter(name="commit_message", type="string", description="Commit message")
+        ]
+    )
+    async def git_commit_push(repo_path: str, commit_message: str):
+        request_id = str(uuid.uuid4())
+        try:
+            repo = Repo(repo_path)
+            repo.git.add(all=True)
+            repo.index.commit(commit_message)
+            repo.remotes.origin.push()
+            logger.log(f"Git commit and push completed for {repo_path}", request_id=request_id)
+            return {"status": "success"}
+        except Exception as e:
+            logger.log(f"Git commit/push error: {str(e)}", request_id=request_id)
+            raise
