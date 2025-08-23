@@ -1,53 +1,25 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from server.config import settings
-from server.logging import logger
+from sqlalchemy.orm import sessionmaker
+from typing import Generator
+from server.logging_config import logger
+import os
+import uuid
 
-
-engine = create_engine(settings.SQLALCHEMY_DATABASE_URL)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vial_mcp.db")
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-def get_db():
-    db = SessionLocal()
+def get_session() -> Generator:
+    request_id = str(uuid.uuid4())
+    session = SessionLocal()
     try:
-        yield db
+        logger.info("Database session opened", request_id=request_id)
+        yield session
+        session.commit()
     except Exception as e:
-        logger.log(f"Database session error: {str(e)}")
-        db.rollback()
+        session.rollback()
+        logger.error(f"Database session error: {str(e)}", request_id=request_id)
         raise
     finally:
-        db.close()
-
-
-def init_db():
-    try:
-        from server.models.visual_components import VisualConfig
-        from server.models.webxos_wallet import WalletModel
-        from sqlalchemy import MetaData, Table, Column, String, JSON, DateTime
-        metadata = MetaData()
-        Table(
-            "visual_configs",
-            metadata,
-            Column("id", String, primary_key=True),
-            Column("name", String),
-            Column("components", JSON),
-            Column("connections", JSON),
-            Column("metadata", JSON),
-            Column("created_at", DateTime),
-            Column("updated_at", DateTime)
-        )
-        Table(
-            "wallets",
-            metadata,
-            Column("user_id", String, primary_key=True),
-            Column("balance", String),
-            Column("network_id", String),
-            Column("created_at", DateTime),
-            Column("updated_at", DateTime)
-        )
-        metadata.create_all(engine)
-        logger.log("Database initialized: visual_configs, wallets tables created")
-    except Exception as e:
-        logger.log(f"Database initialization error: {str(e)}")
-        raise
+        session.close()
+        logger.info("Database session closed", request_id=request_id)
