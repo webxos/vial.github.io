@@ -1,44 +1,45 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from server.services.mcp_alchemist import Alchemist
-from server.logging import logger
-from fastapi.security import OAuth2PasswordBearer
+from server.services.memory_manager import MemoryManager
+from server.logging_config import logger
 import uuid
 
-router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+router = APIRouter(prefix="/v1/crud", tags=["crud"])
 
-class DataSchema(BaseModel):
-    id: str
-    content: str
-    network_id: str
 
-@router.post("/data")
-async def create_data(data: DataSchema, token: str = Depends(oauth2_scheme)):
+@router.post("/create_wallet")
+async def create_wallet(wallet_data: dict, memory_manager: MemoryManager = Depends()):
     request_id = str(uuid.uuid4())
     try:
-        alchemist = Alchemist()
-        result = await alchemist.perform_crud({
-            "operation": "create",
-            "data": data.dict()
-        }, request_id)
-        logger.info(f"Created data for {data.network_id}", request_id=request_id)
-        return result
+        wallet_id = str(uuid.uuid4())
+        await memory_manager.save_wallet(wallet_id, wallet_data, request_id)
+        logger.info(f"Created wallet {wallet_id}", request_id=request_id)
+        return {"wallet_id": wallet_id, "status": "created", "request_id": request_id}
     except Exception as e:
-        logger.error(f"Create data error: {str(e)}", request_id=request_id)
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Wallet creation error: {str(e)}", request_id=request_id)
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/data/{network_id}")
-async def read_data(network_id: str, token: str = Depends(oauth2_scheme)):
+
+@router.get("/get_wallet/{wallet_id}")
+async def get_wallet(wallet_id: str, memory_manager: MemoryManager = Depends()):
     request_id = str(uuid.uuid4())
     try:
-        alchemist = Alchemist()
-        result = await alchemist.perform_crud({
-            "operation": "read",
-            "data": {"network_id": network_id}
-        }, request_id)
-        logger.info(f"Read data for {network_id}", request_id=request_id)
-        return result
+        wallet = await memory_manager.get_wallet(wallet_id, request_id)
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+        logger.info(f"Retrieved wallet {wallet_id}", request_id=request_id)
+        return {"wallet": wallet, "request_id": request_id}
     except Exception as e:
-        logger.error(f"Read data error: {str(e)}", request_id=request_id)
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Wallet retrieval error: {str(e)}", request_id=request_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/delete_wallet/{wallet_id}")
+async def delete_wallet(wallet_id: str, memory_manager: MemoryManager = Depends()):
+    request_id = str(uuid.uuid4())
+    try:
+        await memory_manager.delete_wallet(wallet_id, request_id)
+        logger.info(f"Deleted wallet {wallet_id}", request_id=request_id)
+        return {"status": "deleted", "request_id": request_id}
+    except Exception as e:
+        logger.error(f"Wallet deletion error: {str(e)}", request_id=request_id)
+        raise HTTPException(status_code=500, detail=str(e))
