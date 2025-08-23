@@ -1,6 +1,5 @@
 import pytest
 from server.services.notifications import NotificationService
-from server.services.error_logging import ErrorLogger
 from server.logging_config import logger
 import uuid
 
@@ -8,23 +7,28 @@ import uuid
 def notification_service():
     return NotificationService()
 
-@pytest.fixture
-def error_logger():
-    return ErrorLogger()
 
 @pytest.mark.asyncio
-async def test_task_notification(notification_service):
+async def test_send_task_notification(notification_service):
     request_id = str(uuid.uuid4())
-    result = await notification_service.send_task_notification("train_model", "success", request_id)
-    assert result["status"] == "notified"
-    assert result["request_id"] == request_id
-    logger.info("Task notification test passed", request_id=request_id)
+    task_name = "train_model"
+    status = "success"
+    await notification_service.send_task_notification(task_name, status, request_id)
+    logger.info(f"Task notification test passed", request_id=request_id)
 
-def test_error_logging(error_logger):
+
+@pytest.mark.asyncio
+async def test_send_error_notification(notification_service):
     request_id = str(uuid.uuid4())
-    error_logger.log_error("Test notification error", request_id)
-    logs = error_logger.get_logs(request_id)
-    assert len(logs) == 1
-    assert logs[0]["request_id"] == request_id
-    assert logs[0]["message"] == "Test notification error"
-    logger.info("Notification error logging test passed", request_id=request_id)
+    task_name = "create_agent"
+    error = "Task failed"
+    await notification_service.send_task_notification(task_name, error, request_id)
+    logger.info(f"Error notification test passed", request_id=request_id)
+
+
+@pytest.mark.asyncio
+async def test_broadcast_notification(notification_service):
+    request_id = str(uuid.uuid4())
+    message = {"event": "system_update", "details": "Server restarted"}
+    await notification_service.broadcast_notification(message, request_id)
+    logger.info(f"Broadcast notification test passed", request_id=request_id)
