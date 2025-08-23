@@ -1,32 +1,30 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from server.mcp.auth import oauth2_scheme
-from server.services.mcp_alchemist import Alchemist
-from server.logging import logger
+from server.services.mcp_alchemist import MCPAlchemist
+from server.logging_config import logger
 import uuid
 
-router = APIRouter()
+router = APIRouter(prefix="/v1/quantum", tags=["quantum"])
 
-class QuantumCircuitRequest(BaseModel):
-    qubits: int
-    gates: list[str]
 
-@router.post("/quantum/circuit")
-async def build_quantum_circuit(request: QuantumCircuitRequest, token: str = Depends(oauth2_scheme)):
+@router.post("/execute_circuit")
+async def execute_quantum_circuit(params: dict, alchemist: MCPAlchemist = Depends()):
     request_id = str(uuid.uuid4())
     try:
-        from server.mcp.auth import map_oauth_to_mcp_session
-        await map_oauth_to_mcp_session(token, request_id)
-        from qiskit import QuantumCircuit
-        circuit = QuantumCircuit(request.qubits)
-        for gate in request.gates:
-            if gate == "h":
-                circuit.h(range(request.qubits))
-            elif gate == "cx":
-                circuit.cx(0, 1)
-        svg = circuit.draw(output="svg")
-        logger.log(f"Quantum circuit built with {request.qubits} qubits", request_id=request_id)
-        return {"circuit": svg, "request_id": request_id}
+        result = await alchemist.execute_quantum_circuit(params, request_id)
+        logger.info(f"Executed quantum circuit for vial {params.get('vial_id')}", request_id=request_id)
+        return {"result": result, "request_id": request_id}
     except Exception as e:
-        logger.log(f"Quantum circuit error: {str(e)}", request_id=request_id)
+        logger.error(f"Quantum circuit error: {str(e)}", request_id=request_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/circuit_status/{circuit_id}")
+async def get_circuit_status(circuit_id: str, alchemist: MCPAlchemist = Depends()):
+    request_id = str(uuid.uuid4())
+    try:
+        status = await alchemist.get_circuit_status(circuit_id, request_id)
+        logger.info(f"Retrieved status for circuit {circuit_id}", request_id=request_id)
+        return {"status": status, "request_id": request_id}
+    except Exception as e:
+        logger.error(f"Circuit status error: {str(e)}", request_id=request_id)
         raise HTTPException(status_code=500, detail=str(e))
