@@ -1,39 +1,31 @@
 from git import Repo
-from server.services.vial_manager import VialManager
-from server.models.visual_components import VisualConfig
+from server.services.mcp_alchemist import Alchemist
 from server.logging import logger
+import uuid
 import os
-
 
 class GitTrainer:
     def __init__(self):
         self.repo = Repo(os.getcwd())
-        self.vial_manager = VialManager()
+        self.alchemist = Alchemist()
 
-    async def commit_visual_config(self, config: VisualConfig):
+    async def train_and_push(self, network_id: str, vial_id: str, commit_message: str) -> Dict:
+        request_id = str(uuid.uuid4())
         try:
-            # Generate FastAPI code from visual config
-            code = self._generate_fastapi_code(config)
-            output_path = "generated_routes.py"
-            with open(output_path, "w") as f:
-                f.write(code)
-            self.repo.git.add(output_path)
-            commit_message = f"MCP: Visual config commit {config.components[0].id}"
-            self.repo.index.commit(commit_message)
-            self.repo.remotes.origin.push()
-            logger.log(f"Committed visual config: {commit_message}")
-            return {"status": "committed", "commit_message": commit_message}
+            await self.alchemist.train_vial({
+                "vial_id": vial_id,
+                "network_id": network_id
+            }, request_id)
+            self.repo.git.add(all=True)
+            self.repo.git.commit(m=commit_message)
+            self.repo.git.push()
+            logger.info(
+                f"Trained and pushed vial {vial_id} for {network_id}",
+                request_id=request_id
+            )
+            return {"status": "success", "request_id": request_id}
         except Exception as e:
-            logger.log(f"Git commit error: {str(e)}")
-            return {"error": str(e)}
-
-    def _generate_fastapi_code(self, config: VisualConfig) -> str:
-        code = ["from fastapi import APIRouter\n", "router = APIRouter()\n"]
-        for component in config.components:
-            if component.type == "api_endpoint":
-                route = f"""
-@router.{component.config.get('method', 'get').lower()}("/{component.id}")
-async def {component.id.replace('-', '_')}():
-    return {{"status": "executed", "endpoint": "{component.id}"}}"""
-                code.append(route)
-        return "\n".join(code)
+            logger.error(f"Train/push error: {str(e)}", request_id=request_id)
+            with open("errorlog.md", "a") as f:
+                f.write(f"- **[2025-08-23T01:00:00Z]** Train/push error: {str(e)}\n")
+            raise
