@@ -1,26 +1,12 @@
-fastapi>=0.103.0,<0.104.0
-uvicorn>=0.23.0,<0.24.0
-pydantic>=1.10.0,<2.0.0
-sqlalchemy>=2.0.0,<2.1.0
-psycopg2-binary>=2.9.6,<2.10.0
-pymongo>=4.3.3,<4.4.0
-redis>=4.5.4,<4.6.0
-langchain>=0.0.300,<0.1.0
-langgraph>=0.0.14,<0.1.0
-autogen>=0.1.0,<0.2.0
-torch>=2.0.1,<2.2.0
-tensorflow>=2.13.0,<2.14.0
-qiskit>=0.43.0,<0.44.0
-qiskit-aer>=0.12.0,<0.13.0
-qiskit-ibm-runtime>=0.11.0,<0.12.0
-web3>=6.0.0,<6.1.0
-python-jose[cryptography]>=3.3.0,<3.4.0
-passlib[bcrypt]>=1.7.4,<1.8.0
-python-dotenv>=1.0.0,<1.1.0
-pyyaml>=6.0,<6.1
-gitpython>=3.1.32,<3.2.0
-alembic>=1.12.0,<1.13.0
-httpx>=0.24.0,<0.25.0
-orjson>=3.9.0,<3.10.0
-mcp>=0.1.0,<0.2.0  # For MCP SDK
-litellm>=1.0.0,<2.0.0  # For LLM router
+fastapi==0.115.0
+uvicorn==0.30.6
+pydantic==2.9.2
+sqlalchemy==2.0.35
+torch==2.4.1
+qiskit==1.2.4
+httpx==0.27.2
+tenacity==9.0.0
+pymongo==4.8.0
+redis==5.0.8
+# Placeholder: OBS Python bindings for SVG video
+# obs-python==0.1.0
