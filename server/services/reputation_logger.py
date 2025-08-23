@@ -1,67 +1,38 @@
-# server/services/reputation_logger.py
-from fastapi import Depends
-from sqlalchemy.orm import Session
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
-from server.security.auth import oauth2_scheme
-import logging
-import re
-from typing import Dict, Any
-
-logger = logging.getLogger(__name__)
+from pymongo import MongoClient
+from server.logging import logger
+import uuid
+import os
 
 class ReputationLogger:
-    def __init__(self, db: Session = Depends(SessionLocal)):
-        self.db = db
+    def __init__(self):
+        self.mongo_client = MongoClient(os.getenv("MONGO_URL", "mongodb://localhost:27017"))
+        self.db = self.mongo_client["vial_mcp"]
 
-    async def log_reputation(self, wallet_address: str, markdown_file: str, token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
-        """Log reputation from markdown wallet file."""
+    async def log_reward(self, vial_id: str, amount: float, reason: str):
+        request_id = str(uuid.uuid4())
         try:
-            # Parse markdown file for reputation data (simplified)
-            reputation = 0.0
-            with open(markdown_file, 'r') as f:
-                content = f.read()
-                match = re.search(r'reputation:\s*(\d+\.\d+)', content)
-                if match:
-                    reputation = float(match.group(1))
-            
-            # Update wallet with reputation
-            wallet = self.db.query(Wallet).filter_by(address=wallet_address).first()
-            if not wallet:
-                raise ValueError("Wallet not found")
-            
-            wallet.reputation = reputation
-            self.db.commit()
-            
-            # Log to middleware
-            logger.info(f"Reputation updated for wallet {wallet_address}: {reputation}")
-            
-            # Secondary security check
-            from server.quantum.quantum_sync import QuantumSync
-            quantum_sync = QuantumSync()
-            quantum_result = await quantum_sync.sync_wallet(wallet_address)
-            
-            return {
-                "status": "success",
-                "wallet_address": wallet_address,
-                "reputation": reputation,
-                "quantum_state": quantum_result.get("quantum_state")
-            }
+            self.db.rewards.insert_one({
+                "vial_id": vial_id,
+                "amount": amount,
+                "reason": reason,
+                "request_id": request_id,
+                "timestamp": int(__import__('time').time())
+            })
+            logger.log(
+                f"Reward logged for vial {vial_id}: {amount} WebXOS for {reason}",
+                request_id=request_id
+            )
+            return {"status": "success", "request_id": request_id}
         except Exception as e:
-            logger.error(f"Reputation logging error: {str(e)}")
+            logger.log(f"Reward logging error: {str(e)}", request_id=request_id)
             raise
 
-    async def get_reputation(self, wallet_address: str, token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
-        """Retrieve reputation for a wallet."""
+    async def get_reward_history(self, vial_id: str):
+        request_id = str(uuid.uuid4())
         try:
-            wallet = self.db.query(Wallet).filter_by(address=wallet_address).first()
-            if not wallet:
-                raise ValueError("Wallet not found")
-            return {
-                "status": "success",
-                "wallet_address": wallet_address,
-                "reputation": wallet.reputation
-            }
+            history = list(self.db.rewards.find({"vial_id": vial_id}))
+            logger.log(f"Reward history retrieved for vial {vial_id}", request_id=request_id)
+            return history
         except Exception as e:
-            logger.error(f"Reputation retrieval error: {str(e)}")
+            logger.log(f"Reward history error: {str(e)}", request_id=request_id)
             raise
