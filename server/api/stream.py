@@ -1,27 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from server.mcp.auth import oauth2_scheme
-from server.services.mcp_alchemist import Alchemist
-from server.logging import logger
+from server.services.memory_manager import MemoryManager
+from server.logging_config import logger
 import uuid
 import json
 
-router = APIRouter()
+router = APIRouter(prefix="/v1/stream", tags=["stream"])
 
-@router.get("/stream/tasks")
-async def stream_tasks(token: str = Depends(oauth2_scheme)):
+
+@router.get("/task_updates")
+async def task_updates(task_id: str, memory_manager: MemoryManager = Depends()):
     request_id = str(uuid.uuid4())
-    try:
-        from server.mcp.auth import map_oauth_to_mcp_session
-        await map_oauth_to_mcp_session(token, request_id)
-        async def task_stream():
-            alchemist = Alchemist()
-            tasks = ["vial_status_get", "quantum_circuit_build", "git_commit_push"]
-            for task in tasks:
-                result = await alchemist.delegate_task(task, {"params": {}})
-                yield f"data: {json.dumps({'task': task, 'result': result, 'request_id': request_id})}\n\n"
-                logger.log(f"Streamed task: {task}", request_id=request_id)
-        return StreamingResponse(task_stream(), media_type="text/event-stream")
-    except Exception as e:
-        logger.log(f"Stream error: {str(e)}", request_id=request_id)
-        raise HTTPException(status_code=500, detail=str(e))
+    
+    async def stream_updates():
+        try:
+            updates = await memory_manager.get_task_updates(task_id, request_id)
+            for update in updates:
+                yield json.dumps({"update": update, "request_id": request_id}) + "\n"
+            logger.info(f"Streamed updates for task {task_id}", request_id=request_id)
+        except Exception as e:
+            logger.error(f"Stream error: {str(e)}", request_id=request_id)
+            raise
+    
+    return StreamingResponse(stream_updates(), media_type="text/event-stream")
