@@ -1,103 +1,52 @@
-import { useState, useEffect } from 'react';
-import { useSession, signIn, signOut } from 'next-auth/react';
-import * as THREE from 'https://unpkg.com/three@0.153.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.153.0/examples/jsm/controls/OrbitControls.js';
-import { create3DComponent, createConnection, setupScene } from '../public/js/threejs_integrations.js';
+import { useEffect, useRef, useState } from 'react';
+import { setupScene, create3DComponent } from '../public/js/threejs_integrations';
 import styles from '../styles/Home.module.css';
 
 export default function Home() {
-  const { data: session } = useSession();
-  const [walletStatus, setWalletStatus] = useState('Not authenticated');
-  const [task, setTask] = useState('');
-  const [components, setComponents] = useState([]);
-  let scene, camera, renderer;
+  const canvasRef = useRef(null);
+  const [walletData, setWalletData] = useState(null);
 
   useEffect(() => {
-    const canvas = document.getElementById('canvas');
-    const { scene: s, camera: c, renderer: r } = setupScene(canvas);
-    scene = s;
-    camera = c;
-    renderer = r;
-
-    const ws = new WebSocket('ws://localhost:8000/mcp/ws');
-    ws.onopen = () => {
-      if (session?.accessToken) {
-        ws.send(JSON.stringify({ token: session.accessToken }));
-      }
-    };
-    ws.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
-      if (data.result?.circuit) {
-        const component = create3DComponent(scene, {
-          id: data.request_id,
-          type: 'quantum',
-          title: 'Quantum Circuit',
-          position: { x: Math.random() * 4 - 2, y: Math.random() * 4 - 2, z: 0 },
-          svg: data.result.circuit
+    if (canvasRef.current) {
+      const { scene, camera, renderer } = setupScene(canvasRef.current);
+      const fetchWallet = async () => {
+        const response = await fetch('/v1/wallet/export', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer test_token',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ network_id: '54965687-3871-4f3d-a803-ac9840af87c4' })
         });
-        setComponents((prev) => [...prev, component]);
-      }
-      if (data.result?.status) {
-        setWalletStatus(`Balance: ${data.result.balance} WebXOS, Active: ${data.result.active}`);
-      }
-      if (data.result?.yaml_result) {
-        console.log('YAML Workflow Result:', data.result.yaml_result);
-      }
-    };
-    ws.onerror = (error) => console.error('WebSocket error:', error);
-    return () => ws.close();
-  }, [session]);
-
-  const handleTaskSubmit = async () => {
-    if (!session) {
-      alert('Please sign in');
-      return;
+        const data = await response.json();
+        setWalletData(data);
+        if (data.markdown) {
+          const vials = ['vial1', 'vial2', 'vial3', 'vial4'];
+          vials.forEach((vial, i) => {
+            create3DComponent(scene, {
+              id: vial,
+              type: 'vial',
+              title: vial,
+              position: { x: i * 2 - 3, y: 0, z: 0 }
+            });
+          });
+        }
+        renderer.render(scene, camera);
+      };
+      fetchWallet();
     }
-    const ws = new WebSocket('ws://localhost:8000/mcp/ws');
-    ws.onopen = () => {
-      ws.send(JSON.stringify({
-        token: session.accessToken,
-        tool: task.includes('quantum') ? 'quantum.circuit.build' : task.includes('yaml') ? 'yaml.workflow.execute' : 'vial.status.get',
-        params: task.includes('quantum') ? { qubits: 2, gates: ['h', 'cx'] } :
-                task.includes('yaml') ? { yaml_content: 'steps:\n  - task: vial_status_get\n    params:\n      vial_id: vial_123' } :
-                { vial_id: 'vial_123' }
-      }));
-    };
-  };
-
-  const handleDragDrop = (event, componentId) => {
-    const { clientX, clientY } = event;
-    const component = components.find(c => c.userData.id === componentId);
-    if (component) {
-      component.position.set(clientX / 100 - 2, -clientY / 100 + 2, 0);
-    }
-  };
+  }, []);
 
   return (
     <div className={styles.container}>
-      <main className={styles.main}>
-        <h1 className={styles.title}>Vial MCP Controller - SVG Editor</h1>
-        <div className={styles.controls}>
-          {session ? (
-            <>
-              <p>Signed in as {session.user.name}</p>
-              <button onClick={() => signOut()}>Sign out</button>
-            </>
-          ) : (
-            <button onClick={() => signIn()}>Sign in</button>
-          )}
-          <input
-            type="text"
-            value={task}
-            onChange={(e) => setTask(e.target.value)}
-            placeholder="Enter task (e.g., Generate quantum circuit, Run YAML)"
-            className={styles.input}
-          />
-          <button onClick={handleTaskSubmit} className={styles.button}>Submit Task</button>
-          <p>Wallet: {walletStatus}</p>
+      <h1>Vial MCP Controller</h1>
+      {walletData && (
+        <div>
+          <h2>Wallet: {walletData.network_id}</h2>
+          <pre>{walletData.markdown}</pre>
         </div>
-        <canvas id="canvas" className={styles.canvas} onMouseMove={(e) => handleDragDrop(e, components[0]?.userData.id)}></canvas>
-      </main>
+      )}
+      <canvas ref={canvasRef} style={{ width: '100%', height: '400px' }} />
     </div>
   );
 }
