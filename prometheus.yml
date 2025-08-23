@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'mcp-server'
+    static_configs:
+      - targets: ['mcp-server:8000']
+        labels:
+          group: 'vial-mcp'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          group: 'vial-mcp'
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+        labels:
+          group: 'vial-mcp'
+
+  # Placeholder: OBS/SVG video metrics
+  # - job_name: 'obs'
+  #   static_configs:
+  #     - targets: ['mcp-server:4455']
+  #       labels:
+  #         group: 'vial-mcp-obs'
