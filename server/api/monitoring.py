@@ -1,45 +1,48 @@
 from fastapi import APIRouter, Depends
-from server.services.mcp_alchemist import Alchemist
-from server.logging import logger
-from fastapi.security import OAuth2PasswordBearer
+from prometheus_client import Counter, Histogram
+from server.services.memory_manager import MemoryManager
+from server.logging_config import logger
 import uuid
 
-router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+router = APIRouter(prefix="/v1/monitoring", tags=["monitoring"])
 
-@router.get("/monitoring/health")
-async def health_check(token: str = Depends(oauth2_scheme)):
+request_counter = Counter("mcp_requests_total", "Total MCP requests", ["endpoint"])
+request_duration = Histogram("mcp_request_duration_seconds", "Request duration", ["endpoint"])
+
+
+@router.get("/metrics")
+async def get_metrics(memory_manager: MemoryManager = Depends()):
     request_id = str(uuid.uuid4())
     try:
-        alchemist = Alchemist()
-        db_status = await alchemist.check_db_connection()
-        agent_status = await alchemist.check_agent_availability()
-        wallet_status = await alchemist.check_wallet_system()
-        response_time = await alchemist.get_api_response_time()
-        logger.info(
-            f"Health check: DB={db_status}, Agents={agent_status}, Wallet={wallet_status}",
-            request_id=request_id
-        )
-        return {
-            "status": "healthy",
-            "db": db_status,
-            "agents": agent_status,
-            "wallet": wallet_status,
-            "response_time": response_time,
-            "request_id": request_id
-        }
+        request_counter.labels(endpoint="/metrics").inc()
+        with request_duration.labels(endpoint="/metrics").time():
+            session = await memory_manager.get_session("metrics", request_id)
+            metrics = {
+                "requests_total": request_counter._metrics,
+                "request_duration": request_duration._metrics,
+                "session_active": bool(session)
+            }
+            logger.info(f"Metrics retrieved: {metrics}", request_id=request_id)
+            return metrics
     except Exception as e:
-        logger.error(f"Health check error: {str(e)}", request_id=request_id)
-        return {"status": "unhealthy", "detail": str(e), "request_id": request_id}
+        logger.error(f"Metrics retrieval error: {str(e)}", request_id=request_id)
+        raise
 
-@router.get("/monitoring/logs")
-async def get_logs(token: str = Depends(oauth2_scheme)):
+
+@router.get("/agentic_search_metrics")
+async def agentic_search_metrics(memory_manager: MemoryManager = Depends()):
     request_id = str(uuid.uuid4())
     try:
-        with open("errorlog.md", "r") as f:
-            logs = f.read()
-        logger.info(f"Retrieved logs", request_id=request_id)
-        return {"logs": logs, "request_id": request_id}
+        request_counter.labels(endpoint="/agentic_search_metrics").inc()
+        with request_duration.labels(endpoint="/agentic_search_metrics").time():
+            session = await memory_manager.get_session("agentic_search", request_id)
+            metrics = {
+                "search_requests": request_counter._metrics.get("/agentic_search", 0),
+                "session_active": bool(session),
+                "sources_analyzed": session.get("sources_analyzed", 0) if session else 0
+            }
+            logger.info(f"Agentic search metrics retrieved: {metrics}", request_id=request_id)
+            return metrics
     except Exception as e:
-        logger.error(f"Log retrieval error: {str(e)}", request_id=request_id)
-        return {"status": "error", "detail": str(e), "request_id": request_id}
+        logger.error(f"Agentic search metrics error: {str(e)}", request_id=request_id)
+        raise
