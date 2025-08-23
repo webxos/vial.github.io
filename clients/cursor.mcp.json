@@ -1,0 +1,22 @@
+{
+  "manifest_version": "1.0.0",
+  "client": "cursor",
+  "tools": [
+    "vial_status",
+    "quantum_sync",
+    "llm_generate",
+    "wordpress_create_post",
+    "wordpress_get_posts",
+    "wordpress_install_plugin"
+  ],
+  "auth": {
+    "method": "jwt",
+    "secret_env": "JWT_SECRET",
+    "issuer": "vial",
+    "audience": "cursor"
+  },
+  "environment": {
+    "api_endpoint": "${API_ENDPOINT}",
+    "timeout": "${API_TIMEOUT}"
+  }
+}
