@@ -1,16 +1,15 @@
 from fastapi import HTTPException, Depends
 from pydantic import BaseModel
 from swarm import Swarm, Agent, Result
-from server.logging import logger
-from server.services.redis_cache import RedisCache
+from server.services.redis_cache import RedisCache, CacheEntry
 from server.models.webxos_wallet import WalletModel
 from server.models.swarm_agent import SwarmAgentModel
 from server.api.mcp_tools import MCPTools
 from server.services.database import get_db
 from sqlalchemy.orm import Session
 from tenacity import retry, stop_after_attempt, wait_exponential
+from pymongo import MongoClient
 import uuid
-import json
 import os
 
 
@@ -24,6 +23,8 @@ class Alchemist:
     def __init__(self):
         self.swarm_client = Swarm()
         self.cache = RedisCache()
+        self.mongo_client = MongoClient(os.getenv("MONGO_URL", "mongodb://localhost:27017"))
+        self.db = self.mongo_client["vial_mcp"]
         self.playwright_mcp_url = os.getenv("PLAYWRIGHT_MCP_URL", "http://localhost:8080/mcp/playwright")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
@@ -46,7 +47,7 @@ class Alchemist:
         try:
             wallet_agent = Agent(
                 name="WalletAgent",
-                instructions="Handle wallet-related tasks like balance checks and configurations.",
+                instructions="Handle wallet tasks like balance checks and configurations.",
                 functions=[MCPTools.vial_status_get, MCPTools.vial_config_generate]
             )
             quantum_agent = Agent(
@@ -75,6 +76,14 @@ class Alchemist:
                 functions=[route_to_agent]
             )
 
+            # Store task prompt in MongoDB for troubleshooting
+            self.db.prompts.insert_one({
+                "task": task,
+                "context": context,
+                "request_id": request_id,
+                "timestamp": int(__import__('time').time())
+            })
+
             response = await self.swarm_client.run(
                 agent=router_agent,
                 messages=[{"role": "user", "content": task}],
@@ -95,4 +104,20 @@ class Alchemist:
             return result
         except Exception as e:
             logger.log(f"Task delegation error: {str(e)}", request_id=request_id)
+            self.db.errors.insert_one({
+                "task": task,
+                "error": str(e),
+                "request_id": request_id,
+                "timestamp": int(__import__('time').time())
+            })
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def get_prompt_history(self, request_id: str):
+        request_id = str(uuid.uuid4())
+        try:
+            history = list(self.db.prompts.find({"request_id": request_id}))
+            logger.log(f"Prompt history retrieved for request: {request_id}", request_id=request_id)
+            return history
+        except Exception as e:
+            logger.log(f"Prompt history error: {str(e)}", request_id=request_id)
             raise HTTPException(status_code=500, detail=str(e))
