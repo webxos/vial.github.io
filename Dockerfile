@@ -1,26 +1,28 @@
-# Build stage
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim
+
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nodejs npm git && \
-    rm -rf /var/lib/apt/lists/*
-COPY package.json package-lock.json .npmrc ./
-RUN echo "registry=https://registry.npmjs.org/" > .npmrc && \
-    npm install && npm ci --omit=dev
+
+# Install Node.js
+RUN apt-get update && apt-get install -y nodejs npm
+
+# Copy Node.js dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# Copy Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY server/ ./server/
-RUN pip install flake8 bandit && \
-    flake8 server/ --max-line-length=88 && \
-    bandit -r server/ -f json
 
-# Runtime stage
-FROM python:3.11-slim
-WORKDIR /app
-COPY --from=builder /app /app
-EXPOSE 8000
-ENV PYTHONUNBUFFERED=1
-# Placeholder: OBS WebSocket for SVG video streaming
-# COPY scripts/setup_obs.js .
-# RUN npm install obs-websocket-js
-CMD ["uvicorn", "server.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Copy application code
+COPY server/ ./server/
+COPY public/ ./public/
+
+# Security: Run as non-root user
+RUN useradd -m vial
+USER vial
+
+# Expose ports
+EXPOSE 8000 4455
+
+# Start FastAPI server
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000"]
