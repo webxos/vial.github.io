@@ -1,32 +1,15 @@
-from fastapi import APIRouter, WebSocket
-from server.api.websocket import broadcast_message
-from server.logging import logger
+from fastapi import APIRouter
+from server.logging_config import logger
 import uuid
-import json
 
-router = APIRouter()
+router = APIRouter(prefix="/v1/comms", tags=["comms"])
 
-@router.websocket("/comms/hub")
-async def comms_hub_endpoint(websocket: WebSocket):
-    request_id = str(uuid.uuid4())
+
+@router.post("/send_message")
+async def send_message(message: dict, request_id: str = str(uuid.uuid4())):
     try:
-        await websocket.accept()
-        while True:
-            data = await websocket.receive_json()
-            task = data.get("task")
-            params = data.get("params", {})
-            result = await broadcast_message(task, params, request_id)
-            await websocket.send_json({
-                "status": "success",
-                "result": result,
-                "request_id": request_id
-            })
-            logger.log(f"Comms hub processed task: {task}", request_id=request_id)
+        logger.info(f"Sending message: {message}", request_id=request_id)
+        return {"status": "sent", "message": message, "request_id": request_id}
     except Exception as e:
-        logger.log(f"Comms hub error: {str(e)}", request_id=request_id)
-        await websocket.send_json({
-            "status": "error",
-            "detail": str(e),
-            "request_id": request_id
-        })
-        await websocket.close()
+        logger.error(f"Message send error: {str(e)}", request_id=request_id)
+        raise
