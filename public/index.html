@@ -53,7 +53,7 @@
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / 600, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas') });
             renderer.setSize(window.innerWidth, 600);
-            controls = new OrbitControls(camera, renderer.canvas);
+            controls = new OrbitControls(camera, renderer.domElement);
             camera.position.z = 5;
             animate();
         }
