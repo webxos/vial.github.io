@@ -1,8 +1,20 @@
 Vial MCP Controller API Documentation
 Base URL
 http://localhost:8000/v1
+Frontend
+GET /
+Renders the main interface with wallet and agent visualization.
+
+Response: HTML page with console, balance, buttons, and Three.js canvas.
+Features:
+Displays $WEBXOS Balance and Reputation.
+Buttons for API Access, Authenticate, Void, Troubleshoot, Quantum Link, Export, Import, Add Agent, Endpoint Tool.
+Three.js canvas for drag-and-drop SVG agent/endpoint creation with user guidance.
+
+
+Dependencies: Requires /_next/static/chunks/main.js and /js/threejs_integrations.js.
+
 Authentication
-All endpoints require a Bearer token via the Authorization header, obtained from /v1/auth/token.
 POST /v1/auth/token
 Generate a JWT token.
 
@@ -12,6 +24,19 @@ Response: { "token": str, "request_id": str }
 GET /v1/auth/validate
 Validate a JWT token.
 
+Response: { "status": str, "request_id": str }
+
+Session Management
+POST /v1/save_session
+Save session data (menu info, build progress).
+
+Request Body: { "menu_info": dict, "build_progress": list, "quantum_logic": dict, "task_memory": list }
+Response: { "status": str, "request_id": str }
+
+POST /v1/troubleshoot/status
+Reset session data.
+
+Request Body: { "token": str }
 Response: { "status": str, "request_id": str }
 
 JSON-RPC
@@ -46,6 +71,38 @@ Export a wallet as .md.
 Request Body: { "network_id": str }
 Response: { "markdown": str, "request_id": str }
 
+POST /v1/backup/wallet
+Backup a wallet to MongoDB.
+
+Request Body: { "network_id": str }
+Response: { "network_id": str, "markdown": str, "timestamp": str, "request_id": str }
+
+POST /v1/restore/wallet
+Restore a wallet from MongoDB.
+
+Request Body: { "backup_id": str }
+Response: { "network_id": str, "balance": float, "vials": list, "request_id": str }
+
+POST /v1/backup/agent_config
+Backup agent configuration to MongoDB.
+
+Request Body: { }
+Response: { "config_type": str, "data": dict, "timestamp": str, "request_id": str }
+
+SVG Tasks
+POST /v1/execute_svg_task
+Execute SVG-generated tasks (agent/endpoint creation).
+
+Request Body: { "task_name": str, "params": dict }
+Response: { "status": str, "request_id": str }
+
+Quantum Operations
+POST /v1/quantum_circuit
+Build and execute quantum circuits.
+
+Request Body: { "qubits": int, "network_id": str }
+Response: { "status": str, "circuit": dict, "request_id": str }
+
 Monitoring
 GET /v1/monitoring/health
 Check system health.
@@ -57,15 +114,9 @@ Retrieve error logs.
 
 Response: { "logs": str, "request_id": str }
 
-Troubleshooting
-GET /v1/troubleshoot/status
-Check system status.
-
-Response: { "status": str, "db": bool, "agents": dict, "wallet": bool, "request_id": str }
-
 WebSocket
 WS /v1/mcp/ws
-Real-time task execution.
+Real-time task execution and SVG UI updates.
 
-Message Format: { "task": str, "params": dict }
-Response Format: { "result": dict, "request_id": str, "session_id": str }
+Message Format: { "task_name": str, "params": dict, "session_token": str }
+Response Format: { "result": dict, "request_id": str, "session_token": str }
