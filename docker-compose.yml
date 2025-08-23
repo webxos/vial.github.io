@@ -1,49 +1,50 @@
-version: '3.8'
+version: '3.9'
 services:
-  backend:
-    build: ../server
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.final
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - MONGO_URI=${MONGO_URI}
-      - REDIS_URL=${REDIS_URL}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - PYTHONUNBUFFERED=1
+      # Placeholder: OBS/SVG environment variables
+      # - OBS_WEBSOCKET_URL=ws://obs:4455
+    volumes:
+      - ./vial_mcp.db:/app/vial_mcp.db
     depends_on:
-      - postgres
-      - mongo
+      - mongodb
       - redis
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-  frontend:
-    build: ../public
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-  postgres:
-    image: postgres:15
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=vial_mcp
-    ports:
-      - "5432:5432"
-  mongo:
-    image: mongo:6
+
+  mongodb:
+    image: mongo:6.0
     ports:
       - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
   redis:
-    image: redis:7
+    image: redis:7.0
     ports:
       - "6379:6379"
-networks:
-  vial_network:
-    driver: bridge
+    volumes:
+      - redis_data:/data
+
+  prometheus:
+    build:
+      context: .
+      dockerfile: Dockerfile.monitor
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+
 volumes:
-  postgres_data:
-  mongo_data:
+  mongodb_data:
+  redis_data:
+  prometheus_data:
