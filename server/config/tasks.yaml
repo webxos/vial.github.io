@@ -1,0 +1,90 @@
+agents:
+  - id: vial1
+    role: Trainer
+    goals:
+      - Train ML model with 95% accuracy
+      - Process dataset within 10 minutes
+    tasks:
+      - name: train_model
+        description: Train PyTorch model for {{vial_id}}
+        toolkit: webxos_ml
+        params:
+          vial_id: "{{vial_id}}"
+          network_id: "{{network_id}}"
+        endpoint: /v1/jsonrpc
+        method: vial_train
+        tags: [training, {{vial_id}}, {{network_id}}]
+      - name: git_commit
+        description: Commit training results for {{vial_id}}
+        toolkit: webxos_git
+        params:
+          vial_id: "{{vial_id}}"
+          message: "Training commit for {{vial_id}}"
+        endpoint: /v1/jsonrpc
+        method: git_push
+        tags: [git, {{vial_id}}]
+  - id: vial2
+    role: Trainer
+    goals:
+      - Optimize model parameters
+      - Reduce training time by 20%
+    tasks:
+      - name: train_model
+        description: Train PyTorch model for {{vial_id}}
+        toolkit: webxos_ml
+        params:
+          vial_id: "{{vial_id}}"
+          network_id: "{{network_id}}"
+        endpoint: /v1/jsonrpc
+        method: vial_train
+        tags: [training, {{vial_id}}, {{network_id}}]
+  - id: vial3
+    role: QuantumProcessor
+    goals:
+      - Build quantum circuit with 4 qubits
+      - Simulate circuit with <1s latency
+    tasks:
+      - name: build_circuit
+        description: Build quantum circuit for {{vial_id}}
+        toolkit: webxos_quantum
+        params:
+          vial_id: "{{vial_id}}"
+          qubits: 4
+        endpoint: /v1/jsonrpc
+        method: quantum_circuit
+        tags: [quantum, {{vial_id}}, {{network_id}}]
+  - id: vial4
+    role: Coordinator
+    goals:
+      - Synchronize all agents
+      - Ensure 100% task completion
+    tasks:
+      - name: coordinate_agents
+        description: Coordinate all vial agents for {{network_id}}
+        toolkit: webxos_coord
+        params:
+          network_id: "{{network_id}}"
+        endpoint: /v1/jsonrpc
+        method: agent_coord
+        tags: [coordination, {{network_id}}]
+toolkits:
+  - name: webxos_ml
+    description: Machine learning toolkit for WebXOS
+    functions:
+      - train_pytorch
+      - train_tensorflow
+  - name: webxos_git
+    description: Git integration toolkit for WebXOS
+    functions:
+      - commit
+      - push
+  - name: webxos_quantum
+    description: Quantum computing toolkit for WebXOS
+    functions:
+      - build_circuit
+      - simulate_circuit
+  - name: webxos_coord
+    description: Agent coordination toolkit for WebXOS
+    functions:
+      - sync_agents
+      - monitor_tasks
