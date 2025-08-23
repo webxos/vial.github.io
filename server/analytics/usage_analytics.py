@@ -1,40 +1,53 @@
-# server/analytics/usage_analytics.py
 from fastapi import FastAPI, Request
-from sqlalchemy.orm import Session
-from server.services.database import SessionLocal
 from server.models.webxos_wallet import Wallet
-import logging
+from server.services.database import SessionLocal
+from server.logging import logger
+from pymongo import MongoClient
 from datetime import datetime
-
-logger = logging.getLogger(__name__)
+import os
 
 class UsageAnalytics:
     def __init__(self, app: FastAPI):
         self.app = app
-        self.register_middleware()
+        self.mongo_client = MongoClient(os.getenv("MONGO_URL", "mongodb://localhost:27017"))
+        self.db = self.mongo_client["vial_mcp"]
 
-    def register_middleware(self):
-        @self.app.middleware("http")
-        async def analytics_middleware(request: Request, call_next):
-            start_time = datetime.now()
-            response = await call_next(request)
-            duration = (datetime.now() - start_time).total_seconds()
-
-            with SessionLocal() as session:
-                # Log wallet-related requests
-                if "/wallet" in request.url.path:
-                    wallet = session.query(Wallet).filter_by(
-                        address=request.headers.get("X-Wallet-Address")
-                    ).first()
-                    if wallet:
-                        logger.info(
-                            f"Wallet {wallet.address} accessed {request.url.path} "
-                            f"in {duration:.2f}s"
-                        )
-
-            return response
+    async def analytics_middleware(self, request: Request, call_next):
+        start_time = datetime.now()
+        response = await call_next(request)
+        duration = (datetime.now() - start_time).total_seconds()
+        try:
+            with SessionLocal() as db:
+                wallet = db.query(Wallet).filter(
+                    Wallet.address == request.headers.get("X-Wallet-Address")
+                ).first()
+                if wallet:
+                    self.db.analytics.insert_one({
+                        "address": wallet.address,
+                        "path": request.url.path,
+                        "duration": duration,
+                        "timestamp": int(datetime.now().timestamp())
+                    })
+                    logger.log(
+                        f"Wallet {wallet.address} accessed {request.url.path} "
+                        f"in {duration:.2f}s",
+                        request_id=str(uuid.uuid4())
+                    )
+        except Exception as e:
+            logger.log(f"Analytics error: {str(e)}", request_id=str(uuid.uuid4()))
+        return response
 
     async def log_component_usage(self, component_id: str, action: str):
-        """Log usage of visual API router components."""
-        with SessionLocal() as session:
-            logger.info(f"Component {component_id} performed {action}")
+        request_id = str(uuid.uuid4())
+        try:
+            self.db.analytics.insert_one({
+                "component_id": component_id,
+                "action": action,
+                "timestamp": int(datetime.now().timestamp())
+            })
+            logger.log(
+                f"Component {component_id} performed {action}",
+                request_id=request_id
+            )
+        except Exception as e:
+            logger.log(f"Component usage error: {str(e)}", request_id=request_id)
