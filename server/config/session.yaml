@@ -1,0 +1,28 @@
+session:
+  version: 1.0.0
+  ttl: 3600  # Session timeout in seconds
+  cache:
+    menu_info:
+      default_tool: agent
+      guide_steps:
+        - step: 1
+          message: Select a tool to add agents or endpoints
+        - step: 2
+          message: Drag and drop to position agents/endpoints
+        - step: 3
+          message: Connect agents to create workflows
+    build_progress:
+      max_items: 10
+      types:
+        - agent
+        - endpoint
+  task_relationships:
+    enabled: true
+    collections:
+      - sessions
+      - task_relationships
+  troubleshoot:
+    reset_endpoint: /v1/troubleshoot/status
+    actions:
+      - clear_sessions
+      - reset_menu_info
