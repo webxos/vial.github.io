@@ -12,6 +12,7 @@ import uuid
 router = APIRouter(prefix="/v1", tags=["v1"], dependencies=[Depends(RateLimiter().check_rate_limit)])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
+
 @router.post("/auth/token")
 async def generate_token(network_id: str, session_id: str, memory_manager: MemoryManager = Depends()):
     request_id = str(uuid.uuid4())
@@ -23,6 +24,7 @@ async def generate_token(network_id: str, session_id: str, memory_manager: Memor
     except Exception as e:
         logger.error(f"Token generation error: {str(e)}", request_id=request_id)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/auth/validate")
 async def validate_token(token: str = Depends(oauth2_scheme), memory_manager: MemoryManager = Depends()):
@@ -37,30 +39,36 @@ async def validate_token(token: str = Depends(oauth2_scheme), memory_manager: Me
         logger.error(f"Token validation error: {str(e)}", request_id=request_id)
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/backup/wallet")
 async def backup_wallet(network_id: str, backup_service: BackupRestore = Depends()):
     request_id = str(uuid.uuid4())
     return await backup_service.backup_wallet(network_id, request_id)
+
 
 @router.post("/restore/wallet")
 async def restore_wallet(backup_id: str, backup_service: BackupRestore = Depends()):
     request_id = str(uuid.uuid4())
     return await backup_service.restore_wallet(backup_id, request_id)
 
+
 @router.post("/backup/agent_config")
 async def backup_agent_config(backup_service: BackupRestore = Depends()):
     request_id = str(uuid.uuid4())
     return await backup_service.backup_agent_config(request_id)
+
 
 @router.post("/fork_repository")
 async def fork_repository(github_service: GitHubIntegration = Depends()):
     request_id = str(uuid.uuid4())
     return await github_service.fork_repository(request_id)
 
+
 @router.post("/commit_training")
 async def commit_training(vial_id: str, github_service: GitHubIntegration = Depends()):
     request_id = str(uuid.uuid4())
     return await github_service.commit_training_results(vial_id, request_id)
+
 
 @router.post("/execute_svg_task")
 async def execute_svg_task(task: dict, agent_tasks: AgentTasks = Depends(), notification_service: NotificationService = Depends()):
@@ -72,6 +80,7 @@ async def execute_svg_task(task: dict, agent_tasks: AgentTasks = Depends(), noti
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/quantum_circuit")
 async def quantum_circuit(params: dict, agent_tasks: AgentTasks = Depends(), notification_service: NotificationService = Depends()):
     request_id = str(uuid.uuid4())
@@ -82,6 +91,7 @@ async def quantum_circuit(params: dict, agent_tasks: AgentTasks = Depends(), not
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/save_session")
 async def save_session(session_data: dict, token: str = Depends(oauth2_scheme), memory_manager: MemoryManager = Depends()):
     request_id = str(uuid.uuid4())
@@ -90,6 +100,7 @@ async def save_session(session_data: dict, token: str = Depends(oauth2_scheme), 
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/troubleshoot/status")
 async def troubleshoot_status(token: str = Depends(oauth2_scheme), memory_manager: MemoryManager = Depends()):
