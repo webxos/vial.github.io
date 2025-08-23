@@ -9,8 +9,15 @@ import uuid
 
 router = APIRouter()
 
+
 @router.websocket("/mcp/ws")
-async def websocket_endpoint(websocket: WebSocket, agent_tasks: AgentTasks = Depends(), memory_manager: MemoryManager = Depends(), notification_service: NotificationService = Depends(), rate_limiter: RateLimiter = Depends()):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    agent_tasks: AgentTasks = Depends(),
+    memory_manager: MemoryManager = Depends(),
+    notification_service: NotificationService = Depends(),
+    rate_limiter: RateLimiter = Depends()
+):
     request_id = str(uuid.uuid4())
     await websocket.accept()
     try:
@@ -21,8 +28,6 @@ async def websocket_endpoint(websocket: WebSocket, agent_tasks: AgentTasks = Dep
             task_name = message.get("task_name")
             params = message.get("params", {})
             session_token = message.get("session_token", "test_token")
-
-            # Save session data
             session_data = {
                 "menu_info": params.get("menu_info", {}),
                 "build_progress": params.get("build_progress", []),
@@ -30,8 +35,6 @@ async def websocket_endpoint(websocket: WebSocket, agent_tasks: AgentTasks = Dep
                 "task_memory": [task_name]
             }
             await memory_manager.save_session(session_token, session_data, request_id)
-
-            # Execute task
             try:
                 result = await agent_tasks.execute_task(task_name, params, request_id)
                 await notification_service.send_task_notification(task_name, result["status"], request_id)
