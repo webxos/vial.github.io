@@ -1,33 +1,37 @@
-# scripts/deployment_validator.py
-from server.config.final_config import settings
-from server.services.database import SessionLocal
-from server.models.webxos_wallet import Wallet
 import logging
+import subprocess
+from pydantic import BaseModel
+from httpx import AsyncClient
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
-def validate_deployment():
-    """Validate deployment configuration."""
+class DeploymentStatus(BaseModel):
+    status: str
+    health: bool
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+async def validate_deployment():
+    """Validate MCP server deployment."""
     try:
-        if not settings.WEBXOS_WALLET_ADDRESS:
-            logger.error("WEBXOS_WALLET_ADDRESS not set")
-            return False
-        
-        with SessionLocal() as session:
-            wallet = session.query(Wallet).filter_by(
-                address=settings.WEBXOS_WALLET_ADDRESS
-            ).first()
-            if not wallet:
-                logger.error(
-                    f"Wallet {settings.WEBXOS_WALLET_ADDRESS} not found"
-                )
-                return False
-        
-        if not settings.REPUTATION_LOGGING_ENABLED:
-            logger.warning("Reputation logging is disabled")
-        
-        logger.info("Deployment validation successful")
-        return True
+        # Check Kubernetes deployment status
+        result = subprocess.run(
+            ["kubectl", "rollout", "status", "deployment/vial-mcp", "--timeout=5m"],
+            capture_output=True, text=True, check=True
+        )
+        status = "deployed" if "successfully rolled out" in result.stdout else "failed"
+
+        # Check health endpoint
+        async with AsyncClient() as client:
+            response = await client.get("http://localhost:8000/health")
+            response.raise_for_status()
+            health = response.json().get("status") == "healthy"
+
+        # Placeholder: OBS/SVG health check
+        # response = await client.get("http://localhost:8000/obs/health")
+        # obs_health = response.json().get("status") == "healthy"
+
+        return DeploymentStatus(status=status, health=health)
     except Exception as e:
-        logger.error(f"Deployment validation error: {str(e)}")
-        return False
+        logger.error(f"Deployment validation failed: {str(e)}")
+        raise
