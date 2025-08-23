@@ -39,21 +39,22 @@ export function setupScene(canvas) {
   canvas.addEventListener('mouseup', () => {
     if (isDragging && selectedObject) {
       isDragging = false;
-      fetch('/v1/jsonrpc', {
+      const task = {
+        task_name: selectedObject.userData.type === 'endpoint' ? 'create_endpoint' : 'create_agent',
+        params: {
+          vial_id: selectedObject.userData.id,
+          x_position: selectedObject.position.x,
+          y_position: selectedObject.position.y,
+          endpoint: selectedObject.userData.type === 'endpoint' ? `/v1/custom/${selectedObject.userData.id}` : null
+        }
+      };
+      fetch('/v1/execute_svg_task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test_token' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'execute_svg_task',
-          params: {
-            task_name: 'create_agent',
-            params: { vial_id: selectedObject.userData.id, x_position: selectedObject.position.x, y_position: selectedObject.position.y }
-          },
-          id: '1'
-        })
+        body: JSON.stringify(task)
       }).then(response => response.json()).then(data => {
-        if (data.result.status === 'success') {
-          alert(`Agent ${selectedObject.userData.id} created at (${selectedObject.position.x}, ${selectedObject.position.y})`);
+        if (data.status === 'success') {
+          alert(`${task.task_name === 'create_endpoint' ? 'Endpoint' : 'Agent'} ${selectedObject.userData.id} created`);
         }
       });
       selectedObject = null;
@@ -65,7 +66,7 @@ export function setupScene(canvas) {
 
 export function create3DComponent(scene, { id, type, title, position }) {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  const material = new THREE.MeshBasicMaterial({ color: type === 'endpoint' ? 0xff0000 : 0x00ff00 });
   const cube = new THREE.Mesh(geometry, material);
   cube.position.set(position.x, position.y, position.z);
   cube.userData = { id, type, title };
