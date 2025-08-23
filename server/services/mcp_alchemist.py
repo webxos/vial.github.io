@@ -1,11 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, WebSocket
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from langchain.agents import initialize_agent, Tool
-from langchain.llms import OpenAI
-from jose import jwt, JWTError
-from sqlalchemy.orm import Session
 from server.services.vial_manager import VialManager
-from server.services.quantum_sync import QuantumVisualSync
+from server.quantum.qiskit_engine import QiskitEngine
 from server.models.visual_components import VisualConfig
 from server.models.webxos_wallet import WalletModel
 from server.services.database import get_db
@@ -20,6 +17,12 @@ import os
 from datetime import datetime, timedelta
 from git import Repo
 from passlib.context import CryptContext
+from jose import jwt, JWTError
+from prometheus_client import Counter, Histogram
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+tool_calls = Counter("mcp_tool_calls", "MCP tool calls", ["tool"])
+tool_duration = Histogram("mcp_tool_duration_seconds", "MCP tool execution time", ["tool"])
 
 
 class ModelRouter:
@@ -33,8 +36,10 @@ class ModelRouter:
             from langchain_community.llms import Grok
             self.llm = Grok(api_key=settings.XAI_API_KEY)
         else:
+            from langchain.llms import OpenAI
             self.llm = OpenAI(api_key=settings.OPENAI_API_KEY)
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     async def run(self, prompt: str):
         return await self.llm.apredict(prompt)
 
@@ -57,7 +62,7 @@ def setup_mcp_alchemist(app: FastAPI):
     vial_manager = VialManager()
     model_router = ModelRouter()
     alchemist_model = AlchemistModel()
-    quantum_sync = QuantumVisualSync(vial_manager)
+    qiskit_engine = QiskitEngine()
     repo = Repo(os.getcwd())
     async_client = httpx.AsyncClient(timeout=10.0)
     tools = [
@@ -82,9 +87,9 @@ def setup_mcp_alchemist(app: FastAPI):
             description="Commit code to GitHub"
         ),
         Tool(
-            name="quantum.sync.state",
-            func=lambda x: quantum_sync.sync_quantum_state(x),
-            description="Sync quantum state for a vial"
+            name="quantum.circuit.build",
+            func=lambda x: qiskit_engine.build_circuit_from_components(json.loads(x)),
+            description="Build quantum circuit from components"
         )
     ]
     agent = initialize_agent(tools, model_router.llm, agent="zero-shot-react-description", verbose=True)
@@ -97,7 +102,7 @@ def setup_mcp_alchemist(app: FastAPI):
                 raise HTTPException(status_code=403, detail="Insufficient permissions")
             return payload.get("sub")
         except JWTError as e:
-            logger.log(f"JWT error: {str(e)}")
+            logger.log(f"JWT error: {str(e)}", request_id=str(uuid.uuid4()))
             raise HTTPException(status_code=401, detail="Invalid token")
 
     @app.post("/alchemist/auth/token")
@@ -109,133 +114,166 @@ def setup_mcp_alchemist(app: FastAPI):
             token_data = {
                 "sub": form_data.username,
                 "exp": datetime.utcnow() + timedelta(hours=1),
-                "scopes": ["wallet:read", "wallet:sign", "git:push", "vercel:deploy"]
+                "scopes": ["wallet:read", "wallet:export", "git:push", "vercel:deploy", "vial:train", "ops:troubleshoot", "quantum:circuit"]
             }
             token = jwt.encode(token_data, settings.JWT_SECRET, algorithm="HS256")
-            logger.log(f"Generated token for user: {form_data.username}")
+            logger.log(f"Generated token for user: {form_data.username}", request_id=str(uuid.uuid4()))
             return {"access_token": token, "token_type": "bearer"}
         except Exception as e:
-            logger.log(f"Token generation error: {str(e)}")
+            logger.log(f"Token generation error: {str(e)}", request_id=str(uuid.uuid4()))
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/alchemist/auth/me")
     async def get_current_user(token: str = Depends(OAuth2PasswordBearer(tokenUrl="/alchemist/auth/token"))):
-        user_id = await verify_scopes(token, ["wallet:read"])
-        logger.log(f"User profile accessed: {user_id}")
-        return {"user_id": user_id}
+        with tool_duration.labels(tool="auth.me").time():
+            tool_calls.labels(tool="auth.me").inc()
+            user_id = await verify_scopes(token, ["wallet:read"])
+            logger.log(f"User profile accessed: {user_id}", request_id=str(uuid.uuid4()))
+            return {"user_id": user_id}
 
     @app.post("/alchemist/train")
     async def train_vials(prompt: str, vial_id: str = None, config: VisualConfig = None, db: Session = Depends(get_db), token: str = Depends(OAuth2PasswordBearer(tokenUrl="/alchemist/auth/token"))):
-        await verify_scopes(token, ["vial:train"])
-        try:
-            if vial_id and vial_id not in vial_manager.agents:
-                raise ValueError(f"Vial {vial_id} not found")
-            input_data = torch.rand(100)
-            with torch.no_grad():
-                prediction = alchemist_model(input_data)
-            result = await model_router.run(prompt)
-            if config:
-                config_id = str(uuid.uuid4())
-                db.add(VisualConfig(id=config_id, name=f"config_{prompt[:50]}", components=config.components, connections=config.connections))
-                db.commit()
-                quantum_result = quantum_sync.create_quantum_circuit_from_visual(config.components)
-                logger.log(f"Alchemist trained with config: {prompt}, quantum hash: {quantum_result['quantum_hash']}")
-                return {"status": "trained", "result": result, "config_id": config_id, "quantum_hash": quantum_result["quantum_hash"]}
-            logger.log(f"Alchemist trained: {prompt}")
-            return {"status": "trained", "result": result, "prediction": prediction.tolist()}
-        except Exception as e:
-            logger.log(f"Alchemist training error: {str(e)}")
-            return {"error": str(e)}
+        with tool_duration.labels(tool="train").time():
+            tool_calls.labels(tool="train").inc()
+            await verify_scopes(token, ["vial:train"])
+            try:
+                if vial_id and vial_id not in vial_manager.agents:
+                    raise ValueError(f"Vial {vial_id} not found")
+                input_data = torch.rand(100)
+                with torch.no_grad():
+                    prediction = alchemist_model(input_data)
+                result = await model_router.run(prompt)
+                if config:
+                    config_id = str(uuid.uuid4())
+                    db.add(VisualConfig(id=config_id, name=f"config_{prompt[:50]}", components=config.components, connections=config.connections))
+                    db.commit()
+                    quantum_result = qiskit_engine.build_circuit_from_components(config.components)
+                    logger.log(f"Alchemist trained with config: {prompt}, quantum hash: {quantum_result['quantum_hash']}", request_id=str(uuid.uuid4()))
+                    return {"status": "trained", "result": result, "config_id": config_id, "quantum_hash": quantum_result["quantum_hash"]}
+                logger.log(f"Alchemist trained: {prompt}", request_id=str(uuid.uuid4()))
+                return {"status": "trained", "result": result, "prediction": prediction.tolist()}
+            except Exception as e:
+                logger.log(f"Alchemist training error: {str(e)}", request_id=str(uuid.uuid4()))
+                return {"error": str(e)}
 
     @app.post("/alchemist/wallet/export")
     async def export_wallet(user_id: str, svg_style: str = "default", db: Session = Depends(get_db), token: str = Depends(OAuth2PasswordBearer(tokenUrl="/alchemist/auth/token"))):
-        await verify_scopes(token, ["wallet:export"])
-        try:
-            wallet = db.query(WalletModel).filter(WalletModel.user_id == user_id).first()
-            if not wallet:
-                hashed_password = pwd_context.hash("default_password")
-                wallet = WalletModel(user_id=user_id, balance=72017.0, network_id=str(uuid.uuid4()), hashed_password=hashed_password)
-                db.add(wallet)
-                db.commit()
-            resource_path = f"resources/wallets/{user_id}_{datetime.utcnow().isoformat()}.json"
-            os.makedirs(os.path.dirname(resource_path), exist_ok=True)
-            export_data = {
-                "network_id": wallet.network_id,
-                "session_start": datetime.utcnow().isoformat() + "Z",
-                "reputation": 1229811727985,
-                "wallet": {
-                    "key": str(uuid.uuid4()),
-                    "balance": wallet.balance,
-                    "address": str(uuid.uuid4()),
-                    "hash": "042e2b6c16cc0471417e0bca0161be72258214efcf46953a63c6343b187887ce"
-                },
-                "vials": [
-                    {
-                        "name": f"vial{i}",
-                        "status": vial_manager.get_vial_status(f"vial{i}")["status"],
-                        "language": "Python",
-                        "balance": 18004.25,
+        with tool_duration.labels(tool="wallet.export").time():
+            tool_calls.labels(tool="wallet.export").inc()
+            await verify_scopes(token, ["wallet:export"])
+            try:
+                wallet = db.query(WalletModel).filter(WalletModel.user_id == user_id).first()
+                if not wallet:
+                    hashed_password = pwd_context.hash("default_password")
+                    wallet = WalletModel(user_id=user_id, balance=72017.0, network_id=str(uuid.uuid4()), hashed_password=hashed_password)
+                    db.add(wallet)
+                    db.commit()
+                resource_path = f"resources/wallets/{user_id}_{datetime.utcnow().isoformat()}.json"
+                os.makedirs(os.path.dirname(resource_path), exist_ok=True)
+                export_data = {
+                    "network_id": wallet.network_id,
+                    "session_start": datetime.utcnow().isoformat() + "Z",
+                    "reputation": 1229811727985,
+                    "wallet": {
+                        "key": str(uuid.uuid4()),
+                        "balance": wallet.balance,
                         "address": str(uuid.uuid4()),
-                        "hash": "042e2b6c16cc0471417e0bca0161be72258214efcf46953a63c6343b187887ce",
-                        "svg_diagram": generate_svg_diagram(f"vial{i}", svg_style)
-                    } for i in range(1, 5)
-                ]
-            }
-            with open(resource_path, "w") as f:
-                json.dump(export_data, f)
-            logger.log(f"Exported wallet to {resource_path} for user: {user_id}")
-            return {"status": "exported", "resource_path": resource_path}
-        except Exception as e:
-            logger.log(f"Wallet export error: {str(e)}")
-            return {"error": str(e)}
+                        "hash": "042e2b6c16cc0471417e0bca0161be72258214efcf46953a63c6343b187887ce"
+                    },
+                    "vials": [
+                        {
+                            "name": f"vial{i}",
+                            "status": vial_manager.get_vial_status(f"vial{i}")["status"],
+                            "language": "Python",
+                            "balance": 18004.25,
+                            "address": str(uuid.uuid4()),
+                            "hash": "042e2b6c16cc0471417e0bca0161be72258214efcf46953a63c6343b187887ce",
+                            "svg_diagram": generate_svg_diagram(f"vial{i}", svg_style)
+                        } for i in range(1, 5)
+                    ]
+                }
+                with open(resource_path, "w") as f:
+                    json.dump(export_data, f)
+                logger.log(f"Exported wallet to {resource_path} for user: {user_id}", request_id=str(uuid.uuid4()))
+                return {"status": "exported", "resource_path": resource_path}
+            except Exception as e:
+                logger.log(f"Wallet export error: {str(e)}", request_id=str(uuid.uuid4()))
+                return {"error": str(e)}
 
     @app.post("/alchemist/copilot")
     async def copilot_generate(prompt: str, token: str = Depends(OAuth2PasswordBearer(tokenUrl="/alchemist/auth/token"))):
-        await verify_scopes(token, ["copilot:generate"])
-        try:
-            async with async_client as client:
-                response = await client.post(
-                    "https://api.github.com/copilot/generate",
-                    headers={"Authorization": f"Bearer {settings.GITHUB_TOKEN}"},
-                    json={"prompt": prompt, "language": "python"}
-                )
-                response.raise_for_status()
-                code = response.json().get("code", "")
-                commit_result = await commit_to_git({"code": code, "message": f"Copilot: {prompt[:50]}"}, repo, async_client)
-                logger.log(f"Copilot generated code for user")
-                return {"status": "generated", "code": code, "commit": commit_result}
-        except Exception as e:
-            logger.log(f"Copilot error: {str(e)}")
-            return {"error": str(e)}
+        with tool_duration.labels(tool="copilot.generate").time():
+            tool_calls.labels(tool="copilot.generate").inc()
+            await verify_scopes(token, ["copilot:generate"])
+            try:
+                async with async_client as client:
+                    response = await client.post(
+                        "https://api.github.com/copilot/generate",
+                        headers={"Authorization": f"Bearer {settings.GITHUB_TOKEN}"},
+                        json={"prompt": prompt, "language": "python"}
+                    )
+                    response.raise_for_status()
+                    code = response.json().get("code", "")
+                    commit_result = await commit_to_git({"code": code, "message": f"Copilot: {prompt[:50]}"}, repo, async_client)
+                    logger.log(f"Copilot generated code for user", request_id=str(uuid.uuid4()))
+                    return {"status": "generated", "code": code, "commit": commit_result}
+            except Exception as e:
+                logger.log(f"Copilot error: {str(e)}", request_id=str(uuid.uuid4()))
+                return {"error": str(e)}
 
     @app.post("/alchemist/troubleshoot")
     async def troubleshoot(error: str, token: str = Depends(OAuth2PasswordBearer(tokenUrl="/alchemist/auth/token"))):
-        await verify_scopes(token, ["ops:troubleshoot"])
-        try:
-            options = [
-                "1. Check database connection",
-                "2. Restart vial agents",
-                "3. Clear Redis cache",
-                "4. View logs",
-                "5. Revert to last backup"
-            ]
-            response = await model_router.run(f"Troubleshoot error: {error}. Suggest steps from: {options}")
-            logger.log(f"Troubleshooting initiated for error: {error}")
-            return {"status": "troubleshooting", "steps": response, "options": options}
-        except Exception as e:
-            logger.log(f"Troubleshoot error: {str(e)}")
-            return {"error": str(e)}
+        with tool_duration.labels(tool="ops.troubleshoot").time():
+            tool_calls.labels(tool="ops.troubleshoot").inc()
+            await verify_scopes(token, ["ops:troubleshoot"])
+            try:
+                options = [
+                    "1. Check database connection",
+                    "2. Restart vial agents",
+                    "3. Clear Redis cache",
+                    "4. View logs",
+                    "5. Revert to last backup"
+                ]
+                response = await model_router.run(f"Troubleshoot error: {error}. Suggest steps from: {options}")
+                logger.log(f"Troubleshooting initiated for error: {error}", request_id=str(uuid.uuid4()))
+                return {"status": "troubleshooting", "steps": response, "options": options}
+            except Exception as e:
+                logger.log(f"Troubleshoot error: {str(e)}", request_id=str(uuid.uuid4()))
+                return {"error": str(e)}
 
     @app.post("/alchemist/git")
     async def run_git_command(command: str, token: str = Depends(OAuth2PasswordBearer(tokenUrl="/alchemist/auth/token"))):
-        await verify_scopes(token, ["git:push"])
+        with tool_duration.labels(tool="git.commit.push").time():
+            tool_calls.labels(tool="git.commit.push").inc()
+            await verify_scopes(token, ["git:push"])
+            try:
+                result = repo.git.execute(["git"] + command.split())
+                logger.log(f"Git command executed: {command}", request_id=str(uuid.uuid4()))
+                return {"status": "executed", "result": result}
+            except Exception as e:
+                logger.log(f"Git command error: {str(e)}", request_id=str(uuid.uuid4()))
+                return {"error": str(e)}
+
+    @app.websocket("/alchemist/ws")
+    async def websocket_endpoint(websocket: WebSocket):
+        await websocket.accept()
         try:
-            result = repo.git.execute(["git"] + command.split())
-            logger.log(f"Git command executed: {command}")
-            return {"status": "executed", "result": result}
+            while True:
+                data = await websocket.receive_json()
+                tool_name = data.get("tool")
+                params = data.get("params", {})
+                if tool_name in [tool.name for tool in tools]:
+                    tool_calls.labels(tool=tool_name).inc()
+                    with tool_duration.labels(tool=tool_name).time():
+                        result = await tools[[t.name for t in tools].index(tool_name)].func(params)
+                        await websocket.send_json({"status": "success", "result": result})
+                else:
+                    await websocket.send_json({"error": f"Tool {tool_name} not found"})
         except Exception as e:
-            logger.log(f"Git command error: {str(e)}")
-            return {"error": str(e)}
+            logger.log(f"WebSocket error: {str(e)}", request_id=str(uuid.uuid4()))
+            await websocket.send_json({"error": str(e)})
+        finally:
+            await websocket.close()
 
 async def generate_config_from_prompt(prompt: str) -> dict:
     try:
@@ -252,7 +290,7 @@ async def generate_config_from_prompt(prompt: str) -> dict:
         ]
         return {"components": components, "connections": []}
     except Exception as e:
-        logger.log(f"Config generation error: {str(e)}")
+        logger.log(f"Config generation error: {str(e)}", request_id=str(uuid.uuid4()))
         raise
 
 async def deploy_to_vercel(config: dict, client: httpx.AsyncClient) -> dict:
@@ -270,10 +308,10 @@ async def deploy_to_vercel(config: dict, client: httpx.AsyncClient) -> dict:
             json=payload
         )
         response.raise_for_status()
-        logger.log(f"Vercel deployment initiated: {response.json()['id']}")
+        logger.log(f"Vercel deployment initiated: {response.json()['id']}", request_id=str(uuid.uuid4()))
         return {"status": "deployed", "deployment_id": response.json()["id"]}
     except Exception as e:
-        logger.log(f"Vercel deployment error: {str(e)}")
+        logger.log(f"Vercel deployment error: {str(e)}", request_id=str(uuid.uuid4()))
         return {"error": str(e)}
 
 async def commit_to_git(data: dict, repo: Repo, client: httpx.AsyncClient) -> dict:
@@ -291,10 +329,10 @@ async def commit_to_git(data: dict, repo: Repo, client: httpx.AsyncClient) -> di
             headers={"Authorization": f"Bearer {settings.GITHUB_TOKEN}"},
             json={"title": data.get("message"), "head": branch, "base": "main"}
         )
-        logger.log(f"Created PR for commit: {data.get('message')}")
+        logger.log(f"Created PR for commit: {data.get('message')}", request_id=str(uuid.uuid4()))
         return {"status": "committed", "resource_path": output_path}
     except Exception as e:
-        logger.log(f"Git commit error: {str(e)}")
+        logger.log(f"Git commit error: {str(e)}", request_id=str(uuid.uuid4()))
         return {"error": str(e)}
 
 def generate_svg_diagram(vial_id: str, style: str = "default") -> str:
@@ -308,5 +346,5 @@ def generate_svg_diagram(vial_id: str, style: str = "default") -> str:
         </svg>"""
         with open(resource_path, "w") as f:
             f.write(svg_content)
-        logger.log(f"Generated SVG at {resource_path}")
+        logger.log(f"Generated SVG at {resource_path}", request_id=str(uuid.uuid4()))
         return resource_path
