@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vial MCP Client Terminal</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Courier New', Courier, monospace;
+      background-color: #1a1a1a;
+      color: #00ff00;
+    }
+    #terminal {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .terminal-input {
+      background-color: #2d2d2d;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 10px;
+      width: 100%;
+      max-width: 600px;
+      color: #00ff00;
+    }
+    .terminal-output {
+      background-color: #2d2d2d;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 10px;
+      width: 100%;
+      max-width: 600px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+    .button-group button {
+      background-color: #444;
+      border: 1px solid #666;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .button-group button:hover {
+      background-color: #00cc00;
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal">
+    <h1 class="text-3xl font-bold mb-4">Vial MCP Client Terminal</h1>
+    <div class="terminal-input">
+      <input id="command" type="text" placeholder="Enter command (e.g., /help)" class="w-full bg-transparent text-green-400">
+    </div>
+    <div class="terminal-output" id="output"></div>
+    <div class="button-group">
+      <button onclick="executeCommand()">Run Command</button>
+      <button onclick="testWallet()">Test Wallet</button>
+      <button onclick="forkRepo()">Fork Repository</button>
+    </div>
+  </div>
+  <script>
+    async function executeCommand() {
+      const command = document.getElementById('command').value;
+      const output = document.getElementById('output');
+      try {
+        const response = await fetch('/v1/jsonrpc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test_token' },
+          body: JSON.stringify({ jsonrpc: '2.0', method: command.slice(1), params: {}, id: '1' })
+        });
+        const data = await response.json();
+        output.textContent = JSON.stringify(data.result, null, 2);
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+    async function testWallet() {
+      const output = document.getElementById('output');
+      try {
+        const response = await fetch('/v1/wallet/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test_token' },
+          body: JSON.stringify({ network_id: '54965687-3871-4f3d-a803-ac9840af87c4' })
+        });
+        const data = await response.json();
+        output.textContent = data.markdown;
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+    async function forkRepo() {
+      const output = document.getElementById('output');
+      try {
+        const response = await fetch('/v1/fork_repository', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test_token' },
+          body: JSON.stringify({})
+        });
+        const data = await response.json();
+        output.textContent = `Forked: ${data.fork_url}`;
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
