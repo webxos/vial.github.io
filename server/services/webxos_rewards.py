@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, HTTPException, Security
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_exponential
+from server.utils.security_sanitizer import sanitize_input
 from fastapi.security import OAuth2AuthorizationCodeBearer
 import logging
 
@@ -11,18 +13,34 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
     tokenUrl="https://github.com/login/oauth/access_token"
 )
 
-class WalletRequest(BaseModel):
+class RewardsRequest(BaseModel):
     user_id: str
-    amount: float
+    action: str
+    metadata: dict
 
-@router.post("/webxos/wallet")
-async def process_rewards(request: WalletRequest, token: str = Security(oauth2_scheme)):
-    """Process WebXOS wallet rewards."""
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+async def calculate_rewards(user_id: str, action: str, metadata: dict) -> dict:
+    """Calculate WebXOS rewards for user actions."""
     try:
-        # Placeholder: Blockchain transaction with Kyber-512 encryption
-        wallet_key = os.getenv("WEBXOS_WALLET_KEY", "default_key")
-        logger.info(f"Processing reward for user {request.user_id}: {request.amount}")
-        return {"status": "success", "user_id": request.user_id, "amount": request.amount}
+        sanitized_user_id = sanitize_input(user_id)
+        sanitized_action = sanitize_input(action)
+        sanitized_metadata = sanitize_input(metadata)
+        
+        # Placeholder: Blockchain-based rewards calculation
+        rewards = {"points": 100, "action": sanitized_action}
+        
+        logger.info(f"Rewards calculated for user {sanitized_user_id}: {sanitized_action}")
+        return {"status": "success", "rewards": rewards}
     except Exception as e:
-        logger.error(f"Reward processing failed: {str(e)}")
+        logger.error(f"Rewards calculation failed: {str(e)}")
+        raise
+
+@router.post("/mcp/rewards")
+async def process_rewards(request: RewardsRequest, token: str = Security(oauth2_scheme)):
+    """Process WebXOS rewards for user actions."""
+    try:
+        result = await calculate_rewards(request.user_id, request.action, request.metadata)
+        return result
+    except Exception as e:
+        logger.error(f"Rewards processing failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
