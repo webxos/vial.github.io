@@ -1,0 +1,38 @@
+```yaml
+name: Wallet Import Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-wallet-import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Wallet Import
+        run: |
+          if [ -f "public/wallets/example.md" ]; then
+            node -e "const fs = require('fs'); const wallet = fs.readFileSync('public/wallets/example.md', 'utf8'); if (!wallet.match(/^[a-zA-Z0-9\s-]+$/)) throw new Error('Wallet file corrupted');"
+          fi
+
+      - name: Post Wallet Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Wallet import check completed at 05:21 PM EDT.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
