@@ -6,6 +6,10 @@ on:
     types: [opened, edited, reopened]
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   comment-on-issue:
@@ -14,22 +18,60 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Post Comment on Issue or PR
+      - name: Debug Context
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Issue Number: ${{ github.event.issue.number }}"
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "Payload: ${{ toJson(github.event) }}"
+
+      - name: Post Comment or Create Issue
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issueNumber = context.issue.number;
+            const eventName = context.eventName;
+            let issueNumber = context.issue.number || context.payload.pull_request?.number;
+            const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+
+            console.log(`Event: ${eventName}, Issue Number: ${issueNumber}, Timestamp: ${timestamp}`);
+
             if (!issueNumber) {
-              console.log('No issue or PR number available in this context. Skipping comment.');
-              return;
+              if (eventName === 'push' || eventName === 'workflow_dispatch') {
+                console.log('No issue context; creating a new issue.');
+                const newIssue = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: `Deployment Failure on ${eventName} at ${timestamp}`,
+                  body: 'Deployment failed! Check logs.'
+                });
+                issueNumber = newIssue.data.number;
+                console.log(`Created issue #${issueNumber}`);
+              } else {
+                console.log('No issue or PR context available. Skipping comment.');
+                return;
+              }
             }
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-              body: 'Deployment failed! Check logs.'
-            });
+
+            try {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `Deployment failed! Check logs. Timestamp: ${timestamp}`
+              });
+              console.log(`Comment posted to issue #${issueNumber}`);
+            } catch (error) {
+              console.error(`Error posting comment: ${error.message} (Status: ${error.status})`);
+              if (error.status === 404) {
+                console.log('404 detected; rechecking context and skipping.');
+                return;
+              }
+              throw error;
+            }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        permissions:
+          issues: write
+          pull-requests: write
 ```
