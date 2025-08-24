@@ -27,5 +27,9 @@ export default class SVGTranspiler {
       el.setAttribute("stroke", style.stroke);
     });
   }
+
+  exportSVG() {
+    return this.svg.outerHTML;
+  }
 }
 ```
