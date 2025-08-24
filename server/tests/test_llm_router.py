@@ -1,30 +1,36 @@
+```python
 import pytest
-from fastapi.testclient import TestClient
-from server.main import app
 from unittest.mock import patch, AsyncMock
-
-client = TestClient(app)
-
-@pytest.mark.asyncio
-async def test_route_llm_success():
-    """Test successful LLM routing."""
-    with patch("server.services.llm_router.route_to_provider", new=AsyncMock()) as mock_route:
-        mock_route.return_value = {"response": "LLM output"}
-        response = client.post(
-            "/mcp/llm",
-            json={"provider": "anthropic", "prompt": "Hello"}
-        )
-        assert response.status_code == 200
-        assert response.json() == {"status": "success", "result": {"response": "LLM output"}}
+from server.services.llm_router import LLMRouter, LLMRequest
+from fastapi import HTTPException
 
 @pytest.mark.asyncio
-async def test_route_llm_invalid_provider():
-    """Test invalid LLM provider error."""
-    with patch("server.services.llm_router.route_to_provider", new=AsyncMock()) as mock_route:
-        mock_route.side_effect = HTTPException(status_code=400, detail="Invalid provider")
-        response = client.post(
-            "/mcp/llm",
-            json={"provider": "invalid", "prompt": "Hello"}
-        )
-        assert response.status_code == 400
-        assert response.json() == {"detail": "Invalid provider"}
+async def test_llm_router_success():
+    """Test successful LLM request routing."""
+    router = LLMRouter()
+    request = LLMRequest(provider="anthropic", prompt="Test prompt")
+    with patch("server.services.llm_router.completion", new=AsyncMock(return_value={"choices": [{"message": {"content": "Test response"}}]})):
+        response = await router.route_request(request)
+        assert response["choices"][0]["message"]["content"] == "Test response"
+
+@pytest.mark.asyncio
+async def test_llm_router_invalid_provider():
+    """Test routing to invalid provider."""
+    router = LLMRouter()
+    request = LLMRequest(provider="invalid", prompt="Test prompt")
+    with pytest.raises(HTTPException) as exc:
+        await router.route_request(request)
+    assert exc.value.status_code == 400
+    assert "Invalid provider" in str(exc.value.detail)
+
+@pytest.mark.asyncio
+async def test_llm_router_failure():
+    """Test LLM routing failure."""
+    router = LLMRouter()
+    request = LLMRequest(provider="anthropic", prompt="Test prompt")
+    with patch("server.services.llm_router.completion", side_effect=Exception("LLM error")):
+        with pytest.raises(HTTPException) as exc:
+            await router.route_request(request)
+        assert exc.value.status_code == 500
+        assert "LLM error" in str(exc.value.detail)
+```
