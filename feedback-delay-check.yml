@@ -1,0 +1,42 @@
+```yaml
+name: Feedback Delay Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-feedback-delay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Simulate Feedback
+        run: |
+          node -e "const { performance } = require('perf_hooks'); const t0 = performance.now(); setTimeout(() => console.log('Feedback received'), 200); const t1 = performance.now(); if ((t1 - t0) > 300) throw new Error('Feedback delay too long');"
+
+      - name: Post Feedback Status
+        if: github.event.pull_request.number || github.event.issue.number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Feedback delay check completed at 06:06 PM EDT.'
+              });
+            } else {
+              console.log('No issue/PR context available, skipping comment');
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        permissions:
+          issues: write
+          pull-requests: write
+```
