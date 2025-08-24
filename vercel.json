@@ -1,31 +1,29 @@
+```json
 {
   "version": 2,
   "builds": [
     {
-      "src": "next.config.js",
-      "use": "@vercel/next"
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "telescope.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "server/mcp_server.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/",
-      "headers": {
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' ws://localhost:4455;"
-      }
+      "src": "/api/(.*)",
+      "dest": "server/mcp_server.py"
     },
     {
-      "src": "/obs/(.*)",
-      "dest": "http://mcp-server:4455/$1",
-      "headers": {
-        "Upgrade": "websocket",
-        "Connection": "upgrade"
-      }
+      "src": "/(.*)",
+      "dest": "index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
+```
