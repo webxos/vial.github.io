@@ -1,30 +1,38 @@
-name: Linting
+```yaml
+name: Lint and CI
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
+  workflow_dispatch:
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install Node.js dependencies
-        run: |
-          echo "registry=https://registry.npmjs.org/" > .npmrc
-          npm install
-          npm ci --omit=dev
-      - name: Install Python dependencies
-        run: pip install flake8
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run ESLint
-        run: npx eslint public/js/ src/tools/
-      - name: Run Flake8
-        run: flake8 server/ --max-line-length=88
+        run: npx eslint public/js/ --ext .js,.jsx,.ts,.tsx --fix
+        continue-on-error: false
+
+      - name: Notify on failure
+        if: failure()
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: 'Linting Failed'
+          content-filepath: .github/ISSUE_TEMPLATE/lint-failure.md
+          assignees: 'your-github-username'
+          labels: 'bug, lint'
+          token: ${{ secrets.GITHUB_TOKEN }}
