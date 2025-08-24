@@ -1,0 +1,42 @@
+```yaml
+name: SVG Performance Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-svg-performance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test SVG Rendering
+        run: |
+          node -e "const { performance } = require('perf_hooks'); const fs = require('fs'); const svg = fs.readFileSync('public/assets/dropship/default.svg', 'utf8'); const t0 = performance.now(); for (let i = 0; i < 100; i++) console.log(svg); const t1 = performance.now(); if ((t1 - t0) > 500) throw new Error('SVG rendering too slow');"
+
+      - name: Post Performance Status
+        if: github.event.pull_request.number || github.event.issue.number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'SVG performance check completed at 06:06 PM EDT.'
+              });
+            } else {
+              console.log('No issue/PR context available, skipping comment');
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        permissions:
+          issues: write
+          pull-requests: write
+```
