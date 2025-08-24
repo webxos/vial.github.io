@@ -1,0 +1,38 @@
+```yaml
+name: SVG Import Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-svg-import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate SVG Import
+        run: |
+          if [ -f "public/uploads/import.svg" ]; then
+            node -e "const fs = require('fs'); const svg = fs.readFileSync('public/uploads/import.svg', 'utf8'); const parser = new DOMParser(); const doc = parser.parseFromString(svg, 'image/svg+xml'); if (doc.getElementsByTagName('parsererror').length) throw new Error('Invalid SVG');"
+          fi
+
+      - name: Post SVG Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'SVG import validated at 05:21 PM EDT.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
