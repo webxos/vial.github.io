@@ -1,4 +1,3 @@
-```toml
 [tool.poetry]
 name = "agora-protocol"
 version = "0.2.0"
@@ -28,4 +27,3 @@ camel-ai = ["camel-ai"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-```
