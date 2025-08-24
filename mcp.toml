@@ -1,4 +1,3 @@
-```toml
 [mcp]
 version = "2025-03-26"
 name = "WebXOS 2025 Vial MCP SDK"
@@ -27,4 +26,4 @@ host = "0.0.0.0"
 port = 8000
 healthcheck = "/healthz"
 session_timeout = 3600
-```
+
