@@ -1,6 +1,6 @@
 # The Vial Model Context Protocol (MCP) SDK
 
-![Vial MCP SDK](https://via.placeholder.com/150?text=Vial+MCP)
+beta test: webxos.netlify.app/vial
 
 The **Vial MCP SDK** is an open-source testing platform for integrating the **Model Context Protocol (MCP)** into planetary distribution systems, designed for researchers, data scientists, and communities. Hosted on `vial.github.io` via Netlify, it leverages Three.js for 3D environments, NASA (GIBS, APOD, EONET), SpaceX, and Alibaba Higress APIs for real-time data, Astropy for processing, and OBS for AR/VR streaming. The **Dropship** mode unifies all features for supply chain automation, with `mcp_alchemist` (4x PyTorch models) coordinating agents and DAO wallets tracking contributions for future rewards.
 
