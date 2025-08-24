@@ -1,30 +1,47 @@
+```python
 import pytest
-from fastapi.testclient import TestClient
-from server.main import app
 from unittest.mock import patch, AsyncMock
-
-client = TestClient(app)
-
-@pytest.mark.asyncio
-async def test_process_quantum_success():
-    """Test successful quantum circuit processing."""
-    with patch("server.services.quantum_processor.execute_quantum_circuit", new=AsyncMock()) as mock_execute:
-        mock_execute.return_value = {"statevector": [1, 0]}
-        response = client.post(
-            "/mcp/quantum",
-            json={"qubits": 2, "circuit": {}}
-        )
-        assert response.status_code == 200
-        assert response.json() == {"status": "success", "result": {"statevector": [1, 0]}}
+from server.services.quantum_processor import QuantumProcessor
+from fastapi import HTTPException
 
 @pytest.mark.asyncio
-async def test_process_quantum_failure():
-    """Test quantum circuit processing failure."""
-    with patch("server.services.quantum_processor.execute_quantum_circuit", new=AsyncMock()) as mock_execute:
-        mock_execute.side_effect = Exception("Quantum error")
-        response = client.post(
-            "/mcp/quantum",
-            json={"qubits": 2, "circuit": {}}
+async def test_quantum_processor_success():
+    """Test successful quantum RAG execution."""
+    processor = QuantumProcessor()
+    with patch("qiskit_aer.AerSimulator.run", new=AsyncMock(return_value={"get_counts": lambda: {"00": 512, "11": 512}})):
+        results = await processor.execute_quantum_rag(
+            query="test query",
+            circuit="OPENQASM 2.0; include 'qelib1.inc'; qreg q[2]; h q[0]; cx q[0],q[1]; measure q[0] -> c[0]; measure q[1] -> c[1];",
+            max_results=2
         )
-        assert response.status_code == 500
-        assert "Quantum error" in response.json()["detail"]
+        assert len(results) == 2
+        assert results[0].startswith("Result-0 for query: test query")
+
+@pytest.mark.asyncio
+async def test_quantum_processor_invalid_circuit():
+    """Test invalid quantum circuit handling."""
+    processor = QuantumProcessor()
+    with patch("qiskit.QuantumCircuit.from_qasm_str", side_effect=Exception("Invalid QASM")):
+        with pytest.raises(HTTPException) as exc:
+            await processor.execute_quantum_rag(
+                query="test query",
+                circuit="invalid qasm",
+                max_results=2
+            )
+        assert exc.value.status_code == 400
+        assert "Invalid quantum circuit" in str(exc.value.detail)
+
+@pytest.mark.asyncio
+async def test_quantum_processor_failure():
+    """Test quantum processor failure."""
+    processor = QuantumProcessor()
+    with patch("qiskit_aer.AerSimulator.run", side_effect=Exception("Simulator error")):
+        with pytest.raises(HTTPException) as exc:
+            await processor.execute_quantum_rag(
+                query="test query",
+                circuit="OPENQASM 2.0; include 'qelib1.inc'; qreg q[2]; h q[0]; cx q[0],q[1];",
+                max_results=2
+            )
+        assert exc.value.status_code == 500
+        assert "Simulator error" in str(exc.value.detail)
+```
