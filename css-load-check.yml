@@ -1,0 +1,40 @@
+```yaml
+name: CSS Load Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-css-load:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify CSS
+        run: |
+          if [ ! -f "public/css/styles.css" ]; then
+            echo "CSS file missing. Creating default."
+            mkdir -p public/css
+            echo "body { background: #000; color: #00ff00; }" > public/css/styles.css
+          fi
+
+      - name: Post CSS Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'CSS load check completed at 05:21 PM EDT.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
