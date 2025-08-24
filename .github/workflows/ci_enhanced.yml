@@ -1,0 +1,63 @@
+```yaml
+name: CI Enhanced
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install
+
+      - name: Run tests
+        run: |
+          poetry run pytest server/tests/
+
+      - name: Lint code
+        run: |
+          poetry run ruff check server/
+
+      - name: Build Docker image
+        run: |
+          docker build -t webxos-vial-mcp:latest .
+
+      - name: Post CI Status
+        if: github.event.pull_request.number || github.event.issue.number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'CI enhanced completed at 06:48 PM EDT.'
+              });
+            } else {
+              console.log('No issue/PR context available, skipping comment');
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        permissions:
+          issues: write
+          pull-requests: write
+```
