@@ -1,0 +1,42 @@
+```yaml
+name: Wallet Size Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-wallet-size:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Wallet Size
+        run: |
+          node -e "const fs = require('fs'); const size = fs.statSync('public/wallets/example.md').size; if (size > 1024 * 1024) throw new Error('Wallet file exceeds 1MB limit');"
+
+      - name: Post Size Status
+        if: github.event.pull_request.number || github.event.issue.number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Wallet size check completed at 06:16 PM EDT.'
+              });
+            } else {
+              console.log('No issue/PR context available, skipping comment');
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        permissions:
+          issues: write
+          pull-requests: write
+```
