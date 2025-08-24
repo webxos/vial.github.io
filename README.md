@@ -1,99 +1,128 @@
-# The Vial Model Context Protocol (MCP) SDK
+# WebXOS 2025 Vial Model Context Protocol SDK: Data Science and Space Exploration Laboratory
 
-The **Vial MCP SDK** is an open-source testing platform for integrating the **Model Context Protocol (MCP)** into planetary distribution systems, designed for researchers, data scientists, and communities. Hosted on `vial.github.io` via Netlify, it leverages Three.js for 3D environments, NASA (GIBS, APOD, EONET), SpaceX, and Alibaba Higress APIs for real-time data, Astropy for processing, and OBS for AR/VR streaming. The **Dropship** mode unifies all features for supply chain automation, with `mcp_alchemist` (4x PyTorch models) coordinating agents and DAO wallets tracking contributions for future rewards.
-
-**OFFICIAL BETA TEST SERVER: `WEBXOS.NETLIFY.APP/VIAL`**
+The **WebXOS 2025 Vial Model Context Protocol SDK** is a forkable, open-source platform for exploring the **Model Context Protocol (MCP)** (2025-03-26 specification), data science, NLP training, and Python studies. Hosted on Vercel at `vial.github.io`, it offers a collaborative environment for researchers and developers to test planetary distribution systems using Three.js visualizations, LangChain-supported 4x PyTorch agents with `.md` wallet keys, quantum distribution simulations, and an 8-point SVG diagram interface. The SDK automates workflows, ensures quantum-resistant security, and promotes economic democracy through DAO rewards.
 
 ## 🌍 Vision
-Aligned with the **Global MCP Collaboration Framework**, the Vial MCP SDK prioritizes:
-- **Planetary Sustainability**: Earth-first, extending to Moon and Mars.
-- **Economic Democracy**: DAO wallet-based governance for equitable resource distribution.
-- **Privacy by Design**: GDPR++ compliance via `PlanetaryPrivacyEngine`.
-- **Testing Focus**: Three.js environments for SVG diagrams, supply chains, and AR/VR.
-- **Rewards**: Future upgrades will reward studying/testing via `.md` DAO wallets.
+Aligned with the **Global MCP Collaboration Framework**, the SDK aims to:
+- **Planetary Research**: Simulate Earth-Moon-Mars supply chains with AR/VR integration.
+- **Economic Democracy**: Reward contributions via `.md` wallets earning WebXOS.
+- **Privacy by Design**: GDPR++ compliance with differential privacy.
+- **Educational Hub**: Forkable boilerplates for MCP, data science, and NLP learning.
+- **Quantum Innovation**: 8-point SVG diagrams for decentralized agent coordination.
 
 ## 🚀 Features
 ### Modes
-- **Dropship (Unified)**: Combines SVG diagram creation, SpaceX launch/Starlink data, supply chain simulation (Moon-Mars), and agent automation with a 3D popup globe (Three.js). Integrates NASA GIBS/APOD/EONET, Higress API, and OBS streaming.
-- **Galaxycraft**: Game-like simulation for space exploration and resource management.
-- **Telescope**: Real-time AR/VR video feeds with OBS streaming for astronomy data study.
+- **Dropship**: Unified mode for SVG diagram creation (8-point quantum network), NASA/SpaceX/Higress data, Three.js 3D globe, and OBS streaming with LangChain agents.
+- **Galaxycraft**: Interactive space exploration game with resource simulation.
+- **Telescope**: Real-time AR/VR OBS feeds for astronomical study.
 
 ### MCP Alchemist
-- **Function**: Uses 4x PyTorch models to coordinate supply chain agents in Dropship mode.
-- **Integration**: Links to `.md` DAO wallets for contribution tracking and future rewards.
+- **Function**: 4x PyTorch agents with LangChain for agentic workflows, using `.md` wallets as keys.
+- **API**: `/api/mcp/alchemist/coordinate`.
 
-### OBS Integration
-- **Setup**: Stream to `obs://live/{route}/{time}` (e.g., `obs://live/moon-mars/2023-01-01`).
-- **Testing**: Use `telescope.html` to test streaming API for Dropship simulations and AR/VR feeds.
-- **Use Case**: Real-time visualization for philanthropy events and data science.
+### SVG Diagram Interface
+- **8-Point Quantum Network**: Assign roles (agent, API, custom) to 8 dots, with Chart.js graphs for MCP data, export/import of SVG and `.md` wallets, and error handling for network design.
+- **Enhancements**: Interactive dashboard, AR/VR overlay, benchmarking, and collaboration tools.
+
+### LangChain Integration
+- **Agentic Workflows**: Manages 4x PyTorch agents with `.md` wallets, offering pre-built OEM projects.
+- **Automation**: Seamless export/import for research continuity.
+
+### Data Management
+- **Caching**: Redis with failover for performance.
+- **Database**: SQLAlchemy with MongoDB pooling and migrations.
+- **APIs**: NASA, SpaceX, Higress, and ServiceNow with OAuth 2.0.
+
+### Security
+- **Privacy**: `PlanetaryPrivacyEngine` with GDPR++ and quantum encryption.
+- **Wallet**: Secure `.md` wallet export/import with multi-signature support.
+- **API Security**: JWT, rate limiting, and CORS.
 
 ## 🏗️ Architecture
 
 ```mermaid
 graph TD
-    A[Vial MCP Client (index.html)] -->|Mode Selection| B[UIControls (ui-controls.js)]
+    A[WebXOS Client (index.html)] -->|Mode Selection| B[UIControls (ui-controls.js)]
     B --> C[Dropship Visualizer (dropship-visualizer.js)]
     B --> D[Galaxycraft Visualizer]
     B --> E[Telescope Visualizer]
-    C -->|API Calls| F[FastAPI Server (mcp_server.py)]
-    F --> G[Dropship Service (dropship_service.py)]
-    F --> H[Astronomy Agent (astronomy.py)]
-    G --> I[GIBS Service (gibs_service.py)]
-    G --> J[SpaceX Service (spacex_service.py)]
-    G --> K[Higress API]
-    G --> L[OBS Streaming API]
-    G --> M[MCP Alchemist (PyTorch)]
-    F --> N[Privacy Engine (privacy_engine.py)]
-    F --> O[SQLAlchemy (gibs_models.py)]
-    F --> P[Prometheus (/metrics)]
-    F --> Q[Alembic (env.py)]
+    B --> F[SVG Transpiler (svg-transpiler.js)]
+    C -->|API Calls| G[FastAPI Server (mcp_server.py)]
+    G --> H[Dropship Service (dropship_service.py)]
+    G --> I[Astronomy Agent (langchain_agent.py)]
+    G --> J[MCP Alchemist (mcp_alchemist.py)]
+    H --> K[GIBS Service (gibs_service.py)]
+    H --> L[SpaceX Service (spacex_service.py)]
+    H --> M[Higress Gateway (higress-config.yaml)]
+    H --> N[OBS Streaming API]
+    G --> O[Privacy Engine (privacy_engine.py)]
+    G --> P[Reputation Service (reputation.py)]
+    G --> Q[SQLAlchemy (dropship_models.py)]
+    G --> R[MongoDB/Redis]
+    G --> S[Prometheus (/metrics)]
 
 📂 Repository Structure
 vial.github.io/
 ├── .github/workflows/        # CI/CD pipelines
-│   └── ci.yml                # Test, lint, issue creation
+│   ├── ci.yml                # Test, lint, issue creation
+│   └── vercel.yml            # Vercel deployment
 ├── docs/                     # Documentation
 │   ├── api-reference.md      # API endpoints
 │   ├── dropship-guide.md     # Dropship mode guide
-│   └── gibs-guide.md         # GIBS integration
+│   ├── alchemist-guide.md    # MCP Alchemist guide
+│   ├── deployment-guide.md   # Vercel deployment
+│   └── mcp-guide.md          # MCP integration
 ├── public/js/                # Client-side JavaScript
 │   ├── ui-controls.js        # Mode switching
 │   ├── dropship-visualizer.js # Dropship 3D rendering
-│   ├── gibs-visualizer.js    # GIBS rendering
-│   └── nasa-visualizer.js    # NASA APOD/EONET rendering
+│   ├── galaxycraft-visualizer.js # Galaxycraft rendering
+│   ├── telescope-visualizer.js # Telescope AR/VR
+│   ├── svg-transpiler.js     # SVG diagram editor
+│   └── mcp-client.js         # API client
 ├── server/                   # Backend
 │   ├── api/                  # FastAPI routes
 │   │   ├── fastapi_router.py # Main router
-│   │   └── dropship_router.py # Dropship endpoints
-│   ├── agents/               # CrewAI agents
-│   │   └── astronomy.py      # GIBS/NASA/SpaceX orchestration
+│   │   ├── dropship_router.py # Dropship endpoints
+│   │   └── mcp_alchemist.py  # Alchemist endpoints
+│   ├── agents/               # LangChain agents
+│   │   └── langchain_agent.py # Agent orchestration
 │   ├── services/             # API clients
 │   │   ├── dropship_service.py # Supply chain simulation
 │   │   ├── gibs_service.py   # GIBS WMTS/WMS
-│   │   └── spacex_service.py # SpaceX API
-│   ├── database/             # SQLAlchemy models
-│   │   ├── gibs_models.py    # GIBS metadata
+│   │   ├── spacex_service.py # SpaceX API
+│   │   └── reputation.py     # DAO wallet rewards
+│   ├── database/             # Database models
+│   │   ├── dropship_models.py # Simulation data
 │   │   └── migrations/env.py # Alembic setup
+│   ├── utils/                # Utilities
+│   │   └── auth_manager.py   # OAuth2.0
 │   └── tests/                # Unit tests
 │       ├── test_dropship.py  # Dropship tests
 │       ├── test_gibs.py      # GIBS tests
-│       └── test_privacy.py   # Privacy tests
-├── index.html                # Main UI
+│       ├── test_alchemist.py # Alchemist tests
+│       ├── test_telescope.py # Telescope tests
+│       └── test_galaxycraft.py # Galaxycraft tests
+├── index.html                # Main UI with 8-point SVG diagram
 ├── telescope.html            # WebXOS console
+├── mcp.toml                  # MCP server metadata
+├── higress-config.yaml       # Higress gateway config
+├── economic-config.json      # Economic democracy parameters
+├── privacy-config.yaml       # Privacy engine rules
+├── mcp-client-config.json    # Client configuration
 ├── prometheus.yml            # Prometheus config
 ├── requirements.txt          # Python dependencies
+├── vercel.json               # Vercel configuration
 └── LICENSE                   # MIT License
 
-⚙️ CI/CD Workflow
-graph TD
-    A[Code Push/Pull Request] --> B[Run Tests (pytest server/tests)]
-    B --> C[Run ESLint (npx eslint public/js)]
-    C -->|Success| D[Deploy to Netlify]
-    C -->|Failure| E[Create Issue (peter-evans/create-issue-from-file@v5)]
-    D --> F[Docker Build (ghcr.io/webxos/vial-mcp-server)]
-    F --> G[Deploy to DigitalOcean]
+🎯 Use Cases
 
-🛠️ Setup
+Data Science & NLP: Train 4x PyTorch agents with LangChain using NASA/SpaceX data.
+Space Exploration: Simulate supply chains in Dropship/Galaxycraft.
+MCP Learning: Study MCP 2025-03-26 with forkable projects.
+Collaboration: Real-time SVG diagram editing with WebSocket.
+Economic Democracy: Test DAO rewards and quantum networks.
+
+⚙️ Setup
 
 Clone Repository:git clone https://github.com/webxos/vial.github.io.git
 cd vial.github.io
@@ -106,17 +135,23 @@ npm install
 Set Environment Variables:echo "NASA_API_KEY=your_key" >> .env
 echo "GIBS_API_URL=https://gibs.earthdata.nasa.gov" >> .env
 echo "HIGRESS_API_URL=https://higress.alibaba.com/api" >> .env
+echo "ALIBABA_API_KEY=your_key" >> .env
 
 
-Run Locally:docker-compose up
+Configure DNS for Vercel:
+Nameservers: ns1.vercel-dns.com, ns2.vercel-dns.com.
+CNAME: www to 4d59d46a56f561ba.vercel-dns-017.com (TTL 60).
+Verify: dnschecker.org (24-48 hours).
 
 
-Test OBS Streaming:
-Configure OBS to stream to obs://live/moon-mars/2023-01-01.
-View in telescope.html under Dropship mode.
+Run Locally:vercel dev
 
 
-Deploy to Netlify:netlify deploy --prod
+Test SVG Diagram:
+Assign roles to 8-point dots, export/import network.
+
+
+Deploy to Vercel:vercel --prod
 
 
 
@@ -129,11 +164,9 @@ Licensed under the MIT License. See LICENSE for details.
 🤝 Contributing
 
 Fork the repository.
-Create a feature branch: git checkout -b feature/dropship-enhancement.
-Commit changes: git commit -m "Enhance Dropship mode".
-Push to branch: git push origin feature/dropship-enhancement.
+Create a feature branch: git checkout -b feature/mcp-enhancement.
+Commit changes: git commit -m "Enhance MCP functionality".
+Push to branch: git push origin feature/mcp-enhancement.
 Open a pull request with test results.
 
-Join our global effort to test and shape a sustainable planetary future through MCP-driven innovation!
-
-Together, we can build a testing platform where MCP powers equitable resource distribution and planetary collaboration. 🌍✨```
+Join us in advancing MCP-driven research and exploration! 🌍✨```
