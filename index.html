@@ -4,123 +4,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebXOS Vial MCP Controller</title>
+  <title>WebXOS Vial MCP</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
-    body { font-family: 'Courier New', monospace; background: #000; color: #0f0; }
-    #container { display: flex; flex-direction: column; align-items: center; }
-    #svg-container { border: 1px solid #0f0; width: 100%; max-width: 800px; }
-    #error-terminal { color: #f00; height: 100px; overflow-y: auto; }
-    #settings { display: none; position: fixed; top: 10px; right: 10px; background: #111; padding: 10px; }
-    button { background: #0f0; color: #000; border: none; padding: 5px 10px; cursor: pointer; }
-    input, select { background: #111; color: #0f0; border: 1px solid #0f0; }
+    body { font-family: 'Courier New', monospace; background: #000; color: #0f0; margin: 0; }
+    .container { display: flex; flex-direction: column; height: 100vh; }
+    #mode-selector { padding: 10px; background: #111; }
+    #mode-selector select, #mode-selector input, #mode-selector button { 
+      font-family: 'Courier New'; background: #000; color: #0f0; border: 1px solid #0f0; margin: 5px; padding: 5px; 
+    }
+    #content { flex: 1; padding: 10px; }
+    #three-canvas { width: 100%; height: 400px; }
+    #error-console { height: 100px; background: #111; color: #f00; padding: 10px; overflow-y: auto; }
   </style>
 </head>
 <body>
-  <div id="container">
-    <h1>WebXOS Vial MCP Controller</h1>
-    <select id="mode">
-      <option value="SVG">SVG Circuit Board</option>
-      <option value="LAUNCH">Launch Data</option>
-      <option value="SWARM">Starlink Swarm</option>
-      <option value="GALAXYCRAFT">Galaxycraft</option>
-    </select>
-    <div id="svg-container"></div>
-    <div id="settings">
-      <input type="text" id="svg-import" placeholder="Paste SVG/QASM code">
-      <button onclick="importContent()">Import</button>
-      <input type="text" id="nasa-query" placeholder="NASA APOD date (YYYY-MM-DD)">
-      <button onclick="visualizeNASA()">Query NASA</button>
-      <input type="number" id="spacex-limit" placeholder="SpaceX limit" value="10">
-      <button onclick="visualizeSpaceX()">Query SpaceX</button>
-      <input type="text" id="wallet-id" placeholder="DAO Wallet ID">
-      <button onclick="storeCircuit()">Store Circuit</button>
+  <div class="container">
+    <div id="mode-selector">
+      <select id="mode" onchange="switchMode(this.value)">
+        <option value="svg">SVG</option>
+        <option value="launch">LAUNCH</option>
+        <option value="swarm">SWARM</option>
+        <option value="galaxycraft">GALAXYCRAFT</option>
+        <option value="telescope">TELESCOPE</option>
+      </select>
+      <input type="text" id="wallet-id" placeholder="Wallet ID">
+      <input type="text" id="input-data" placeholder="QASM/SVG/GIBS Layer/Time">
+      <button onclick="executeMode()">Execute</button>
     </div>
-    <button onclick="toggleSettings()">Settings</button>
-    <div id="error-terminal"></div>
+    <div id="content">
+      <canvas id="three-canvas"></canvas>
+    </div>
+    <div id="error-console"></div>
   </div>
   <script type="module">
-    import NASADataVisualizer from './js/nasa-data-visualizer.js';
-    import SpaceXVisualizer from './js/spacex-visualizer.js';
-    import MCPClient from './js/mcp-client.js';
-
-    const visualizer = NASADataVisualizer({ containerId: 'svg-container', onError });
-    const spacexVisualizer = SpaceXVisualizer({ containerId: 'svg-container', onError });
-    const modeSelect = document.getElementById('mode');
-    const settings = document.getElementById('settings');
-
-    function onError(message) {
-      document.getElementById('error-terminal').innerText += `${message}\n`;
-    }
-
-    async function init() {
-      await MCPClient.init();
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      if (code) {
-        await authenticate(code);
-      }
-    }
-
-    async function authenticate(code) {
-      try {
-        const response = await fetch('/api/oauth/callback?code=' + code);
-        const data = await response.json();
-        localStorage.setItem('access_token', data.access_token);
-        onError('Authentication successful');
-      } catch (error) {
-        onError('Authentication failed: ' + error.message);
-      }
-    }
-
-    async function visualizeNASA() {
-      const query = document.getElementById('nasa-query').value;
-      await visualizer.visualizeDataset(query);
-    }
-
-    async function visualizeSpaceX() {
-      const limit = document.getElementById('spacex-limit').value;
-      const mode = modeSelect.value;
-      if (mode === 'LAUNCH') {
-        await spacexVisualizer.visualizeLaunches(limit);
-      } else if (mode === 'SWARM') {
-        await spacexVisualizer.visualizeStarlink(limit);
-      }
-    }
-
-    async function importContent() {
-      const content = document.getElementById('svg-import').value;
+    import UIControls from './public/js/ui-controls.js';
+    const ui = UIControls({ contentId: 'content', errorConsoleId: 'error-console', canvasId: 'three-canvas' });
+    window.switchMode = (mode) => ui.switchMode(mode);
+    window.executeMode = () => {
       const walletId = document.getElementById('wallet-id').value;
-      if (modeSelect.value === 'SVG') {
-        const draw = SVG('#svg-container').clear();
-        draw.svg(content).attr({ stroke: '#0f0', 'stroke-width': 2 });
-      } else if (modeSelect.value === 'GALAXYCRAFT') {
-        await MCPClient.runQuantumCircuit(content);
-        await visualizer.visualizeQuantumCircuit(content);
-        await MCPClient.storeQuantumCircuit(content, walletId);
-      }
-    }
-
-    async function storeCircuit() {
-      const content = document.getElementById('svg-import').value;
-      const walletId = document.getElementById('wallet-id').value;
-      await MCPClient.storeQuantumCircuit(content, walletId);
-      onError('Circuit stored with wallet: ' + walletId);
-    }
-
-    function toggleSettings() {
-      settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
-    }
-
-    modeSelect.addEventListener('change', () => {
-      const mode = modeSelect.value;
-      if (mode === 'SVG' || mode === 'GALAXYCRAFT') {
-        settings.style.display = 'block';
-      } else {
-        settings.style.display = 'none';
-      }
-    });
-
-    window.addEventListener('load', init);
+      const inputData = document.getElementById('input-data').value;
+      ui.executeMode(document.getElementById('mode').value, walletId, inputData);
+    };
   </script>
 </body>
 </html>
