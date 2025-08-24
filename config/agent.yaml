@@ -1,0 +1,86 @@
+# Agent Configuration for Vial MCP Controller
+# This file defines default configurations for four agent types: video analysis, circuit design,
+# quantum processing, and swarm coordination. Users can customize these settings to train agents
+# for specific tasks. Each agent is defined with a role, goal, and toolset, inspired by CrewAI's
+# agentic tasking framework.
+
+# Instructions for Customization:
+# 1. **Role and Goal**: Modify the role and goal to align with your use case (e.g., medical imaging, physics experiments).
+# 2. **Toolset**: Specify available tools from server/tools/pydantic_agent_tools.py (e.g., video_analysis, circuit_design).
+# 3. **Model**: Choose an LLM (e.g., gpt-4o, claude-3.5-sonnet) and set API keys in mcp.toml.
+# 4. **Parameters**: Adjust max_iterations, retry_attempts, and logging_level for performance and debugging.
+# 5. **Custom Agents**: Add new agent entries following the same structure for additional use cases.
+# 6. **Validation**: Ensure toolset names match those defined in pydantic_agent_tools.py.
+# Example: To create a medical imaging agent, duplicate the video_analysis template, update the role
+# and goal, and specify relevant tools (e.g., yolov8, ocr).
+
+agents:
+  - name: video_analysis_agent
+    role: Video Analysis Agent
+    goal: Analyze scientific video data for object detection, OCR, and insights
+    toolset: video_analysis
+    model: gpt-4o
+    parameters:
+      max_iterations: 5
+      retry_attempts: 3
+      logging_level: INFO
+    description: |
+      Processes video streams from OBS or file sources, applies AI models (e.g., YOLO v8, OCR),
+      and generates scientific insights. Customize the toolset to include specific models or
+      quantum circuits for enhanced analysis.
+
+  - name: circuit_design_agent
+    role: Circuit Design Agent
+    goal: Design and validate quantum and classical circuits for scientific experiments
+    toolset: circuit_design
+    model: gpt-4o
+    parameters:
+      max_iterations: 3
+      retry_attempts: 2
+      logging_level: INFO
+    description: |
+      Creates and validates circuit designs using SVG-based UI and quantum circuit definitions.
+      Customize components and connections for specific experiment types (e.g., quantum gates,
+      resistors). Add new tools to the circuit_design toolset for extended functionality.
+
+  - name: quantum_processing_agent
+    role: Quantum Processing Agent
+    goal: Execute quantum circuits and integrate results with AI analysis
+    toolset: quantum_processing
+    model: claude-3.5-sonnet
+    parameters:
+      max_iterations: 4
+      retry_attempts: 3
+      logging_level: DEBUG
+    description: |
+      Runs Qiskit-based quantum circuits and correlates results with AI analysis. Customize
+      the toolset to include specific quantum algorithms (e.g., edge detection, clustering).
+      Requires Qiskit and quantum hardware API keys in mcp.toml.
+
+  - name: swarm_coordination_agent
+    role: Swarm Coordination Agent
+    goal: Coordinate multiple agents for collaborative scientific tasks
+    toolset: swarm_coordination
+    model: gpt-4o
+    parameters:
+      max_iterations: 10
+      retry_attempts: 5
+      logging_level: INFO
+    description: |
+      Manages task orchestration across multiple agents (e.g., video, circuit, quantum).
+      Customize to define agent hierarchies, task dependencies, and collaboration rules.
+      Use with langchain_orchestrator.py for workflow integration.
+
+# Example Custom Agent:
+# - name: medical_imaging_agent
+#   role: Medical Imaging Analysis Agent
+#   goal: Analyze medical imaging videos (e.g., X-rays, MRI) for diagnostic insights
+#   toolset: video_analysis
+#   model: gpt-4o
+#   parameters:
+#     max_iterations: 5
+#     retry_attempts: 3
+#     logging_level: INFO
+#   description: |
+#     Specialized for medical imaging. Update toolset to include medical-specific models
+#     (e.g., detectron2) and adjust parameters for higher accuracy.
