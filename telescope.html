@@ -1,0 +1,43 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebXOS Telescope Console</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    body { font-family: 'Courier New', monospace; background: #000; color: #0f0; margin: 0; }
+    .console { padding: 10px; height: 100vh; display: flex; flex-direction: column; }
+    #data-console { flex: 1; padding: 10px; overflow-y: auto; white-space: pre; }
+    #three-canvas { width: 100%; height: 400px; }
+    #input-console { padding: 10px; background: #111; }
+    #input-console input, #input-console button { 
+      font-family: 'Courier New'; background: #000; color: #0f0; border: 1px solid #0f0; margin: 5px; padding: 5px; 
+    }
+    #error-console { height: 100px; background: #111; color: #f00; padding: 10px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="console">
+    <div id="data-console"></div>
+    <canvas id="three-canvas"></canvas>
+    <div id="error-console"></div>
+    <div id="input-console">
+      <input type="text" id="query" placeholder="GIBS Layer,Time | APOD Date | SpaceX Limit">
+      <button onclick="fetchData()">Fetch Data</button>
+    </div>
+  </div>
+  <script type="module">
+    import AstronomyVisualizer from './public/js/astronomy-visualizer.js';
+    const vis = AstronomyVisualizer({ containerId: 'data-console', canvasId: 'three-canvas', onError: (msg) => {
+      document.getElementById('error-console').innerText += `${msg}\n`;
+    }});
+    window.fetchData = async () => {
+      const query = document.getElementById('query').value;
+      await vis.visualizeAstronomy(query, 'user-wallet-id');
+    };
+  </script>
+</body>
+</html>
+```
