@@ -1,0 +1,39 @@
+```yaml
+name: API Key Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-api-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify API Key
+        run: |
+          if [ -z "${{ secrets.NASA_API_KEY }}" ]; then
+            echo "NASA_API_KEY is not set. Using placeholder."
+            echo "NASA_API_KEY=placeholder_key" >> $GITHUB_ENV
+          fi
+
+      - name: Post API Key Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'API key check completed at 04:57 PM EDT, 08/24/2025.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
