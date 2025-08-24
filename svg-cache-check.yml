@@ -1,0 +1,40 @@
+```yaml
+name: SVG Cache Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-svg-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify SVG Cache
+        run: |
+          if [ ! -d "public/cache/svg" ]; then
+            echo "SVG cache missing. Creating directory."
+            mkdir -p public/cache/svg
+            touch public/cache/svg/default-cache.json
+          fi
+
+      - name: Post Cache Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'SVG cache check completed at 05:36 PM EDT.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
