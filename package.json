@@ -1,34 +1,32 @@
 {
-  "name": "vial-mcp",
+  "name": "vial-mcp-controller",
   "version": "1.0.0",
-  "private": true,
+  "description": "Vial MCP Controller for WebXOS 2025",
+  "main": "index.js",
   "scripts": {
-    "build": "next build",
-    "dev": "next dev",
-    "lint": "eslint public/js/ typescript/src/ --ext .js,.ts",
-    "test": "jest"
+    "lint": "eslint typescript/src/ --ext .ts,.tsx",
+    "test": "jest typescript/src/",
+    "build": "tsc",
+    "start": "node typescript/dist/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.17.4",
-    "next": "^14.2.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "reactflow": "^11.11.3",
-    "zod": "^3.23.8",
-    "zustand": "^4.5.2",
-    "swr": "^2.2.5",
-    "obs-websocket-js": "^5.0.5",
-    "three": "^0.165.0"
+    "three": "^0.164.1",
+    "reactflow": "^11.10.4",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "jest": "^29.7.0",
-    "@types/jest": "^29.5.12",
-    "ts-jest": "^29.1.2",
-    "typescript": "^5.4.5",
-    "ts-node": "^10.9.2",
-    "nodemon": "^3.1.0"
-  }
+    "eslint": "^8.57.1",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.5.0",
+    "@types/jest": "^29.5.0",
+    "ts-jest": "^29.1.0"
+  },
+  "author": "WebXOS Community",
+  "license": "MIT"
 }
