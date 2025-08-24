@@ -1,0 +1,41 @@
+```yaml
+name: Push CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-and-comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy and Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number;
+            if (!issueNumber) {
+              console.log('No PR context; creating a new issue.');
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Deployment Failure on Push',
+                body: 'Deployment failed! Check logs.'
+              });
+              console.log(`Created issue #${newIssue.data.number}`);
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: 'Deployment failed! Check logs.'
+            });
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
