@@ -1,34 +1,35 @@
 ```yaml
-name: CI
+name: CI Pipeline
+
 on:
+  issues:
+    types: [opened, edited, reopened]
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened]
+
 jobs:
-  test-and-lint:
+  comment-on-issue:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Post Comment on Issue or PR
+        uses: actions/github-script@v7
         with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
-        run: pytest server/tests
-      - name: Run ESLint
-        run: npx eslint public/js
-      - name: Create issue on failure
-        if: failure()
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: CI Pipeline Failure
-          content-filepath: ./test-failure.md
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: webxos/vial.github.io
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.issue.number;
+            if (!issueNumber) {
+              console.log('No issue or PR number available in this context. Skipping comment.');
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: 'Deployment failed! Check logs.'
+            });
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
