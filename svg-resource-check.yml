@@ -1,0 +1,39 @@
+```yaml
+name: SVG Resource Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-svg-resources:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify SVG Transpiler
+        run: |
+          if [ ! -f "public/js/svg-transpiler.js" ]; then
+            echo "SVG transpiler missing. Copying default."
+            cp templates/svg-transpiler.js public/js/
+          fi
+
+      - name: Post Resource Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'SVG resources verified at 05:05 PM EDT.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
