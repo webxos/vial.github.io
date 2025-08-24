@@ -13,27 +13,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Verify Vercel Token
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "VERCEL_TOKEN is not set. Aborting deployment."
+            exit 1
+          fi
+
       - name: Deploy to Vercel
         run: |
           vercel --prod
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      - name: Check DNS and Comment
+      - name: Post Deployment Comment
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issueNumber = context.payload.pull_request?.number;
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
             if (issueNumber) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: 'Vercel deployment completed. Verify DNS: ns1.vercel-dns.com, ns2.vercel-dns.com.'
+                body: 'Vercel deployment completed at 04:50 PM EDT, 08/24/2025. Check vial.github.io.'
               });
-            } else {
-              console.log('No PR context; skipping comment.');
             }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
