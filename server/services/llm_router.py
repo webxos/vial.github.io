@@ -1,53 +1,56 @@
-from fastapi import APIRouter, HTTPException, Security
+```python
+from typing import Dict, List, Optional
+from fastapi import HTTPException
 from pydantic import BaseModel
-from httpx import AsyncClient
-from tenacity import retry, stop_after_attempt, wait_exponential
-import os
 import logging
-from fastapi.security import OAuth2AuthorizationCodeBearer
+from litellm import completion
+from server.config.settings import settings
+from server.utils.security_sanitizer import sanitize_input, validate_prompt
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
-
-oauth2_scheme = OAuth2AuthorizationCodeBearer(
-    authorizationUrl="https://github.com/login/oauth/authorize",
-    tokenUrl="https://github.com/login/oauth/access_token"
-)
 
 class LLMRequest(BaseModel):
     provider: str
     prompt: str
+    tools: Optional[List[str]] = None
+    model: Optional[str] = None
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def route_to_provider(provider: str, prompt: str) -> Dict:
-    """Route request to specified LLM provider."""
-    providers = {
-        "anthropic": os.getenv("ANTHROPIC_API_KEY"),
-        "mistral": os.getenv("MISTRAL_API_KEY"),
-        "google": os.getenv("GOOGLE_API_KEY"),
-        "xai": os.getenv("XAI_API_KEY"),
-        "meta": os.getenv("META_API_KEY"),
-        "local": "http://localhost:8001"
-    }
-    if provider not in providers:
-        raise HTTPException(status_code=400, detail="Invalid provider")
-    
-    async with AsyncClient() as client:
-        # Placeholder: Actual API call to provider
-        response = await client.post(
-            providers[provider] if provider != "local" else providers["local"],
-            json={"prompt": prompt}
-        )
-        response.raise_for_status()
-        return response.json()
+class LLMRouter:
+    def __init__(self):
+        self.providers = {
+            "anthropic": {"api_key": settings.ANTHROPIC_API_KEY, "default_model": "claude-3.5-sonnet"},
+            "mistral": {"api_key": settings.MISTRAL_API_KEY, "default_model": "mistral-large"},
+            "google": {"api_key": settings.GOOGLE_API_KEY, "default_model": "gemini-1.5-flash"},
+            "xai": {"api_key": settings.OPENAI_API_KEY, "base_url": settings.OPENAI_BASE_URL, "default_model": "grok-3"},
+            "meta": {"api_key": settings.OPENAI_API_KEY, "base_url": settings.OPENAI_BASE_URL, "default_model": "llama-3"},
+            "local": {"base_url": settings.LOCAL_LLM_URL, "default_model": "llama-3"}
+        }
 
-@router.post("/mcp/llm")
-async def route_llm_request(request: LLMRequest, token: str = Security(oauth2_scheme)):
-    """Route LLM request to provider."""
-    try:
-        result = await route_to_provider(request.provider, request.prompt)
-        logger.info(f"LLM request routed to {request.provider}")
-        return {"status": "success", "result": result}
-    except Exception as e:
-        logger.error(f"LLM routing failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    async def route_request(self, request: LLMRequest) -> Dict:
+        """Route LLM request to the specified provider."""
+        try:
+            sanitized_prompt = sanitize_input(validate_prompt(request.prompt))
+            provider_config = self.providers.get(request.provider)
+            if not provider_config:
+                raise HTTPException(status_code=400, detail=f"Invalid provider: {request.provider}")
+
+            model = request.model or provider_config["default_model"]
+            params = {
+                "model": f"{request.provider}/{model}",
+                "messages": [{"role": "user", "content": sanitized_prompt}],
+                "tools": request.tools or [],
+                "max_tokens": 4096
+            }
+
+            if "api_key" in provider_config:
+                params["api_key"] = provider_config["api_key"]
+            if "base_url" in provider_config:
+                params["api_base"] = provider_config["base_url"]
+
+            response = await completion(**params)
+            logger.info(f"LLM request routed to {request.provider}/{model}")
+            return response.to_dict()
+        except Exception as e:
+            logger.error(f"LLM routing failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+```
