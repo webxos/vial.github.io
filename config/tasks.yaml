@@ -1,0 +1,66 @@
+# Task Configuration for Vial MCP Controller
+# This file defines default tasks for agents to execute, including video analysis and circuit design.
+# Users can customize tasks to align with their use cases, specifying agents, inputs, and dependencies.
+# Inspired by CrewAI's task definitions, tasks are linked to agents and tools defined in agent.yaml
+# and pydantic_agent_tools.py.
+
+# Instructions for Customization:
+# 1. **Agent**: Specify the agent name from agent.yaml (e.g., video_analysis_agent).
+# 2. **Tool**: Reference a tool from pydantic_agent_tools.py (e.g., analyze_video).
+# 3. **Input**: Provide input data matching the tool's Pydantic model (e.g., VideoAnalysisInput).
+# 4. **Dependencies**: List dependent tasks to enforce execution order (e.g., analyze video before designing circuit).
+# 5. **Priority and Timeout**: Adjust priority (1-10, higher is more urgent) and timeout (seconds) for task execution.
+# 6. **Custom Tasks**: Add new tasks following the same structure for additional use cases.
+# Example: To create a task for medical imaging, duplicate the video_analysis template, update the
+# agent and input to use medical-specific models, and adjust dependencies as needed.
+
+tasks:
+  - name: analyze_scientific_video
+    agent: video_analysis_agent
+    tool: analyze_video
+    input:
+      video_source: "obs://scene_1"
+      ai_models: ["yolov8", "ocr"]
+      quantum_circuit: null
+    dependencies: []
+    priority: 5
+    timeout: 300
+    description: |
+      Analyzes a scientific video stream from an OBS source or file. Customize the video_source
+      to point to your OBS scene or file path (e.g., "file://path/to/video.mp4"). Adjust ai_models
+      to include specific models (e.g., ["detectron2"] for medical imaging). Set quantum_circuit
+      to a QASM string for quantum-enhanced analysis.
+
+  - name: design_quantum_circuit
+    agent: circuit_design_agent
+    tool: design_circuit
+    input:
+      components:
+        - type: "quantum_gate"
+          x: 100
+          y: 100
+          properties:
+            gate: "H"
+      connections: []
+    dependencies: ["analyze_scientific_video"]
+    priority: 3
+    timeout: 180
+    description: |
+      Designs a quantum circuit with specified components and connections. Customize components
+      to include quantum gates (e.g., H, CX) or classical components (e.g., resistor). Add
+      connections to define circuit topology. Ensure dependencies are met for sequential tasks.
+
+# Example Custom Task:
+# - name: analyze_medical_imaging
+#   agent: medical_imaging_agent
+#   tool: analyze_video
+#   input:
+#     video_source: "file://path/to/mri_video.mp4"
+#     ai_models: ["detectron2", "ocr"]
+#     quantum_circuit: null
+#   dependencies: []
+#   priority: 7
+#   timeout: 600
+#   description: |
+#     Analyzes medical imaging videos for diagnostic insights. Update video_source to your
+#     medical video file and adjust ai_models for specific analysis needs.
