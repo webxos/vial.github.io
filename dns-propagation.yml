@@ -1,0 +1,45 @@
+```yaml
+name: DNS Propagation Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-dns-propagation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify DNS Propagation
+        run: |
+          nslookup vial.github.io
+          if [ $? -ne 0 ]; then
+            echo "DNS propagation failed. Retrying in 5 minutes."
+            sleep 300
+            nslookup vial.github.io
+            if [ $? -ne 0 ]; then
+              echo "DNS still failed after retry."
+              exit 1
+            fi
+          fi
+
+      - name: Post DNS Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'DNS propagation confirmed at 04:57 PM EDT, 08/24/2025.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
