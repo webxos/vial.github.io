@@ -1,0 +1,40 @@
+```yaml
+name: Environment Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify Environment Variables
+        run: |
+          if [ -z "${{ secrets.NASA_API_KEY }}" ]; then
+            echo "NASA_API_KEY is not set. Setting a placeholder."
+            echo "NASA_API_KEY=placeholder" >> $GITHUB_ENV
+          fi
+          echo "GIBS_API_URL=https://gibs.earthdata.nasa.gov" >> $GITHUB_ENV
+
+      - name: Deploy and Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Deployment started. Check env vars.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
