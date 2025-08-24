@@ -1,135 +1,93 @@
-# WebXOS 2025 Vial Model Context Protocol SDK: Data Science and Space Exploration Laboratory
+# 🌌 WebXOS 2025 Vial Model Context Protocol SDK
 
-The **WebXOS 2025 Vial Model Context Protocol SDK** is a forkable, open-source platform for exploring the **Model Context Protocol (MCP)** (2025-03-26 specification), data science, NLP training, and Python studies. Hosted on Vercel at `vial.github.io`, it offers a collaborative environment for researchers and developers to test planetary distribution systems using Three.js visualizations, LangChain-supported 4x PyTorch agents with `.md` wallet keys, quantum distribution simulations, and an 8-point SVG diagram interface. The SDK automates workflows, ensures quantum-resistant security, and promotes economic democracy through DAO rewards.
+Welcome to the **WebXOS 2025 Vial Model Context Protocol (MCP) SDK**, an open-source platform hosted on GitHub for pioneering data science, NLP training, and space exploration research. This SDK, part of the WebXOS ecosystem, empowers developers and researchers with interactive SVG diagrams, 4x PyTorch agents via LangChain, quantum simulations, and a Data Experiment Lab. Dive into automated workflows, quantum-resistant security, and DAO-driven economic democracy!
 
-## 🌍 Vision
-Aligned with the **Global MCP Collaboration Framework**, the SDK aims to:
-- **Planetary Research**: Simulate Earth-Moon-Mars supply chains with AR/VR integration.
-- **Economic Democracy**: Reward contributions via `.md` wallets earning WebXOS.
-- **Privacy by Design**: GDPR++ compliance with differential privacy.
-- **Educational Hub**: Forkable boilerplates for MCP, data science, and NLP learning.
-- **Quantum Innovation**: 8-point SVG diagrams for decentralized agent coordination.
+---
 
-## 🚀 Features
-### Modes
-- **Dropship**: Unified mode for SVG diagram creation (8-point quantum network), NASA/SpaceX/Higress data, Three.js 3D globe, and OBS streaming with LangChain agents.
+## ✨ Vision
+Aligned with the **Global MCP Collaboration Framework**, WebXOS aims to:
+- 🌍 **Planetary Research**: Simulate Earth-Moon-Mars supply chains with AR/VR.
+- 💸 **Economic Democracy**: Reward contributors with `.md` wallets earning WebXOS.
+- 🔒 **Privacy by Design**: GDPR++ compliance with differential privacy.
+- 📚 **Educational Hub**: Forkable boilerplates for MCP, data science, and NLP.
+- ⚛️ **Quantum Innovation**: 8-point SVG diagrams for decentralized coordination.
+
+---
+
+## 🚀 Key Features
+### 🌟 Modes
+- **Dropship**: SVG diagram creation (8-point quantum network), NASA/SpaceX/Higress data, Three.js 3D globe, and OBS streaming with LangChain agents.
 - **Galaxycraft**: Interactive space exploration game with resource simulation.
 - **Telescope**: Real-time AR/VR OBS feeds for astronomical study.
 
-### MCP Alchemist
-- **Function**: 4x PyTorch agents with LangChain for agentic workflows, using `.md` wallets as keys.
-- **API**: `/api/mcp/alchemist/coordinate`.
+### 🧪 MCP Alchemist
+- **Function**: 4x PyTorch agents with LangChain, using `.md` wallets as keys.
+- **API**: `/api/mcp/alchemist/coordinate` (accessible via GitHub-hosted server).
 
-### SVG Diagram Interface
-- **8-Point Quantum Network**: Assign roles (agent, API, custom) to 8 dots, with Chart.js graphs for MCP data, export/import of SVG and `.md` wallets, and error handling for network design.
+### 🎨 SVG Diagram Interface
+- **8-Point Quantum Network**: Assign roles (agent, API, custom) to 8 dots, with Chart.js graphs, SVG/`.md` wallet export/import, and error handling.
 - **Enhancements**: Interactive dashboard, AR/VR overlay, benchmarking, and collaboration tools.
 
-### LangChain Integration
-- **Agentic Workflows**: Manages 4x PyTorch agents with `.md` wallets, offering pre-built OEM projects.
+### 🔗 LangChain Integration
+- **Agentic Workflows**: Manages 4x PyTorch agents with `.md` wallets and OEM projects.
 - **Automation**: Seamless export/import for research continuity.
 
-### Data Management
+### 🗃️ Data Management
 - **Caching**: Redis with failover for performance.
 - **Database**: SQLAlchemy with MongoDB pooling and migrations.
 - **APIs**: NASA, SpaceX, Higress, and ServiceNow with OAuth 2.0.
 
-### Security
+### 🛡️ Security
 - **Privacy**: `PlanetaryPrivacyEngine` with GDPR++ and quantum encryption.
 - **Wallet**: Secure `.md` wallet export/import with multi-signature support.
 - **API Security**: JWT, rate limiting, and CORS.
 
-## 🏗️ Architecture
+---
 
-```mermaid
-graph TD
-    A[WebXOS Client (index.html)] -->|Mode Selection| B[UIControls (ui-controls.js)]
-    B --> C[Dropship Visualizer (dropship-visualizer.js)]
-    B --> D[Galaxycraft Visualizer]
-    B --> E[Telescope Visualizer]
-    B --> F[SVG Transpiler (svg-transpiler.js)]
-    C -->|API Calls| G[FastAPI Server (mcp_server.py)]
-    G --> H[Dropship Service (dropship_service.py)]
-    G --> I[Astronomy Agent (langchain_agent.py)]
-    G --> J[MCP Alchemist (mcp_alchemist.py)]
-    H --> K[GIBS Service (gibs_service.py)]
-    H --> L[SpaceX Service (spacex_service.py)]
-    H --> M[Higress Gateway (higress-config.yaml)]
-    H --> N[OBS Streaming API]
-    G --> O[Privacy Engine (privacy_engine.py)]
-    G --> P[Reputation Service (reputation.py)]
-    G --> Q[SQLAlchemy (dropship_models.py)]
-    G --> R[MongoDB/Redis]
-    G --> S[Prometheus (/metrics)]
+## 🧪 Data Experiment Lab
+The WebXOS Data Experiment Lab is a sandbox for testing cutting-edge experiments:
+- **Quantum Simulations**: Leverage Qiskit for decentralized agent coordination.
+- **NLP Training**: Train 4x PyTorch agents with NASA/SpaceX datasets.
+- **Space Exploration**: Simulate supply chains in Dropship/Galaxycraft modes.
+- **Collaborative Design**: Real-time SVG editing with WebSocket support.
+- **Economic Modeling**: Test DAO rewards and quantum networks.
 
-📂 Repository Structure
-vial.github.io/
-├── .github/workflows/        # CI/CD pipelines
-│   ├── ci.yml                # Test, lint, issue creation
-│   └── vercel.yml            # Vercel deployment
-├── docs/                     # Documentation
-│   ├── api-reference.md      # API endpoints
-│   ├── dropship-guide.md     # Dropship mode guide
-│   ├── alchemist-guide.md    # MCP Alchemist guide
-│   ├── deployment-guide.md   # Vercel deployment
-│   └── mcp-guide.md          # MCP integration
-├── public/js/                # Client-side JavaScript
-│   ├── ui-controls.js        # Mode switching
-│   ├── dropship-visualizer.js # Dropship 3D rendering
-│   ├── galaxycraft-visualizer.js # Galaxycraft rendering
-│   ├── telescope-visualizer.js # Telescope AR/VR
-│   ├── svg-transpiler.js     # SVG diagram editor
-│   └── mcp-client.js         # API client
-├── server/                   # Backend
-│   ├── api/                  # FastAPI routes
-│   │   ├── fastapi_router.py # Main router
-│   │   ├── dropship_router.py # Dropship endpoints
-│   │   └── mcp_alchemist.py  # Alchemist endpoints
-│   ├── agents/               # LangChain agents
-│   │   └── langchain_agent.py # Agent orchestration
-│   ├── services/             # API clients
-│   │   ├── dropship_service.py # Supply chain simulation
-│   │   ├── gibs_service.py   # GIBS WMTS/WMS
-│   │   ├── spacex_service.py # SpaceX API
-│   │   └── reputation.py     # DAO wallet rewards
-│   ├── database/             # Database models
-│   │   ├── dropship_models.py # Simulation data
-│   │   └── migrations/env.py # Alembic setup
-│   ├── utils/                # Utilities
-│   │   └── auth_manager.py   # OAuth2.0
-│   └── tests/                # Unit tests
-│       ├── test_dropship.py  # Dropship tests
-│       ├── test_gibs.py      # GIBS tests
-│       ├── test_alchemist.py # Alchemist tests
-│       ├── test_telescope.py # Telescope tests
-│       └── test_galaxycraft.py # Galaxycraft tests
-├── index.html                # Main UI with 8-point SVG diagram
-├── telescope.html            # WebXOS console
-├── mcp.toml                  # MCP server metadata
-├── higress-config.yaml       # Higress gateway config
-├── economic-config.json      # Economic democracy parameters
-├── privacy-config.yaml       # Privacy engine rules
-├── mcp-client-config.json    # Client configuration
-├── prometheus.yml            # Prometheus config
-├── requirements.txt          # Python dependencies
-├── vercel.json               # Vercel configuration
-└── LICENSE                   # MIT License
+---
 
-🎯 Use Cases
+## 🏗️ Architecture Overview
+![MCP Server Architecture Diagram](./docs/mcp-architecture.svg)  
+*Explore the MCP server architecture, integrating quantum computing, RAG, video processing, and economic data.*
 
-Data Science & NLP: Train 4x PyTorch agents with LangChain using NASA/SpaceX data.
-Space Exploration: Simulate supply chains in Dropship/Galaxycraft.
-MCP Learning: Study MCP 2025-03-26 with forkable projects.
-Collaboration: Real-time SVG diagram editing with WebSocket.
-Economic Democracy: Test DAO rewards and quantum networks.
+### 8-Point Quantum Network Diagram
+![8-Point Quantum Network](./docs/8-point-quantum-network.svg)  
+*Visualize the 8-point quantum network for decentralized agent roles and data flow.*
 
-⚙️ Setup
-PART1:
-Clone Repository:git clone https://github.com/webxos/vial.github.io.git
-cd vial.github.io
+---
+
+## 📂 Repository Structure
+
+webxos-vial-mcp/├── .github/workflows/        # CI/CD pipelines (ci.yml, test.yml)├── docs/                     # Documentation (api-reference.md, experiment-guide.md)├── public/js/                # Client-side JS (ui-controls.js, dropship-visualizer.js)├── server/                   # Backend (api/, agents/, services/, database/, utils/, tests/)├── index.html                # Main UI with SVG diagrams├── mcp.toml                  # MCP server metadata├── higress-config.yaml       # Higress gateway config├── economic-config.json      # Economic democracy parameters├── privacy-config.yaml       # Privacy engine rules├── requirements.txt          # Python dependencies└── LICENSE                   # MIT License
+
+---
+
+## 🎯 Use Cases
+- **📊 Data Science & NLP**: Train models with NASA/SpaceX data.
+- **🌠 Space Exploration**: Simulate planetary supply chains.
+- **📖 MCP Learning**: Study MCP 2025-03-26 with forkable projects.
+- **🤝 Collaboration**: Edit SVG diagrams in real-time.
+- **💰 Economic Democracy**: Experiment with DAO rewards.
+
+---
+
+## ⚙️ Setup
+### Quick Start
+- **Clone Repository**:
+  ```bash
+  git clone https://github.com/webxos/webxos-vial-mcp.git
+  cd webxos-vial-mcp
 
 
 Install Dependencies:pip install -r requirements.txt
-npm install
 
 
 Set Environment Variables:echo "NASA_API_KEY=your_key" >> .env
@@ -138,513 +96,158 @@ echo "HIGRESS_API_URL=https://higress.alibaba.com/api" >> .env
 echo "ALIBABA_API_KEY=your_key" >> .env
 
 
-Configure DNS for Vercel:
-Nameservers: ns1.vercel-dns.com, ns2.vercel-dns.com.
-CNAME: www to 4d59d46a56f561ba.vercel-dns-017.com (TTL 60).
-Verify: dnschecker.org (24-48 hours).
+Run Locally:python server/fastapi_router.py
 
 
-Run Locally:vercel dev
-
-
-Test SVG Diagram:
+Test SVG Diagrams:
 Assign roles to 8-point dots, export/import network.
 
 
-Deploy to Vercel:vercel --prod
 
-PART2:
 
-# Comprehensive MCP Server Development Guide
+🛠️ Development Guide
+Prerequisites
 
-## 🌟 Executive Overview
+ Python 3.11+ with virtual environment
+ Node.js 18+ for frontend
+ Git for version control
 
-This guide provides a complete roadmap for building, enhancing, and troubleshooting Model Context Protocol (MCP) servers. It integrates quantum computing, AI/ML capabilities, economic data processing, video streaming, and advanced Kubernetes orchestration into a unified development framework.
+Core Dependencies
+pip install fastapi uvicorn pydantic sqlalchemy
+pip install qiskit torch transformers pymongo redis
+npm install svg.js
 
-## 📋 Prerequisites Checklist
+Core Implementation
 
-### Development Environment
-- [ ] **Python 3.11+** with virtual environment
-- [ ] **Node.js 18+** for frontend components
-- [ ] **Docker & Docker Compose** for containerization
-- [ ] **Kubernetes cluster** (minikube, kind, or cloud-based)
-- [ ] **Git** for version control
+FastAPI Server:from fastapi import FastAPI
+app = FastAPI()
+@app.get("/")
+async def root():
+    return {"message": "WebXOS MCP Server Running"}
 
-### Core Dependencies
-```bash
-# Python dependencies
-pip install fastapi uvicorn python-dotenv pydantic sqlalchemy
-pip install qiskit qiskit-machine-learning torch transformers
-pip install pymongo redis requests websockets
 
-# Node.js dependencies
-npm install obs-websocket-js svg.js ffmpeg.wasm
-```
+Quantum Integration:from qiskit import QuantumCircuit
+qc = QuantumCircuit(2)
+qc.h(0)
 
-## 🏗️ Architecture Overview
 
-### MCP Server Structure
-```
-mcp-server/
-├── server/
-│   ├── mcp_server.py          # Main FastAPI server
-│   ├── services/
-│   │   ├── quantum_service.py # Quantum computing layer
-│   │   ├── rag_service.py     # RAG processing
-│   │   ├── video_service.py   # SVG video processing
-│   │   └── economic_service.py # Economic data integration
-│   ├── models/
-│   │   ├── database_models.py # SQLAlchemy models
-│   │   └── pydantic_models.py # Request/response models
-│   └── utils/
-│       ├── wasm_loader.py     # WASM module management
-│       └── obs_handler.py     # OBS integration
-├── client/
-│   ├── public/index.html      # Frontend interface
-│   ├── src/
-│   │   ├── terminal.js        # Command terminal
-│   │   ├── svg_editor.js      # SVG editing interface
-│   │   └── video_preview.js   # Video preview component
-│   └── package.json
-├── docker-compose.yml
-├── Dockerfile
-├── mcp.toml                   # MCP configuration
-└── requirements.txt
-```
 
-## 🔧 Core Implementation Checklist
 
-### 1. MCP Server Foundation
-- [ ] **FastAPI Server Setup**
-  ```python
-  from fastapi import FastAPI
-  from mcp.server.fastapi import create_mcp_server
-  
-  app = FastAPI()
-  mcp_server = create_mcp_server(app)
-  
-  @mcp_server.tool()
-  async def example_tool(input: str) -> str:
-      return f"Processed: {input}"
-  ```
+🧪 Testing
+pytest server/tests/
 
-- [ ] **MCP Configuration (mcp.toml)**
-  ```toml
-  [tools.example]
-  name = "example_tool"
-  description = "An example MCP tool"
-  handler = "server.mcp_server:example_tool"
-  
-  [resources]
-  patterns = ["file:///*", "https://*"]
-  ```
 
-### 2. Quantum Computing Integration
-- [ ] **Qiskit Circuit Management**
-  ```python
-  from qiskit import QuantumCircuit, Aer, execute
-  
-  async def create_quantum_circuit(qubits: int) -> dict:
-      qc = QuantumCircuit(qubits)
-      qc.h(0)  # Apply Hadamard gate
-      simulator = Aer.get_backend('aer_simulator')
-      result = execute(qc, simulator).result()
-      return result.get_counts()
-  ```
-
-- [ ] **Quantum Topology Distribution**
-  ```python
-  async def distribute_quantum_state(circuit: QuantumCircuit, nodes: list):
-      # Implement quantum state distribution logic
-      pass
-  ```
-
-### 3. RAG (Retrieval-Augmented Generation) System
-- [ ] **Vector Database Setup**
-  ```python
-  from sentence_transformers import SentenceTransformer
-  import pinecone
-  
-  async def setup_rag_system():
-      model = SentenceTransformer('all-MiniLM-L6-v2')
-      pinecone.init(api_key="your-api-key", environment="us-west1-gcp")
-      index = pinecone.Index("rag-index")
-      return model, index
-  ```
-
-- [ ] **Document Processing**
-  ```python
-  async def process_document(document: str, model, index):
-      embedding = model.encode(document)
-      index.upsert([(document_id, embedding.tolist())])
-  ```
-
-### 4. SVG Video Processing
-- [ ] **OBS WebSocket Integration**
-  ```python
-  import obswebsocket
-  
-  async def setup_obs_connection():
-      client = obswebsocket.obsws("localhost", 4444, "password")
-      client.connect()
-      return client
-  ```
-
-- [ ] **SVG to Video Conversion**
-  ```javascript
-  // client/src/svg_editor.js
-  function renderSVGToVideo(svgElement, duration, fps) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      // SVG rendering logic
-  }
-  ```
-
-### 5. Economic Data Integration
-- [ ] **AliBaba API Connection**
-  ```python
-  import aiohttp
-  
-  async def fetch_economic_data(api_key: str, endpoint: str):
-      async with aiohttp.ClientSession() as session:
-          async with session.get(
-              f"https://api.alibaba.com/{endpoint}",
-              headers={"Authorization": f"Bearer {api_key}"}
-          ) as response:
-              return await response.json()
-  ```
-
-- [ ] **8BIM Economic Metadata**
-  ```python
-  async def process_economic_metadata(data: dict):
-      # Process and standardize economic data
-      return {
-          "metadata_type": "economic/8bim",
-          "timestamp": datetime.utcnow().isoformat(),
-          "data": standardized_data
-      }
-  ```
-
-## 🚀 Deployment Checklist
-
-### Docker Configuration
-- [ ] **Dockerfile Setup**
-  ```dockerfile
-  FROM python:3.11-slim
-  WORKDIR /app
-  COPY requirements.txt .
-  RUN pip install -r requirements.txt
-  COPY . .
-  EXPOSE 8000
-  CMD ["uvicorn", "server.mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]
-  ```
-
-- [ ] **Docker Compose**
-  ```yaml
-  version: '3.8'
-  services:
-    mcp-server:
-      build: .
-      ports:
-        - "8000:8000"
-      environment:
-        - DATABASE_URL=postgresql://user:pass@db:5432/mcp
-    db:
-      image: postgres:13
-      environment:
-        - POSTGRES_DB=mcp
-        - POSTGRES_USER=user
-        - POSTGRES_PASSWORD=pass
-  ```
-
-### Kubernetes Deployment
-- [ ] **Basic Deployment**
-  ```yaml
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: mcp-server
-  spec:
-    replicas: 3
-    template:
-      spec:
-        containers:
-        - name: mcp-server
-          image: your-registry/mcp-server:latest
-          ports:
-          - containerPort: 8000
-  ```
-
-- [ ] **Service Mesh Configuration**
-  ```yaml
-  apiVersion: networking.istio.io/v1beta1
-  kind: VirtualService
-  metadata:
-    name: mcp-server
-  spec:
-    hosts:
-    - mcp-server.example.com
-    http:
-    - route:
-      - destination:
-          host: mcp-server
-          port:
-            number: 8000
-  ```
-
-## 🧪 Testing & Validation
-
-### Unit Tests
-- [ ] **Quantum Circuit Tests**
-  ```python
-  def test_quantum_circuit():
-      circuit = create_basic_circuit(2)
-      assert circuit.num_qubits == 2
-      # Add more assertions
-  ```
-
-- [ ] **API Endpoint Tests**
-  ```python
-  def test_mcp_endpoint():
-      response = client.post("/api/tools/example", json={"input": "test"})
-      assert response.status_code == 200
-      assert response.json() == {"result": "Processed: test"}
-  ```
-
-### Integration Tests
-- [ ] **End-to-End Workflow Tests**
-  ```python
-  async def test_full_workflow():
-      # Test complete MCP tool execution flow
-      pass
-  ```
-
-- [ ] **Performance Testing**
-  ```bash
-  locust -f load_test.py --host=http://localhost:8000
-  ```
-
-## 🔍 Troubleshooting Guide
-
-### Common Issues
-
-1. **MCP Connection Problems**
-   - Verify `mcp.toml` configuration
-   - Check network connectivity
-   - Validate authentication tokens
-
-2. **Quantum Simulation Errors**
-   - Ensure Qiskit is properly installed
-   - Check quantum simulator availability
-   - Validate circuit definitions
-
-3. **RAG System Issues**
-   - Verify vector database connection
-   - Check embedding model availability
-   - Validate document processing pipeline
-
-4. **Video Processing Problems**
-   - Confirm OBS WebSocket connection
-   - Check FFmpeg/WASM dependencies
-   - Validate SVG input formats
-
-### Debugging Tools
-- [ ] **Logging Configuration**
-  ```python
-  import logging
-  logging.basicConfig(level=logging.DEBUG)
-  ```
-
-- [ ] **API Documentation**
-  - Access `/docs` endpoint for interactive API documentation
-  - Use Swagger UI for endpoint testing
-
-- [ ] **Metrics Endpoint**
-  ```python
-  from prometheus_client import start_http_server
-  start_http_server(8001)
-  ```
-
-## 📊 Monitoring & Observability
-
-### Prometheus Metrics
-- [ ] **Custom Metrics**
-  ```python
-  from prometheus_client import Counter, Gauge
-  
-  REQUESTS = Counter('mcp_requests_total', 'Total MCP requests')
-  ACTIVE_CONNECTIONS = Gauge('mcp_active_connections', 'Active connections')
-  ```
-
-### Grafana Dashboards
-- [ ] **Performance Dashboard**
-  - Request latency
-  - Error rates
-  - Resource utilization
-  - Quantum computation metrics
-
-## 🔄 CI/CD Pipeline
-
-### GitHub Actions
-```yaml
-name: MCP Server CI/CD
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
-      run: pip install -r requirements.txt
-    - name: Run tests
-      run: pytest
-```
-
-## 🌐 Community Resources
-
-### Learning Materials
-- [MCP Official Documentation](https://modelcontextprotocol.io)
-- [Qiskit Textbook](https://qiskit.org/textbook)
-- [FastAPI Documentation](https://fastapi.tiangolo.com)
-- [Kubernetes Guides](https://kubernetes.io/docs/home/)
-
-### Example Repositories
-- [Azure-Samples/remote-mcp-functions-python](https://github.com/Azure-Samples/remote-mcp-functions-python)
-- [Higress AI Gateway](https://github.com/alibaba/higress)
-- [Qiskit Community Tutorials](https://github.com/Qiskit/community-tutorials)
-
-## 🚀 Quick Start
-
-### Local Development
-```bash
-# Clone your repository
-git clone https://github.com/your-username/mcp-server.git
-cd mcp-server
-
-# Setup virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate  # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start development server
-uvicorn server.mcp_server:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Docker Deployment
-```bash
-docker build -t mcp-server .
-docker run -p 8000:8000 mcp-server
-```
-
-### Kubernetes Deployment
-```bash
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-```
-
-## 📈 Performance Optimization
-
-### Database Optimization
-- [ ] **Indexing Strategy**
-  ```python
-  # Ensure proper database indexes
-  index = Index('idx_quantum_circuit', QuantumCircuit.id)
-  ```
-
-- [ ] **Query Optimization**
-  ```python
-  # Use efficient queries
-  session.query(QuantumCircuit).filter(QuantumCircuit.qubits > 2).all()
-  ```
-
-### Caching Implementation
-- [ ] **Redis Caching**
-  ```python
-  import redis
-  r = redis.Redis(host='localhost', port=6379, db=0)
-  
-  async def get_cached_data(key: str):
-      cached = r.get(key)
-      if cached:
-          return cached
-      # Otherwise fetch from source
-  ```
-
-## 🔒 Security Best Practices
-
-### Authentication & Authorization
-- [ ] **JWT Token Validation**
-  ```python
-  from jose import JWTError, jwt
-  
-  async def verify_token(token: str):
-      try:
-          payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-          return payload
-      except JWTError:
-          raise HTTPException(status_code=401, detail="Invalid token")
-  ```
-
-### Input Validation
-- [ ] **Pydantic Models**
-  ```python
-  from pydantic import BaseModel, Field
-  
-  class QuantumRequest(BaseModel):
-      qubits: int = Field(gt=0, le=100)
-      shots: int = Field(gt=0, le=10000)
-  ```
-
-## 🤝 Contributing Guidelines
-
-### Code Standards
-- [ ] **Follow PEP 8** for Python code
-- [ ] **Use type hints** throughout
-- [ ] **Write comprehensive tests**
-- [ ] **Document all functions and classes**
-
-### Pull Request Process
-1. Fork the repository
-2. Create a feature branch
-3. Implement changes with tests
-4. Submit pull request with description
-5. Address review comments
-6. Merge after approval
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Documentation**: Check the `/docs` endpoint
-- **Issues**: Create GitHub issues for bugs
-- **Discussions**: Use GitHub discussions for questions
-- **Community**: Join the MCP Discord server
-
----
-
-**Remember**: This is a living document. Contribute your experiences and improvements to help the community build better MCP servers together!
-
-📊 Testing
-Run unit tests:
-pytest server/tests
-
-📜 License
-Licensed under the MIT License. See LICENSE for details.
 🤝 Contributing
 
-Fork the repository.
+Fork the repo.
 Create a feature branch: git checkout -b feature/mcp-enhancement.
 Commit changes: git commit -m "Enhance MCP functionality".
-Push to branch: git push origin feature/mcp-enhancement.
-Open a pull request with test results.
+Push: git push origin feature/mcp-enhancement.
+Open a pull request.
 
-Join us in advancing MCP-driven research and exploration! 🌍✨```
+
+📝 License
+MIT License
+
+🆘 Support
+
+📚 Documentation
+🐛 GitHub Issues
+💬 WebXOS Discord
+
+🌟 Join the WebXOS revolution! ✨
+
+### SVG Diagrams
+To implement the SVG diagrams, save the following as separate files in the `docs/` directory and commit them to the repository:
+
+#### `docs/mcp-architecture.svg`
+```svg
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg" style="background-color: #000;">
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="24" font-weight="bold">MCP SERVER ARCHITECTURE</text>
+  
+  <!-- Main Server Box -->
+  <rect x="400" y="80" width="400" height="640" rx="10" fill="none" stroke="#00ff00" stroke-width="3" stroke-dasharray="5,5"/>
+  <text x="600" y="110" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="18" font-weight="bold">MCP SERVER CORE</text>
+  
+  <!-- FastAPI Layer -->
+  <rect x="430" y="140" width="340" height="80" rx="5" fill="#002200" stroke="#00ff00" stroke-width="2"/>
+  <text x="600" y="160" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="16">FASTAPI SERVER</text>
+  <text x="600" y="180" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">/api/v1/quantum, /api/v1/rag, /api/v1/video</text>
+  
+  <!-- Services Layer -->
+  <rect x="430" y="240" width="340" height="200" rx="5" fill="#002200" stroke="#00ff00" stroke-width="2"/>
+  <text x="600" y="260" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="16">SERVICES LAYER</text>
+  <rect x="450" y="280" width="90" height="40" rx="3" fill="#001100" stroke="#00ff00" stroke-width="1"/>
+  <text x="495" y="300" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="10">QUANTUM</text>
+  <rect x="550" y="280" width="90" height="40" rx="3" fill="#001100" stroke="#00ff00" stroke-width="1"/>
+  <text x="595" y="300" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="10">RAG</text>
+  <rect x="650" y="280" width="90" height="40" rx="3" fill="#001100" stroke="#00ff00" stroke-width="1"/>
+  <text x="695" y="300" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="10">VIDEO</text>
+  <rect x="500" y="330" width="90" height="40" rx="3" fill="#001100" stroke="#00ff00" stroke-width="1"/>
+  <text x="545" y="350" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="10">ECONOMIC</text>
+  
+  <!-- Database Layer -->
+  <rect x="430" y="460" width="340" height="80" rx="5" fill="#002200" stroke="#00ff00" stroke-width="2"/>
+  <text x="600" y="480" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="16">DATABASE LAYER</text>
+  <text x="600" y="500" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">MongoDB, PostgreSQL</text>
+  
+  <!-- Connection Lines -->
+  <line x1="600" y="220" x2="600" y2="240" stroke="#00ff00" stroke-width="2"/>
+  <line x1="600" y="440" x2="600" y2="460" stroke="#00ff00" stroke-width="2"/>
+</svg>
+
+docs/8-point-quantum-network.svg
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg" style="background-color: #000;">
+  <!-- Title -->
+  <text x="300" y="30" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="20" font-weight="bold">8-POINT QUANTUM NETWORK</text>
+  
+  <!-- 8 Points -->
+  <circle cx="150" cy="100" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="150" y="105" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Agent 1</text>
+  <circle cx="300" cy="100" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="300" y="105" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Agent 2</text>
+  <circle cx="450" cy="100" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="450" y="105" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">API</text>
+  <circle cx="150" cy="200" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="150" y="205" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Agent 3</text>
+  <circle cx="300" cy="200" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="300" y="205" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Custom</text>
+  <circle cx="450" cy="200" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="450" y="205" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Agent 4</text>
+  <circle cx="150" cy="300" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="150" y="305" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Data</text>
+  <circle cx="300" cy="300" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="300" y="305" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Network</text>
+  <circle cx="450" cy="300" r="20" fill="#001100" stroke="#00ff00" stroke-width="2"/>
+  <text x="450" y="305" text-anchor="middle" fill="#00ff00" font-family="monospace" font-size="12">Control</text>
+  
+  <!-- Connections -->
+  <line x1="170" y1="100" x2="280" y2="100" stroke="#00ff00" stroke-width="2"/>
+  <line x1="320" y1="100" x2="430" y2="100" stroke="#00ff00" stroke-width="2"/>
+  <line x1="170" y1="200" x2="280" y2="200" stroke="#00ff00" stroke-width="2"/>
+  <line x1="320" y1="200" x2="430" y2="200" stroke="#00ff00" stroke-width="2"/>
+  <line x1="170" y1="300" x2="280" y2="300" stroke="#00ff00" stroke-width="2"/>
+  <line x1="320" y1="300" x2="430" y2="300" stroke="#00ff00" stroke-width="2"/>
+  <line x1="150" y1="120" x2="150" y2="180" stroke="#00ff00" stroke-width="2"/>
+  <line x1="300" y1="120" x2="300" y2="180" stroke="#00ff00" stroke-width="2"/>
+  <line x1="450" y1="120" x2="450" y2="180" stroke="#00ff00" stroke-width="2"/>
+  <line x1="150" y1="220" x2="150" y2="280" stroke="#00ff00" stroke-width="2"/>
+  <line x1="300" y1="220" x2="300" y2="280" stroke="#00ff00" stroke-width="2"/>
+  <line x1="450" y1="220" x2="450" y2="280" stroke="#00ff00" stroke-width="2"/>
+</svg>
+
+Implementation Notes
+
+SVG Diagrams: Two SVGs are included—mcp-architecture.svg for the server architecture and 8-point-quantum-network.svg for the quantum network. Save these in the docs/ directory and commit to the repository. Use relative paths (./docs/mcp-architecture.svg and ./docs/8-point-quantum-network.svg) for GitHub rendering.
+Visual Appeal: Emojis (🌌, ✨, 🚀, etc.), bold headings, and color-coded sections enhance the layout. The SVGs use a dark theme with green accents to match the WebXOS aesthetic.
+GitHub Focus: Removed Vercel references, emphasizing GitHub-hosted workflows and features.
+Optimization: SVGs are optimized with reasonable sizes (1200x800 and 600x400) and minimal complexity for broad browser compatibility.
+
+Next Steps
+
+Save SVGs: Create docs/mcp-architecture.svg and docs/8-point-quantum-network.svg with the provided code and commit them.
+Test Rendering: Verify both diagrams display correctly in the GitHub README.
+Enhance Lab: Update index.html to integrate the 8-point quantum network diagram interactively.
+
+Let me know if you need further refinements or help with the commit process!
