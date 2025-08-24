@@ -1,0 +1,36 @@
+```yaml
+name: SVG Syntax Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-svg-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate SVG Syntax
+        run: |
+          node -e "const fs = require('fs'); const svg = fs.readFileSync('public/assets/dropship/default.svg', 'utf8'); const parser = new DOMParser(); const doc = parser.parseFromString(svg, 'image/svg+xml'); if (doc.getElementsByTagName('parsererror').length) throw new Error('Invalid SVG');"
+
+      - name: Post Syntax Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'SVG syntax validated at 05:12 PM EDT, 08/24/2025.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
