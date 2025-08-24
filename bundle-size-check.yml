@@ -1,0 +1,41 @@
+```yaml
+name: Bundle Size Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-bundle-size:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Measure Bundle Size
+        run: |
+          bundle_size=$(cat index.html | wc -c)
+          if [ $bundle_size -gt 1500000 ]; then
+            echo "Bundle size ($bundle_size bytes) exceeds 1.5MB limit."
+            exit 1
+          fi
+          echo "Bundle size: $bundle_size bytes."
+
+      - name: Post Bundle Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Bundle size check completed at 05:33 PM EDT.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
