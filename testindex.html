@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXOS Laboratory</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0a0a0a;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+        }
+        .panel {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #00ff41;
+            text-align: center;
+        }
+        .panel.active {
+            display: block;
+        }
+        button {
+            background: #00ff41;
+            color: #0a0a0a;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        button:hover {
+            box-shadow: 0 0 10px #00ff41;
+        }
+        input, select {
+            background: #0a0a0a;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 5px;
+            margin: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        canvas#webgpu-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff41;
+            padding: 10px;
+        }
+        .loading {
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel active" id="loading-panel">
+            <div class="loading">WebXOS Laboratory Loading...</div>
+        </div>
+        <div class="panel" id="auth-panel">
+            <h2>WebXOS Login</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="authenticate()">Login</button>
+            <button onclick="useOffline()">Use Offline</button>
+        </div>
+        <div class="panel" id="mode-selection">
+            <h2>Select Mode</h2>
+            <button onclick="selectMode('svg-circuit')">SVG Circuit</button>
+            <button onclick="selectMode('launch')">Launch</button>
+            <button onclick="selectMode('swarm')">Swarm</button>
+            <button onclick="openSettings()">Settings</button>
+        </div>
+        <div class="panel" id="settings-panel">
+            <h2>Settings</h2>
+            <select id="agent-role">
+                <option value="rocket">Rocket</option>
+                <option value="drone">Drone</option>
+                <option value="satellite">Satellite</option>
+            </select>
+            <select id="task">
+                <option value="none">None</option>
+                <option value="launch">Launch</option>
+                <option value="orbit">Orbit</option>
+                <option value="hold">Hold</option>
+                <option value="survey">Survey</option>
+                <option value="return">Return</option>
+            </select>
+            <input type="text" id="api-endpoint" placeholder="API Endpoint">
+            <input type="text" id="api-key" placeholder="API Key">
+            <input type="text" id="iot-device-id" placeholder="IoT Device ID">
+            <input type="number" id="altitude-target" placeholder="Altitude (km)">
+            <input type="number" id="speed-target" placeholder="Speed (km/h)">
+            <button onclick="testSettings()">Test</button>
+            <button onclick="saveSettings()">Save</button>
+            <button onclick="closeSettings()">Close</button>
+        </div>
+        <div class="panel" id="main-panel">
+            <canvas id="webgpu-canvas"></canvas>
+            <div class="control-panel" id="control-panel"></div>
+        </div>
+    </div>
+    <script>
+        let db;
+        const dbRequest = indexedDB.open('WebXOSLab', 1);
+        dbRequest.onupgradeneeded = (event) => {
+            db = event.target.result;
+            db.createObjectStore('settings', { keyPath: 'id' });
+            db.createObjectStore('circuits', { keyPath: 'id' });
+            db.createObjectStore('wallet', { keyPath: 'address' });
+        };
+        dbRequest.onsuccess = (event) => {
+            db = event.target.result;
+            initApp();
+        };
+        let mode = null;
+        let isOnline = false;
+        let token = null;
+        const agents = ['vial1', 'vial2', 'vial3', 'vial4'];
+        let components = [];
+        let drones = [];
+        function encrypt(data) {
+            const key = crypto.getRandomValues(new Uint8Array(32));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            return crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv },
+                crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['encrypt']),
+                new TextEncoder().encode(JSON.stringify(data))
+            ).then(encrypted => ({ encrypted, key, iv }));
+        }
+        function decrypt(encrypted, key, iv) {
+            return crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv },
+                crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['decrypt']),
+                encrypted
+            ).then(decrypted => JSON.parse(new TextDecoder().decode(decrypted)));
+        }
+        const mcpClient = {
+            async call(endpoint, data) {
+                if (!isOnline) throw new Error('Offline mode');
+                const response = await fetch(`http://localhost:8000/v1/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('API error');
+                return response.json();
+            }
+        };
+        const svgGenerator = {
+            addComponent(type, x, y) {
+                const component = { id: Date.now(), type, x, y };
+                components.push(component);
+                saveToDB('circuits', component);
+                renderComponent(component);
+                return component;
+            },
+            exportSVG() {
+                return `<svg width="1920" height="1080">${components.map(c => 
+                    `<rect x="${c.x}" y="${c.y}" width="60" height="20" fill="#00ff41"/>`).join('')}</svg>`;
+            }
+        };
+        function saveToDB(store, data) {
+            const tx = db.transaction([store], 'readwrite');
+            const objectStore = tx.objectStore(store);
+            objectStore.put(data);
+        }
+        function loadFromDB(store, id) {
+            return new Promise((resolve) => {
+                const tx = db.transaction([store], 'readonly');
+                const objectStore = tx.objectStore(store);
+                const request = id ? objectStore.get(id) : objectStore.getAll();
+                request.onsuccess = () => resolve(request.result);
+            });
+        }
+        let device, context;
+        async function initWebGPU() {
+            if (!navigator.gpu) return false;
+            const adapter = await navigator.gpu.requestAdapter();
+            device = await adapter.requestDevice();
+            const canvas = document.getElementById('webgpu-canvas');
+            context = canvas.getContext('webgpu');
+            context.configure({
+                device,
+                format: navigator.gpu.getPreferredCanvasFormat()
+            });
+            return true;
+        }
+        let canvas, ctx;
+        function initCanvas() {
+            canvas = document.getElementById('webgpu-canvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        function renderComponent(component) {
+            if (ctx) {
+                ctx.fillStyle = '#00ff41';
+                ctx.fillRect(component.x, component.y, 60, 20);
+            }
+        }
+        function renderDrones() {
+            if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drones.forEach(drone => {
+                    ctx.fillStyle = '#00ff41';
+                    ctx.fillRect(drone.x, drone.y, 10, 10);
+                });
+            }
+        }
+        async function authenticate() {
+            const username = document.getElementById('username').value.replace(/[^a-zA-Z0-9]/g, '');
+            const password = document.getElementById('password').value.replace(/[^a-zA-Z0-9]/g, '');
+            try {
+                const response = await fetch('http://localhost:8000/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    token = data.token;
+                    isOnline = true;
+                    showPanel('mode-selection');
+                } else {
+                    alert('Authentication failed');
+                }
+            } catch (error) {
+                alert('Backend unavailable, use offline mode');
+            }
+        }
+        function useOffline() {
+            isOnline = false;
+            showPanel('mode-selection');
+        }
+        function showPanel(panelId) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+        }
+        function selectMode(selectedMode) {
+            mode = selectedMode;
+            showPanel('main-panel');
+            initMode();
+        }
+        async function testSettings() {
+            const settings = getSettings();
+            if (isOnline) {
+                try {
+                    const result = await mcpClient.call('settings/test', settings);
+                    alert('Test successful: ' + JSON.stringify(result));
+                } catch (error) {
+                    alert('Test failed: ' + error.message);
+                }
+            } else {
+                alert('Settings test in offline mode');
+            }
+        }
+        async function saveSettings() {
+            const settings = getSettings();
+            const encrypted = await encrypt(settings);
+            saveToDB('settings', { id: 'settings', ...encrypted });
+            alert('Settings saved');
+        }
+        function getSettings() {
+            return {
+                agentRole: document.getElementById('agent-role').value,
+                task: document.getElementById('task').value,
+                apiEndpoint: document.getElementById('api-endpoint').value.replace(/[^a-zA-Z0-9:/._-]/g, ''),
+                apiKey: document.getElementById('api-key').value.replace(/[^a-zA-Z0-9]/g, ''),
+                iotDeviceId: document.getElementById('iot-device-id').value.replace(/[^a-zA-Z0-9]/g, ''),
+                altitudeTarget: document.getElementById('altitude-target').value,
+                speedTarget: document.getElementById('speed-target').value
+            };
+        }
+        function closeSettings() {
+            showPanel('mode-selection');
+        }
+        async function initMode() {
+            const controlPanel = document.getElementById('control-panel');
+            controlPanel.innerHTML = '';
+            components = await loadFromDB('circuits') || [];
+            const hasWebGPU = await initWebGPU();
+            if (!hasWebGPU) initCanvas();
+            if (mode === 'svg-circuit') {
+                controlPanel.innerHTML = `
+                    <button onclick="addComponent('resistor')">Resistor</button>
+                    <button onclick="addComponent('capacitor')">Capacitor</button>
+                    <button onclick="exportCircuit()">Export SVG</button>
+                    <button onclick="trainAgents()">Train Agents</button>
+                `;
+                document.getElementById('webgpu-canvas').addEventListener('click', handleCanvasClick);
+            } else if (mode === 'launch') {
+                controlPanel.innerHTML = `
+                    <button onclick="fetchNASAData()">Fetch NASA</button>
+                    <button onclick="runSimulation()">Simulate</button>
+                    <button onclick="trainAgents()">Train Agents</button>
+                `;
+            } else if (mode === 'swarm') {
+                controlPanel.innerHTML = `
+                    <button onclick="addCluster()">Add Cluster</button>
+                    <button onclick="setShape('sphere')">Sphere</button>
+                    <button onclick="setShape('cube')">Cube</button>
+                    <button onclick="trainAgents()">Train Agents</button>
+                `;
+            }
+        }
+        function handleCanvasClick(event) {
+            if (mode !== 'svg-circuit') return;
+            const canvas = document.getElementById('webgpu-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = (event.clientX - rect.left) * (1920 / rect.width);
+            const y = (event.clientY - rect.top) * (1080 / rect.height);
+            svgGenerator.addComponent('resistor', x, y);
+        }
+        async function addComponent(type) {
+            const component = svgGenerator.addComponent(type, 100, 100);
+            if (isOnline) {
+                await mcpClient.call('quantum/convert_to_circuit', { component });
+            }
+        }
+        async function exportCircuit() {
+            const svgData = svgGenerator.exportSVG();
+            if (isOnline) {
+                await mcpClient.call('visual/export', { svg: svgData });
+            } else {
+                saveToDB('circuits', { id: 'exported', svg: svgData });
+            }
+            alert('Circuit exported');
+        }
+        async function fetchNASAData() {
+            if (isOnline) {
+                try {
+                    const data = await mcpClient.call('nasa/fetch', {});
+                    console.log('NASA Data:', data);
+                } catch (error) {
+                    alert('NASA data unavailable offline');
+                }
+            } else {
+                alert('NASA data unavailable offline');
+            }
+        }
+        async function runSimulation() {
+            if (isOnline) {
+                const simulation = await mcpClient.call('launch/simulate', { task: document.getElementById('task').value });
+                console.log('Simulation Result:', simulation);
+            } else {
+                alert('Simulation unavailable offline');
+            }
+        }
+        async function addCluster() {
+            const count = prompt('Enter drones (0-1000):', '100');
+            if (isOnline) {
+                const newDrones = await mcpClient.call('swarm/add_cluster', { count: parseInt(count) });
+                drones = newDrones;
+            } else {
+                drones = Array.from({ length: parseInt(count) }, (_, i) => ({
+                    x: Math.random() * 1920,
+                    y: Math.random() * 1080
+                }));
+            }
+            renderDrones();
+        }
+        async function setShape(shape) {
+            if (isOnline) {
+                await mcpClient.call('swarm/set_shape', { shape });
+            } else {
+                alert('Shape setting unavailable offline');
+            }
+        }
+        async function trainAgents() {
+            if (isOnline) {
+                for (const agent of agents) {
+                    await mcpClient.call('agents/train', { agent, mode });
+                }
+                alert('Agents trained');
+            } else {
+                alert('Agent training unavailable offline');
+            }
+        }
+        async function loadWallet() {
+            const wallet = await loadFromDB('wallet', 'e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d');
+            if (!wallet) {
+                saveToDB('wallet', {
+                    address: 'e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d',
+                    balance: 60984.0,
+                    hash: '0805c9b1e1e085a5d61b3309c37ce8b2d7271fcfd35ba05a9cd1d235f58f45a1'
+                });
+            }
+        }
+        async function initApp() {
+            await loadWallet();
+            await initWebGPU() || initCanvas();
+            try {
+                await fetch('http://localhost:8000/v1/monitoring/health');
+                isOnline = true;
+                showPanel('auth-panel');
+            } catch {
+                showPanel('auth-panel');
+            }
+        }
+    </script>
+</body>
+</html>
