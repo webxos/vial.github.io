@@ -33,16 +33,11 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Notify on failure
         if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: peter-evans/create-or-update-comment@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: 'Deployment failed! Check logs.'
-            });
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Deployment failed! Check logs.
       - name: Log failure for push events
         if: failure() && github.event_name == 'push'
         run: |
