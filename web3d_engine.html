@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vial Galaxycraft - Quantum Space Simulator</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #cosmicCanvas {
+      flex: 1;
+      width: 100%;
+      touch-action: none;
+      position: relative;
+    }
+    .controls {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: rgba(20, 20, 50, 0.9);
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+      z-index: 10;
+    }
+    .control-item {
+      flex: 1;
+      min-width: 80px;
+      text-align: center;
+    }
+    button {
+      background: #4a90e2;
+      border: none;
+      padding: 10px 20px;
+      color: white;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    button:hover {
+      background: #357abd;
+    }
+    button.active {
+      background: #ff4444;
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    .prompt {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+      max-width: 90%;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.5s;
+      z-index: 5;
+    }
+    .prompt.active {
+      opacity: 1;
+    }
+    .status-overlay {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 5px 10px;
+      font-size: 12px;
+      text-align: left;
+      color: #fff;
+      text-shadow: 0 0 2px #000;
+      z-index: 5;
+      pointer-events: none;
+    }
+    .console {
+      position: absolute;
+      bottom: 60px;
+      width: 100%;
+      height: 25%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+      padding: 5px;
+    }
+    .console-log {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 12px;
+      color: #fff;
+      text-shadow: 0 0 2px #000;
+      padding: 5px;
+    }
+    .console-log p {
+      margin: 2px 0;
+    }
+    .console-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid #4a90e2;
+      color: #fff;
+      padding: 5px;
+      font-size: 12px;
+      outline: none;
+    }
+    .console-input::placeholder {
+      color: #aaa;
+    }
+    .console::-webkit-scrollbar {
+      width: 8px;
+    }
+    .console::-webkit-scrollbar-thumb {
+      background: #4a90e2;
+      border-radius: 4px;
+    }
+    .login-panel, .drone-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(20, 20, 50, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 20;
+      display: none;
+    }
+    .login-panel.active, .drone-panel.active {
+      display: block;
+    }
+    .login-panel input, .drone-panel input, .drone-panel select {
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid #4a90e2;
+      color: #fff;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="cosmicCanvas">
+    <div class="status-overlay" id="statusOverlay"></div>
+    <div class="console" id="console">
+      <div id="consoleLog" class="console-log"></div>
+      <input id="consoleInput" class="console-input" type="text" placeholder="Type /help for commands...">
+    </div>
+  </div>
+  <div class="controls">
+    <div class="control-item"><button id="loginBtn">Login</button></div>
+    <div class="control-item"><button id="addPlanet">Add Planet</button></div>
+    <div class="control-item"><button id="addStar">Add Star</button></div>
+    <div class="control-item"><button id="addGalaxy">Add Galaxy</button></div>
+    <div class="control-item"><button id="droneMode">Drone Mode</button></div>
+    <div class="control-item"><button id="generateArt">Generate Art</button></div>
+    <div class="control-item"><button id="trainAgent">Train Agent</button></div>
+    <div class="control-item"><button id="resetBtn">Reset</button></div>
+  </div>
+  <div id="prompt" class="prompt"></div>
+  <div id="loginPanel" class="login-panel">
+    <h3>WebXOS Login</h3>
+    <input id="walletId" type="text" placeholder="Wallet ID">
+    <input id="apiKey" type="password" placeholder="API Key">
+    <button id="submitLogin">Login</button>
+  </div>
+  <div id="dronePanel" class="drone-panel">
+    <h3>FPV Drone Simulator</h3>
+    <select id="droneType">
+      <option value="quadcopter">Quadcopter</option>
+      <option value="rocket">SpaceX Rocket</option>
+      <option value="satellite">Satellite</option>
+    </select>
+    <input id="flightPath" type="text" placeholder="Flight Path (e.g., orbit, linear)">
+    <button id="startDrone">Start Simulation</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.21.0/dist/tf.min.js"></script>
+  <script>
+    window.onload = async () => {
+      try {
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 1);
+        document.getElementById('cosmicCanvas').appendChild(renderer.domElement);
+        camera.position.set(0, 0, 500);
+
+        // Shared resources
+        const sharedMaterials = {
+          planet: new THREE.MeshBasicMaterial({ color: 0x3399ff }),
+          star: new THREE.MeshBasicMaterial({ color: 0xffff99 }),
+          galaxy: new THREE.MeshBasicMaterial({ color: 0xff33cc }),
+          drone: new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
+          line: new THREE.LineBasicMaterial({ color: 0x00ff41, linewidth: 2 })
+        };
+        const sharedGeometries = {
+          planet: new THREE.SphereGeometry(20, 12, 12),
+          star: new THREE.SphereGeometry(100, 16, 16),
+          galaxy: new THREE.SphereGeometry(10, 8, 8),
+          drone: new THREE.BoxGeometry(15, 15, 15),
+          node: new THREE.BoxGeometry(10, 10, 10)
+        };
+
+        // Entities and state
+        let planets = [], stars = [], galaxies = [], drones = [], nodes = [], nodeLines = [];
+        let entityCount = 0, walletId = null, droneMode = false;
+        const consoleLog = document.getElementById('consoleLog');
+        const statusOverlay = document.getElementById('statusOverlay');
+
+        // Neural network for generative art
+        const model = tf.sequential();
+        model.add(tf.layers.dense({ units: 128, activation: 'relu', inputShape: [3] }));
+        model.add(tf.layers.dense({ units: 64, activation: 'relu' }));
+        model.add(tf.layers.dense({ units: 3, activation: 'sigmoid' }));
+        model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+
+        // NASA/SpaceX API
+        async function fetchSpaceData(type) {
+          try {
+            const response = await fetch(`http://localhost:8000/mcp/galaxycraft/space_data?type=${type}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('apiKey')}` }
+            });
+            const data = await response.json();
+            addConsoleMessage(`Loaded ${type} data: ${data.title || data.mission}`);
+            return data;
+          } catch (e) {
+            addConsoleMessage(`Space API error: ${e.message}`);
+          }
+        }
+
+        // Console logging
+        function addConsoleMessage(message) {
+          const timestamp = new Date().toLocaleTimeString();
+          consoleLog.innerHTML += `<p>[${timestamp}] ${message}</p>`;
+          consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // LangGraph API interaction
+        async function trainAgent(type, data) {
+          if (!walletId) {
+            addConsoleMessage('Please login to train agents.');
+            return;
+          }
+          try {
+            const response = await fetch('http://localhost:8000/mcp/galaxycraft/train', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('apiKey')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ type, data, wallet_id: walletId })
+            });
+            const result = await response.json();
+            addConsoleMessage(`Agent trained: ${result.status}, Reward: ${result.reward}`);
+            return result;
+          } catch (e) {
+            addConsoleMessage(`Training error: ${e.message}`);
+          }
+        }
+
+        // 3D SVG diagram updates with neural enhancement
+        function updateDiagram(entities) {
+          nodes.forEach(n => scene.remove(n));
+          nodeLines.forEach(l => scene.remove(l));
+          nodes = [];
+          nodeLines = [];
+          entities.forEach(entity => {
+            const input = tf.tensor2d([[entity.x / 1000, entity.y / 1000, entity.z / 1000]]);
+            const color = model.predict(input).dataSync();
+            const material = new THREE.MeshBasicMaterial({
+              color: new THREE.Color(color[0], color[1], color[2])
+            });
+            const node = new THREE.Mesh(sharedGeometries.node, material);
+            node.position.set(entity.x, entity.y, entity.z || 0);
+            node.userData = { type: entity.type, id: entity.id };
+            scene.add(node);
+            nodes.push(node);
+          });
+          for (let i = 0; i < nodes.length - 1; i++) {
+            const line = new THREE.Line(
+              new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[i + 1].position]),
+              sharedMaterials.line
+            );
+            scene.add(line);
+            nodeLines.push(line);
+          }
+        }
+
+        // Drone simulation
+        function simulateDrone(droneType, flightPath) {
+          const drone = { id: `drone_${Date.now()}`, type: 'drone', x: 0, y: 0, z: 0, path: flightPath };
+          drones.push(drone);
+          entityCount++;
+          const mesh = new THREE.Mesh(sharedGeometries.drone, sharedMaterials.drone);
+          mesh.position.set(drone.x, drone.y, drone.z);
+          scene.add(mesh);
+          nodes.push(mesh);
+          trainAgent('drone_simulation', { drone_type: droneType, flight_path: flightPath });
+          addConsoleMessage(`Drone (${droneType}) simulation started: ${flightPath}`);
+          updateStatusOverlay();
+        }
+
+        // Generative art
+        function generateArt() {
+          const entities = [];
+          for (let i = 0; i < 50; i++) {
+            const type = ['planet', 'star', 'galaxy'][Math.floor(Math.random() * 3)];
+            entities.push({
+              id: `${type}_${Date.now()}_${i}`,
+              type,
+              x: Math.random() * 2000 - 1000,
+              y: Math.random() * 2000 - 1000,
+              z: Math.random() * 2000 - 1000
+            });
+          }
+          planets = entities.filter(e => e.type === 'planet');
+          stars = entities.filter(e => e.type === 'star');
+          galaxies = entities.filter(e => e.type === 'galaxy');
+          entityCount = entities.length;
+          updateDiagram(entities);
+          trainAgent('generative_art', { entities });
+          addConsoleMessage('Generated random universe.');
+          updateStatusOverlay();
+        }
+
+        // Login handling
+        document.getElementById('loginBtn').addEventListener('click', () => {
+          document.getElementById('loginPanel').classList.toggle('active');
+        });
+        document.getElementById('submitLogin').addEventListener('click', async () => {
+          walletId = document.getElementById('walletId').value;
+          const apiKey = document.getElementById('apiKey').value;
+          localStorage.setItem('apiKey', apiKey);
+          document.getElementById('loginPanel').classList.remove('active');
+          addConsoleMessage(`Logged in as ${walletId}`);
+        });
+
+        // Drone mode
+        document.getElementById('droneMode').addEventListener('click', () => {
+          document.getElementById('dronePanel').classList.toggle('active');
+        });
+        document.getElementById('startDrone').addEventListener('click', () => {
+          const droneType = document.getElementById('droneType').value;
+          const flightPath = document.getElementById('flightPath').value;
+          simulateDrone(droneType, flightPath);
+          document.getElementById('dronePanel').classList.remove('active');
+        });
+
+        // Controls
+        document.getElementById('addPlanet').addEventListener('click', () => {
+          const planet = { id: `planet_${Date.now()}`, type: 'planet', x: Math.random() * 1000 - 500, y: Math.random() * 1000 - 500, z: Math.random() * 1000 - 500 };
+          planets.push(planet);
+          entityCount++;
+          updateDiagram([...planets, ...stars, ...galaxies, ...drones]);
+          trainAgent('circuit_design', planet);
+          addConsoleMessage('Planet added.');
+          updateStatusOverlay();
+        });
+        document.getElementById('addStar').addEventListener('click', () => {
+          const star = { id: `star_${Date.now()}`, type: 'star', x: Math.random() * 1000 - 500, y: Math.random() * 1000 - 500, z: Math.random() * 1000 - 500 };
+          stars.push(star);
+          entityCount++;
+          updateDiagram([...planets, ...stars, ...galaxies, ...drones]);
+          trainAgent('quantum_processing', star);
+          addConsoleMessage('Star added.');
+          updateStatusOverlay();
+        });
+        document.getElementById('addGalaxy').addEventListener('click', () => {
+          const galaxy = { id: `galaxy_${Date.now()}`, type: 'galaxy', x: Math.random() * 1000 - 500, y: Math.random() * 1000 - 500, z: Math.random() * 1000 - 500 };
+          galaxies.push(galaxy);
+          entityCount++;
+          updateDiagram([...planets, ...stars, ...galaxies, ...drones]);
+          trainAgent('swarm_coordination', galaxy);
+          addConsoleMessage('Galaxy added.');
+          updateStatusOverlay();
+        });
+        document.getElementById('generateArt').addEventListener('click', generateArt);
+        document.getElementById('trainAgent').addEventListener('click', () => {
+          trainAgent('video_analysis', { video_source: 'obs://scene_1', ai_models: ['yolov8', 'ocr'] });
+          addConsoleMessage('Training video analysis agent.');
+        });
+        document.getElementById('resetBtn').addEventListener('click', () => {
+          planets = [];
+          stars = [];
+          galaxies = [];
+          drones = [];
+          nodes.forEach(n => scene.remove(n));
+          nodeLines.forEach(l => scene.remove(l));
+          nodes = [];
+          nodeLines = [];
+          entityCount = 0;
+          addConsoleMessage('Universe reset.');
+          updateStatusOverlay();
+        });
+
+        function updateStatusOverlay() {
+          statusOverlay.textContent = `Entities: ${entityCount} | Wallet: ${walletId || 'Not logged in'} | Mode: ${droneMode ? 'Drone' : 'Standard'}`;
+        }
+
+        // Animation loop
+        function animate() {
+          requestAnimationFrame(animate);
+          if (droneMode) {
+            drones.forEach(drone => {
+              if (drone.path === 'orbit') {
+                drone.x += Math.sin(Date.now() * 0.001) * 2;
+                drone.y += Math.cos(Date.now() * 0.001) * 2;
+              } else if (drone.path === 'linear') {
+                drone.z += 1;
+              }
+              nodes.find(n => n.userData.id === drone.id).position.set(drone.x, drone.y, drone.z);
+            });
+          }
+          renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize handling
+        window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize
+        await fetchSpaceData('nasa');
+        addConsoleMessage('Vial Galaxycraft initialized. Login to start crafting.');
+        updateStatusOverlay();
+      } catch (e) {
+        console.error('Galaxycraft error:', e);
+        addConsoleMessage(`Error: ${e.message}`);
+      }
+    };
+  </script>
+</body>
+</html>
