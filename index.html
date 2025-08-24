@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXOS Vial MCP Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/svg.js@3.1.2/dist/svg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.156.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.4.0/dist/axios.min.js"></script>
+    <style>
+        body { background: #111; color: #0f0; font-family: 'Courier New', monospace; }
+        .terminal { background: #000; border: 2px solid #0f0; padding: 10px; height: 200px; overflow-y: auto; }
+        .svg-canvas { border: 1px solid #0f0; }
+        .globe { width: 100%; height: 400px; }
+        .mode-button { transition: all 0.3s; }
+        .mode-button:hover { transform: scale(1.05); }
+        .settings-panel { background: rgba(0, 255, 0, 0.1); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const VialMCPApp = () => {
+            const [mode, setMode] = useState(null);
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [user, setUser] = useState(null);
+            const [terminalOutput, setTerminalOutput] = useState([]);
+            const [settings, setSettings] = useState({
+                agentRole: 'Rocket',
+                task: 'None',
+                apiEndpoint: '',
+                apiKey: '',
+                seedingParams: '',
+                iotDeviceId: '',
+                altitudeTarget: '',
+                speedTarget: '',
+                swarmPattern: 'Sphere',
+                galaxycraftMode: 'Autopilot'
+            });
+            const [svgCode, setSvgCode] = useState('');
+            const svgCanvasRef = useRef(null);
+            const globeRef = useRef(null);
+
+            // OAuth Authentication
+            const handleOAuthLogin = async () => {
+                try {
+                    const response = await axios.get('/api/oauth/init');
+                    window.location.href = response.data.authUrl;
+                } catch (error) {
+                    addTerminalMessage(`OAuth Error: ${error.message}`, 'error');
+                }
+            };
+
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                if (token) {
+                    axios.post('/api/oauth/callback', { token })
+                        .then(res => {
+                            setUser(res.data.user);
+                            setIsAuthenticated(true);
+                            addTerminalMessage('Authentication successful', 'success');
+                        })
+                        .catch(err => addTerminalMessage(`Auth failed: ${err.message}`, 'error'));
+                }
+            }, []);
+
+            // Terminal Handling
+            const addTerminalMessage = (message, type = 'info') => {
+                setTerminalOutput(prev => [...prev, { message, type, timestamp: new Date().toISOString() }]);
+            };
+
+            // SVG Mode: Enhanced Diagram Editor
+            const renderSVGMode = () => {
+                useEffect(() => {
+                    if (svgCanvasRef.current && mode === 'SVG') {
+                        const draw = SVG().addTo(svgCanvasRef.current).size('100%', 400);
+                        if (svgCode) {
+                            try {
+                                draw.svg(svgCode);
+                                applyWebXOSStyles(draw);
+                            } catch (error) {
+                                addTerminalMessage(`SVG Parse Error: ${error.message}`, 'error');
+                            }
+                        }
+                    }
+                }, [svgCode]);
+
+                const handleSvgImport = (event) => {
+                    const file = event.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        setSvgCode(e.target.result);
+                        addTerminalMessage('SVG imported successfully', 'success');
+                    };
+                    reader.readAsText(file);
+                };
+
+                const applyWebXOSStyles = (draw) => {
+                    draw.find('path, rect, circle, line').forEach(element => {
+                        element.fill('none').stroke({ color: '#0f0', width: 2 });
+                    });
+                    draw.find('text').forEach(text => {
+                        text.fill('#0f0').font({ family: 'Courier New', size: 14 });
+                    });
+                };
+
+                const handleStyleChange = (property, value) => {
+                    const draw = SVG(svgCanvasRef.current);
+                    draw.find('path, rect, circle, line').forEach(element => {
+                        if (property === 'stroke') element.stroke({ color: value });
+                        if (property === 'strokeWidth') element.stroke({ width: value });
+                    });
+                    setSvgCode(draw.svg());
+                    addTerminalMessage(`Applied ${property}: ${value}`, 'success');
+                };
+
+                return (
+                    <div className="p-4">
+                        <h2 className="text-xl mb-2">SVG Circuit Board Editor</h2>
+                        <div className="mb-4">
+                            <input type="file" accept=".svg" onChange={handleSvgImport} className="mb-2" />
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    onChange={(e) => handleStyleChange('stroke', e.target.value)}
+                                    className="w-12 h-8"
+                                />
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    placeholder="Stroke Width"
+                                    onChange={(e) => handleStyleChange('strokeWidth', e.target.value)}
+                                    className="bg-black text-green-500 border border-green-500 p-1"
+                                />
+                            </div>
+                        </div>
+                        <div ref={svgCanvasRef} className="svg-canvas w-full h-96"></div>
+                    </div>
+                );
+            };
+
+            // LAUNCH Mode
+            const renderLaunchMode = () => {
+                useEffect(() => {
+                    if (globeRef.current && mode === 'LAUNCH') {
+                        const scene = new THREE.Scene();
+                        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
+                        const renderer = new THREE.WebGLRenderer({ canvas: globeRef.current });
+                        renderer.setSize(window.innerWidth, 400);
+                        const geometry = new THREE.SphereGeometry(5, 32, 32);
+                        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+                        const sphere = new THREE.Mesh(geometry, material);
+                        scene.add(sphere);
+                        camera.position.z = 10;
+                        const animate = () => {
+                            requestAnimationFrame(animate);
+                            sphere.rotation.y += 0.01;
+                            renderer.render(scene, camera);
+                        };
+                        animate();
+                    }
+                }, []);
+
+                return (
+                    <div className="p-4">
+                        <h2 className="text-xl mb-2">Launch Sequence</h2>
+                        <canvas ref={globeRef} className="globe"></canvas>
+                        <div className="flex gap-2 mt-2">
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Simulating launch...', 'info')}>
+                                Sim
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Initiating launch...', 'info')}>
+                                Launch
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // SWARM Mode
+            const renderSwarmMode = () => {
+                const patterns = ['Sphere', 'Cube', 'Pyramid', 'Ring', 'UFO Craft', 'Smiley Face', 'WebXOS Text', 'Random Spiral'];
+                const trajectories = ['Lissajous Knot', 'Toroidal Helix', 'Rose Curve', 'Spherical Wave', 'DNA Strains', 'Slinky Orbit', 'Sine Wave'];
+
+                return (
+                    <div className="p-4">
+                        <h2 className="text-xl mb-2">Swarm Control</h2>
+                        <div className="flex gap-2 mb-2">
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Protect mode activated', 'info')}>
+                                Protect
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Full throttle engaged', 'info')}>
+                                Full Throttle
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Swarm paused', 'info')}>
+                                Pause Swarm
+                            </button>
+                        </div>
+                        <select
+                            className="bg-black text-green-500 border border-green-500 p-2 mb-2"
+                            onChange={(e) => {
+                                setSettings({ ...settings, swarmPattern: e.target.value });
+                                addTerminalMessage(`Swarm pattern set to ${e.target.value}`, 'success');
+                            }}
+                        >
+                            {patterns.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                        <select
+                            className="bg-black text-green-500 border border-green-500 p-2"
+                            onChange={(e) => addTerminalMessage(`Trajectory set to ${e.target.value}`, 'success')}
+                        >
+                            {trajectories.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                );
+            };
+
+            // GALAXYCRAFT Mode
+            const renderGalaxycraftMode = () => {
+                return (
+                    <div className="p-4">
+                        <h2 className="text-xl mb-2">Galaxycraft Control</h2>
+                        <div className="flex gap-2 mb-2">
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Full throttle activated', 'info')}>
+                                Full Throttle
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Comet added', 'info')}>
+                                Add Comet
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('System added', 'info')}>
+                                Add System
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Galaxy added', 'info')}>
+                                Add Galaxy
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Node added', 'info')}>
+                                Add Node
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Autopilot engaged', 'info')}>
+                                Autopilot
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Shot fired', 'info')}>
+                                Shoot
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('System reset', 'info')}>
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Unified Settings Menu
+            const renderSettingsMenu = () => {
+                return (
+                    <div className="settings-panel p-4 mt-4 border border-green-500">
+                        <h2 className="text-xl mb-2">Settings - Agent</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label>Agent Role</label>
+                                <select
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.agentRole}
+                                    onChange={(e) => setSettings({ ...settings, agentRole: e.target.value })}
+                                >
+                                    {['Rocket', 'Drone', 'Satellite'].map(role => <option key={role} value={role}>{role}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Task</label>
+                                <select
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.task}
+                                    onChange={(e) => setSettings({ ...settings, task: e.target.value })}
+                                >
+                                    {['None', 'Launch', 'Orbit', 'Hold', 'Survey', 'Return'].map(task => <option key={task} value={task}>{task}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label>API Endpoint</label>
+                                <input
+                                    type="text"
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.apiEndpoint}
+                                    onChange={(e) => setSettings({ ...settings, apiEndpoint: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>API Key</label>
+                                <input
+                                    type="text"
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.apiKey}
+                                    onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Seeding Parameters</label>
+                                <input
+                                    type="text"
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.seedingParams}
+                                    onChange={(e) => setSettings({ ...settings, seedingParams: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>IoT Device ID</label>
+                                <input
+                                    type="text"
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.iotDeviceId}
+                                    onChange={(e) => setSettings({ ...settings, iotDeviceId: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Altitude Target (km)</label>
+                                <input
+                                    type="number"
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.altitudeTarget}
+                                    onChange={(e) => setSettings({ ...settings, altitudeTarget: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Speed Target (km/h)</label>
+                                <input
+                                    type="number"
+                                    className="bg-black text-green-500 border border-green-500 p-2 w-full"
+                                    value={settings.speedTarget}
+                                    onChange={(e) => setSettings({ ...settings, speedTarget: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Testing settings...', 'info')}>
+                                Test
+                            </button>
+                            <button className="bg-green-700 p-2 rounded" onClick={() => addTerminalMessage('Settings saved', 'success')}>
+                                Save
+                            </button>
+                            <button className="bg-red-700 p-2 rounded" onClick={() => setMode(null)}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Main Render
+            if (!isAuthenticated) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-center">
+                            <h1 className="text-3xl mb-4">WebXOS Vial MCP Controller</h1>
+                            <button
+                                className="bg-green-700 text-green-100 p-3 rounded-lg mode-button"
+                                onClick={handleOAuthLogin}
+                            >
+                                Login with OAuth
+                            </button>
+                            <div className="terminal mt-4">
+                                {terminalOutput.map((log, i) => (
+                                    <p key={i} className={log.type === 'error' ? 'text-red-500' : 'text-green-500'}>
+                                        [{log.timestamp}] {log.message}
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen p-4">
+                    <h1 className="text-3xl mb-4">WebXOS Vial MCP Controller</h1>
+                    <div className="flex gap-4 mb-4">
+                        {['SVG', 'LAUNCH', 'SWARM', 'GALAXYCRAFT'].map(m => (
+                            <button
+                                key={m}
+                                className={`bg-green-700 text-green-100 p-3 rounded-lg mode-button ${mode === m ? 'border-2 border-green-500' : ''}`}
+                                onClick={() => setMode(m)}
+                            >
+                                {m}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="terminal mb-4">
+                        {terminalOutput.map((log, i) => (
+                            <p key={i} className={log.type === 'error' ? 'text-red-500' : 'text-green-500'}>
+                                [{log.timestamp}] {log.message}
+                            </p>
+                        ))}
+                    </div>
+                    {mode === 'SVG' && renderSVGMode()}
+                    {mode === 'LAUNCH' && renderLaunchMode()}
+                    {mode === 'SWARM' && renderSwarmMode()}
+                    {mode === 'GALAXYCRAFT' && renderGalaxycraftMode()}
+                    {renderSettingsMenu()}
+                    <footer className="mt-4 text-center">© 2025 WebXOS</footer>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<VialMCPApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
