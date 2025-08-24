@@ -1,22 +1,13 @@
-FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+```dockerfile
+FROM python:3.11-slim
 
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3-pip \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
 COPY package.json package-lock.json ./
-RUN npm install
-
+RUN apt-get update && apt-get install -y nodejs npm
 COPY . .
-
-EXPOSE 8000 3000
-
-CMD ["bash", "-c", "npm run build & uvicorn server.main:app --host 0.0.0.0 --port 8000"]
+RUN npm ci && npm run build
+RUN pip install modelcontextprotocol qiskit qiskit-aer sqlalchemy alembic httpx torch psycopg2-binary
+RUN alembic upgrade head
+EXPOSE 8000
+CMD ["python", "server/mcp_server.py"]
+```
