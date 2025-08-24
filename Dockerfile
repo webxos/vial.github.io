@@ -1,28 +1,22 @@
-FROM python:3.11-slim
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 WORKDIR /app
 
-# Install Node.js
-RUN apt-get update && apt-get install -y nodejs npm
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy Node.js dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-# Copy Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY server/ ./server/
-COPY public/ ./public/
+COPY package.json package-lock.json ./
+RUN npm install
 
-# Security: Run as non-root user
-RUN useradd -m vial
-USER vial
+COPY . .
 
-# Expose ports
-EXPOSE 8000 4455
+EXPOSE 8000 3000
 
-# Start FastAPI server
-CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["bash", "-c", "npm run build & uvicorn server.main:app --host 0.0.0.0 --port 8000"]
