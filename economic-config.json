@@ -1,0 +1,22 @@
+```json
+{
+  "economic_democracy": {
+    "reward_points": {
+      "simulation": 10,
+      "testing": 5,
+      "collaboration": 3
+    },
+    "thresholds": {
+      "min_participation": 5,
+      "max_rewards_daily": 100,
+      "collaboration_bonus": 2
+    },
+    "regional_nodes": ["US", "EU", "ASIA"],
+    "fairness_metrics": {
+      "gini_coefficient": 0.3,
+      "participation_rate": 0.7,
+      "collaboration_index": 0.5
+    }
+  }
+}
+```
