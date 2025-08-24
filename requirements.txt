@@ -14,3 +14,11 @@ obs-websocket-py==1.0.0
 requests==2.31.0
 python-jose==3.3.0
 toml==0.10.2
+langchain==0.2.0
+langchain-community==0.2.0
+langchain-openai==0.1.0
+langgraph==0.1.0
+tenacity==8.2.3
+bleach==6.1.0
+logfire==0.1.0
+pyyaml==6.0.1
