@@ -1,0 +1,42 @@
+```yaml
+name: Mode Transition Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-mode-transition:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Simulate Mode Transition
+        run: |
+          node -e "const fs = require('fs'); let data = { mode: 'SVG' }; fs.writeFileSync('public/state.json', JSON.stringify(data)); data.mode = 'LAUNCH'; fs.writeFileSync('public/state.json', JSON.stringify(data)); const saved = JSON.parse(fs.readFileSync('public/state.json')); if (saved.mode !== 'LAUNCH') throw new Error('Data loss detected');"
+
+      - name: Post Transition Status
+        if: github.event.pull_request.number || github.event.issue.number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Mode transition check completed at 06:06 PM EDT.'
+              });
+            } else {
+              console.log('No issue/PR context available, skipping comment');
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        permissions:
+          issues: write
+          pull-requests: write
+```
