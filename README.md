@@ -1,4 +1,4 @@
-# Vial MCP Controller
+# Vial MCP
 
 ![Vial MCP Controller](https://img.shields.io/badge/Vial-MCP%20Controller-blueviolet)
 ![License](https://img.shields.io/badge/License-MIT-green)
