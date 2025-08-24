@@ -1,40 +1,50 @@
-```python
-from fastapi import APIRouter, Security, HTTPException
-from typing import Dict
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from server.models.analytics_repository import AnalyticsRepository
+from server.models.dao_repository import DAORepository
+from server.config.database import get_db
+from sqlalchemy.orm import Session
+from fastapi.security import OAuth2AuthorizationCodeBearer
 import logging
-import psutil
-from server.config.settings import settings
-from server.utils.security_sanitizer import sanitize_input
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
+logging.basicConfig(level=logging.INFO, filename="logs/monitoring.log")
 
-@router.get("/mcp/monitoring/health")
-async def health_check(token: str = Security(...)) -> Dict:
-    """Check server health and resource usage."""
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl="/mcp/auth/authorize",
+    tokenUrl="/mcp/auth/token",
+    scheme_name="OAuth2PKCE"
+)
+
+class MetricsRequest(BaseModel):
+    time_range: str = "1h"  # e.g., "1h", "24h", "7d"
+    agent_type: str = None  # e.g., "alchemist", "swarm"
+
+@router.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+@router.get("/metrics")
+async def get_system_metrics(request: MetricsRequest = Depends(), token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
-        # Check CPU and memory usage
-        cpu_usage = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        analytics_repo = AnalyticsRepository(db)
+        dao_repo = DAORepository(db)
         
-        # Verify critical services
-        services = {
-            "llm_router": "healthy" if settings.ANTHROPIC_API_KEY or settings.MISTRAL_API_KEY else "unconfigured",
-            "obs": "healthy" if settings.OBS_HOST and settings.OBS_PORT else "unconfigured",
-            "servicenow": "healthy" if settings.SERVICENOW_INSTANCE else "unconfigured"
+        # Get LLM metrics
+        llm_metrics = analytics_repo.get_metrics(time_range=request.time_range)
+        
+        # Get DAO reputation stats
+        total_reputation = sum(
+            dao_repo.get_reputation(wallet.wallet_id)
+            for wallet in db.query(dao_repo.DAOReputation).all()
+        )
+        
+        return {
+            "llm_metrics": llm_metrics,
+            "dao_total_reputation": total_reputation,
+            "agent_type": request.agent_type or "all",
+            "time_range": request.time_range
         }
-
-        health_status = {
-            "status": "healthy",
-            "cpu_usage_percent": cpu_usage,
-            "memory_usage_percent": memory.percent,
-            "disk_usage_percent": disk.percent,
-            "services": services
-        }
-        logger.info(f"Health check: {health_status}")
-        return health_status
     except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
+        logging.error(f"Metrics error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-```
