@@ -1,8 +1,9 @@
+```toml
 [tool.poetry]
 name = "agora-protocol"
 version = "0.2.0"
-description = "Python library for the Agora Protocol."
-authors = ["Samuele Marro <marrosamuele@gmail.com>"]
+description = "Python library for the Agora Protocol in WebXOS Vial MCP."
+authors = ["Samuele Marro <marrosamuele@gmail.com>", "Your Name <your.email@example.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [
@@ -19,7 +20,7 @@ requests = "^2.32"
 PyYAML = "^6.0"
 RestrictedPython = "^7.4"
 camel-ai = {version="^0.2.6", optional=true}
-agora-protocol = "^0.2.0"  # Added Agora Protocol
+agora-protocol = "^0.2.0"
 
 [tool.poetry.extras]
 camel-ai = ["camel-ai"]
@@ -27,3 +28,4 @@ camel-ai = ["camel-ai"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+```
