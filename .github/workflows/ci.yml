@@ -31,14 +31,26 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-      - name: Notify on failure
+      - name: Create logs directory
+        if: always()
+        run: mkdir -p logs
+      - name: Notify on failure (PR)
         if: failure() && github.event_name == 'pull_request' && github.event.pull_request.number
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Deployment failed! Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.
-      - name: Log failure for other events
+      - name: Create issue on failure (non-PR)
+        if: failure() && github.event_name != 'pull_request'
+        uses: actions/create-issue@v1
+        with:
+          title: CI Failure on ${{ github.event_name }}
+          body: |
+            Deployment failed! Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.
+          assignees: ${{ github.actor }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log failure
         if: failure()
         run: |
           echo "Deployment failed! Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}." >> logs/ci_failure.log
