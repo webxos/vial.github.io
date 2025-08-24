@@ -1,0 +1,15 @@
+```yaml
+privacy:
+  gdpr_plus: true
+  retention_days:
+    US: 30
+    EU: 14
+    GLOBAL: 90
+  anonymization:
+    user_id: true
+    data_fields: ["email", "name", "wallet_id"]
+  consent_management:
+    enabled: true
+    storage: "mongodb"
+    collaboration_opt_in: true
+```
