@@ -1,0 +1,20 @@
+```json
+{
+  "client": {
+    "name": "WebXOS Vial Client",
+    "version": "1.0.0",
+    "endpoint": "https://vial.github.io/api/mcp",
+    "capabilities": ["dropship", "galaxycraft", "telescope", "alchemist", "svg_transpiler", "arvr_overlay", "benchmarking"],
+    "auth": {
+      "method": "oauth2",
+      "token_url": "https://vial.github.io/token",
+      "scopes": ["read", "write", "collaboration"]
+    },
+    "reconnect": {
+      "enabled": true,
+      "interval": 5000,
+      "max_attempts": 3
+    }
+  }
+}
+```
