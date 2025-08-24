@@ -1,63 +1,50 @@
-```python
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import OAuth2AuthorizationCodeBearer
+from server.api import auth_endpoint, quantum_rag_endpoint, servicenow_endpoint, monitoring_endpoint, alchemist_endpoint
+from server.services import obs_handler
+from server.config.settings import Settings
+from server.config.database import get_db
+from sqlalchemy.orm import Session
 import logging
-from server.api.quantum_rag_endpoint import router as quantum_router
-from server.api.servicenow_endpoint import router as servicenow_router
-from server.api.monitoring_endpoint import router as monitoring_router
-from server.api.auth_endpoint import router as auth_router
-from server.services.obs_handler import OBSHandler
 
-app = FastAPI(title="Vial MCP Controller")
+app = FastAPI(title="Vial MCP Controller", version="1.0.0")
+settings = Settings()
+logging.basicConfig(level=logging.INFO, filename="logs/server.log")
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://vial.github.io"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl="/mcp/auth/authorize",
+    tokenUrl="/mcp/auth/token",
+    scheme_name="OAuth2PKCE"
 )
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Global error handler
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    logging.error(f"HTTP error: {exc.status_code} - {exc.detail}")
+    return {"error": exc.detail, "status_code": exc.status_code}
 
-# Include routers
-app.include_router(quantum_router)
-app.include_router(servicenow_router)
-app.include_router(monitoring_router)
-app.include_router(auth_router)
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    logging.error(f"Unexpected error: {str(exc)}")
+    return {"error": "Internal server error", "status_code": 500}
+
+# Include API routers
+app.include_router(auth_endpoint.router, prefix="/mcp/auth")
+app.include_router(quantum_rag_endpoint.router, prefix="/mcp/quantum_rag")
+app.include_router(servicenow_endpoint.router, prefix="/mcp/servicenow")
+app.include_router(monitoring_endpoint.router, prefix="/mcp/monitoring")
+app.include_router(alchemist_endpoint.router, prefix="/mcp/alchemist")
 
 # OBS endpoint
 @app.post("/mcp/tools/obs.init")
-async def init_obs_scene(request: dict):
-    """Initialize OBS scene."""
+async def init_obs_scene(scene_name: str, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
-        scene_name = request.get("scene_name")
-        if not scene_name:
-            raise HTTPException(status_code=400, detail="scene_name is required")
-        obs = OBSHandler()
-        result = await obs.init_scene(scene_name)
-        obs.disconnect()
-        return result
-    except HTTPException as e:
-        raise e
+        result = await obs_handler.init_obs_scene(scene_name, settings.obs_host, settings.obs_port, settings.obs_password)
+        return {"scene": result}
     except Exception as e:
-        logger.error(f"OBS init failed: {str(e)}")
+        logging.error(f"OBS error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Global exception handler for traffic management
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Request failed: {str(exc)}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error. Please try again later."}
-    )
-
-@app.get("/")
-async def root():
-    return {"message": "Vial MCP Controller API"}
-```
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
