@@ -1,0 +1,45 @@
+```yaml
+name: Manual CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_message:
+        description: 'Deployment message'
+        required: false
+        default: 'Deployment triggered manually'
+
+jobs:
+  manual-deploy-and-comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy and Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.issue.number || context.payload.pull_request?.number;
+            let body = '${{ github.event.inputs.deploy_message || "Deployment failed! Check logs." }}';
+            if (!issueNumber) {
+              console.log('No issue or PR context; creating a new issue.');
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Manual Deployment Failure',
+                body: body
+              });
+              console.log(`Created issue #${newIssue.data.number}`);
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: body
+            });
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
