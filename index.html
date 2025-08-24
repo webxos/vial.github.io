@@ -2,52 +2,493 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebXOS Vial MCP</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <style>
-    body { font-family: 'Courier New', monospace; background: #000; color: #0f0; margin: 0; }
-    .container { display: flex; flex-direction: column; height: 100vh; }
-    #mode-selector { padding: 10px; background: #111; }
-    #mode-selector select, #mode-selector input, #mode-selector button { 
-      font-family: 'Courier New'; background: #000; color: #0f0; border: 1px solid #0f0; margin: 5px; padding: 5px; 
-    }
-    #content { flex: 1; padding: 10px; }
-    #three-canvas { width: 100%; height: 400px; }
-    #error-console { height: 100px; background: #111; color: #f00; padding: 10px; overflow-y: auto; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXOS 2025 Vial MCP SDK</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #000;
+            color: #0f0;
+        }
+        #sidebar {
+            width: 250px;
+            background: #222;
+            padding: 10px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            overflow-y: auto;
+        }
+        #networkCanvas {
+            border: 1px solid #0f0;
+            margin-left: 260px;
+            max-width: calc(100% - 260px);
+            height: auto;
+            background-color: #000;
+        }
+        #controls {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        button, select, input {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #0f0;
+            border-radius: 4px;
+            background-color: #0f0;
+            color: #000;
+            cursor: pointer;
+        }
+        button:hover, select:hover, input:hover {
+            background-color: #00cc00;
+        }
+        #historyPopup, #graphPopup, #wizardPopup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #222;
+            border: 2px solid #0f0;
+            padding: 10px;
+            width: 90%;
+            height: auto;
+            max-height: 80vh;
+            box-sizing: border-box;
+            color: #0f0;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        #graphPopup canvas {
+            max-width: 100%;
+            height: auto;
+            max-height: calc(80vh - 40px);
+        }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 5px 10px;
+            font-size: 16px;
+            background-color: #f00;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .close-btn:hover {
+            background-color: #cc0000;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+        #errorMessage {
+            color: #f00;
+            margin-top: 10px;
+        }
+        @media (max-width: 600px) {
+            #sidebar { width: 100%; position: relative; }
+            #networkCanvas { margin-left: 0; max-width: 100%; }
+            #controls { flex-direction: column; }
+            button, select, input { width: 100%; }
+            #historyPopup, #graphPopup, #wizardPopup { width: 95%; padding: 8px; max-height: 75vh; }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div id="mode-selector">
-      <select id="mode" onchange="switchMode(this.value)">
-        <option value="svg">SVG</option>
-        <option value="launch">LAUNCH</option>
-        <option value="swarm">SWARM</option>
-        <option value="galaxycraft">GALAXYCRAFT</option>
-        <option value="telescope">TELESCOPE</option>
-        <option value="dropship">DROPSHIP</option>
-      </select>
-      <input type="text" id="wallet-id" placeholder="Wallet ID">
-      <input type="text" id="input-data" placeholder="GIBS Layer,Time | APOD Date | Supply Chain Config">
-      <button onclick="executeMode()">Execute</button>
+    <div id="sidebar">
+        <h3>Agent Dashboard</h3>
+        <input type="text" id="agentFilter" placeholder="Filter agents...">
+        <ul id="agentList"></ul>
     </div>
-    <div id="content">
-      <canvas id="three-canvas"></canvas>
+    <canvas id="networkCanvas"></canvas>
+    <div id="controls">
+        <select id="modeSelect">
+            <option value="dropship">Dropship</option>
+            <option value="galaxycraft">Galaxycraft</option>
+            <option value="telescope">Telescope</option>
+        </select>
+        <select id="roleSelect">
+            <option value="agent">Agent</option>
+            <option value="api">API Endpoint</option>
+            <option value="custom">Custom Extension</option>
+        </select>
+        <button id="assignRoleBtn">Assign Role</button>
+        <button id="runTestBtn">Run Test</button>
+        <button id="exportWizardBtn">Export Wizard</button>
+        <button id="importBtn">Import</button>
+        <button id="showGraphBtn">Show Graph</button>
+        <button id="toggleARVRBtn">Toggle AR/VR</button>
+        <button id="benchmarkBtn">Benchmark</button>
+        <button id="themeBtn">Switch Theme</button>
     </div>
-    <div id="error-console"></div>
-  </div>
-  <script type="module">
-    import UIControls from './public/js/ui-controls.js';
-    const ui = UIControls({ contentId: 'content', errorConsoleId: 'error-console', canvasId: 'three-canvas' });
-    window.switchMode = (mode) => ui.switchMode(mode);
-    window.executeMode = () => {
-      const walletId = document.getElementById('wallet-id').value;
-      const inputData = document.getElementById('input-data').value;
-      ui.executeMode(document.getElementById('mode').value, walletId, inputData);
-    };
-  </script>
+    <div id="errorMessage"></div>
+    <div id="overlay"></div>
+    <div id="historyPopup">
+        <h2 id="popupTitle">Agent History</h2>
+        <ul id="historyList"></ul>
+        <button id="closeHistoryPopup" class="close-btn">X</button>
+    </div>
+    <div id="graphPopup">
+        <h2>MCP Performance Graph</h2>
+        <canvas id="mcpChartPopup"></canvas>
+        <button id="closeGraphPopup" class="close-btn">X</button>
+    </div>
+    <div id="wizardPopup">
+        <h2>Export/Import Wizard</h2>
+        <div id="wizardSteps"></div>
+        <button id="closeWizardPopup" class="close-btn">X</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script type="module">
+        import DropshipVisualizer from './public/js/dropship-visualizer.js';
+        import GalaxycraftVisualizer from './public/js/galaxycraft-visualizer.js';
+        import TelescopeVisualizer from './public/js/telescope-visualizer.js';
+        import SVGTranspiler from './public/js/svg-transpiler.js';
+        import MCPClient from './public/js/mcp-client.js';
+
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+        const agents = [];
+        const numAgents = 8;
+        const radius = 20;
+        let selectedAgent = null;
+        let mcpData = [];
+        let arvrEnabled = false;
+        const modes = {
+            dropship: DropshipVisualizer({ containerId: 'output', canvasId: 'networkCanvas', onError }),
+            galaxycraft: GalaxycraftVisualizer({ containerId: 'output', canvasId: 'networkCanvas', onError }),
+            telescope: TelescopeVisualizer({ containerId: 'output', canvasId: 'networkCanvas', onError })
+        };
+        const svgTranspiler = new SVGTranspiler({ containerId: 'svg-output', onError });
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.createElement('canvas') });
+
+        function onError(message) {
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        function resizeCanvas() {
+            canvas.width = Math.min(800, window.innerWidth - 260);
+            canvas.height = Math.min(600, window.innerHeight * 0.6);
+            initializeAgents();
+            drawNetwork();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function initializeAgents() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const spread = Math.min(canvas.width, canvas.height) * 0.35;
+            agents.length = 0;
+            for (let i = 0; i < numAgents; i++) {
+                const angle = (2 * Math.PI / numAgents) * i;
+                agents.push({
+                    x: centerX + spread * Math.cos(angle),
+                    y: centerY + spread * Math.sin(angle),
+                    role: 'unassigned',
+                    data: {},
+                    history: []
+                });
+            }
+            updateAgentDashboard();
+        }
+
+        function drawNetwork() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#0f0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < numAgents; i++) {
+                for (let j = i + 1; j < numAgents; j++) {
+                    ctx.beginPath();
+                    ctx.moveTo(agents[i].x, agents[i].y);
+                    ctx.lineTo(agents[j].x, agents[j].y);
+                    ctx.stroke();
+                }
+            }
+            agents.forEach((agent, index) => {
+                ctx.beginPath();
+                ctx.arc(agent.x, agent.y, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = agent.role === 'agent' ? '#00cc00' : agent.role === 'api' ? '#00f' : '#0f0';
+                ctx.fill();
+                ctx.strokeStyle = '#0f0';
+                ctx.stroke();
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`A${index + 1} (${agent.role})`, agent.x, agent.y + 15);
+            });
+            if (arvrEnabled) drawARVROverlay();
+        }
+
+        function drawARVROverlay() {
+            const geometry = new THREE.PlaneGeometry(4, 2);
+            const material = new THREE.MeshBasicMaterial({ color: 0x0f0 });
+            const plane = new THREE.Mesh(geometry, material);
+            scene.add(plane);
+            renderer.render(scene, camera);
+            document.getElementById('networkCanvas').appendChild(renderer.domElement);
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            selectedAgent = null;
+            agents.forEach((agent, index) => {
+                const dx = clickX - agent.x;
+                const dy = clickY - agent.y;
+                if (Math.sqrt(dx * dx + dy * dy) < radius) {
+                    selectedAgent = index;
+                    showAgentHistory(index);
+                }
+            });
+        });
+
+        async function runTest() {
+            const mode = document.getElementById('modeSelect').value;
+            const walletId = 'test-wallet';
+            const config = 'moon-mars,2023-01-01';
+            try {
+                if (agents.every(a => a.role === 'unassigned')) throw new Error('Assign at least one role');
+                const response = await modes[mode][`visualize${mode.charAt(0).toUpperCase() + mode.slice(1)}`](config, walletId);
+                agents.forEach((agent, index) => {
+                    if (agent.role === 'agent') {
+                        agent.data = response;
+                        agent.history.push({ data: response, time: new Date().toLocaleString() });
+                    }
+                });
+                mcpData.push({ mode, data: response, time: new Date().toLocaleString() });
+                updateGraphPopup();
+                drawNetwork();
+            } catch (error) {
+                onError(`Test Error: ${error.message}`);
+            }
+        }
+
+        function assignRole() {
+            if (selectedAgent === null) {
+                onError('Select an agent to assign a role');
+                return;
+            }
+            const role = document.getElementById('roleSelect').value;
+            agents[selectedAgent].role = role;
+            drawNetwork();
+            updateAgentDashboard();
+        }
+
+        async function exportWizard() {
+            document.getElementById('wizardPopup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('wizardSteps').innerHTML = `
+                <div>Step 1: Select Components</div>
+                <input type="checkbox" id="exportSVG"> SVG
+                <input type="checkbox" id="exportWallet"> .md Wallet
+                <div>Step 2: Download</div>
+                <button id="downloadBtn">Download</button>
+            `;
+            document.getElementById('downloadBtn').addEventListener('click', () => {
+                const svg = document.getElementById('exportSVG').checked ? svgTranspiler.transpileSVG(generateSVG()) : '';
+                const wallet = document.getElementById('exportWallet').checked ? { wallet_id: 'test-wallet', points: 10 } : {};
+                const blob = new Blob([JSON.stringify({ svg, wallet })], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'network.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                closeWizardPopup();
+            });
+        }
+
+        async function importNetwork() {
+            try {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    const text = await file.text();
+                    const { svg, wallet } = JSON.parse(text);
+                    if (svg) svgTranspiler.transpileSVG(svg);
+                    if (wallet) console.log('Wallet imported:', wallet);
+                    agents.forEach((agent, i) => {
+                        agent.role = svg.includes(`A${i + 1}`) ? 'agent' : 'unassigned';
+                    });
+                    drawNetwork();
+                };
+                input.click();
+            } catch (error) {
+                onError(`Import Error: ${error.message}`);
+            }
+        }
+
+        function generateSVG() {
+            return `<svg width="${canvas.width}" height="${canvas.height}">
+                ${agents.map((a, i) => `<circle cx="${a.x}" cy="${a.y}" r="${radius}" fill="${a.role === 'agent' ? '#00cc00' : '#0f0'}"/>`).join('')}
+                ${agents.map((a, i) => `<text x="${a.x}" y="${a.y + 15}" fill="#000">A${i + 1} (${a.role})</text>`).join('')}
+            </svg>`;
+        }
+
+        function showAgentHistory(agentIndex) {
+            const agent = agents[agentIndex];
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            document.getElementById('popupTitle').textContent = `Agent A${agentIndex + 1} History`;
+            if (agent.history.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'No tests yet';
+                list.appendChild(li);
+            } else {
+                agent.history.forEach(entry => {
+                    const li = document.createElement('li');
+                    li.textContent = `Data: ${JSON.stringify(entry.data)} - ${entry.time}`;
+                    list.appendChild(li);
+                });
+            }
+            document.getElementById('historyPopup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function showGraphPopup() {
+            document.getElementById('graphPopup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            updateGraphPopup();
+        }
+
+        function closeHistoryPopup() {
+            document.getElementById('historyPopup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function closeGraphPopup() {
+            document.getElementById('graphPopup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function closeWizardPopup() {
+            document.getElementById('wizardPopup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        const ctxChartPopup = document.getElementById('mcpChartPopup').getContext('2d');
+        const mcpChartPopup = new Chart(ctxChartPopup, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'MCP Performance',
+                    data: [],
+                    borderColor: '#0f0',
+                    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 1,
+                    pointHoverRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Test #', color: '#0f0', font: { size: 10 } }, ticks: { color: '#0f0', font: { size: 8 }, maxTicksLimit: 10 } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Performance', color: '#0f0', font: { size: 10 } }, ticks: { color: '#0f0', font: { size: 8 }, maxTicksLimit: 5 } }
+                },
+                plugins: { legend: { labels: { color: '#0f0', font: { size: 10 } }, position: 'bottom' } },
+                layout: { padding: 0 }
+            }
+        });
+
+        function updateGraphPopup() {
+            const labels = Array.from({ length: mcpData.length }, (_, i) => i + 1);
+            mcpChartPopup.data.labels = labels;
+            mcpChartPopup.data.datasets[0].data = mcpData.map(d => d.data.performance || 0);
+            mcpChartPopup.update();
+        }
+
+        function updateAgentDashboard() {
+            const list = document.getElementById('agentList');
+            list.innerHTML = '';
+            agents.forEach((agent, index) => {
+                const li = document.createElement('li');
+                li.textContent = `A${index + 1} (${agent.role}) - Active: ${agent.data ? 'Yes' : 'No'}`;
+                li.addEventListener('click', () => showAgentHistory(index));
+                list.appendChild(li);
+            });
+            document.getElementById('agentFilter').addEventListener('input', (e) => {
+                const filter = e.target.value.toLowerCase();
+                list.innerHTML = '';
+                agents.filter(a => `A${agents.indexOf(a) + 1} (${a.role})`.toLowerCase().includes(filter))
+                    .forEach((agent, index) => {
+                        const li = document.createElement('li');
+                        li.textContent = `A${index + 1} (${agent.role}) - Active: ${agent.data ? 'Yes' : 'No'}`;
+                        li.addEventListener('click', () => showAgentHistory(index));
+                        list.appendChild(li);
+                    });
+            });
+        }
+
+        function toggleARVR() {
+            arvrEnabled = !arvrEnabled;
+            drawNetwork();
+        }
+
+        function benchmarkNetwork() {
+            // Simulate benchmark
+            const results = agents.map(() => Math.random() * 100);
+            mcpData.push({ mode: 'benchmark', data: { performance: results.reduce((a, b) => a + b, 0) / results.length }, time: new Date().toLocaleString() });
+            updateGraphPopup();
+            drawNetwork();
+        }
+
+        function switchTheme() {
+            const body = document.body;
+            if (body.style.backgroundColor === 'black') {
+                body.style.backgroundColor = '#fff';
+                body.style.color = '#000';
+                ctx.fillStyle = '#000';
+            } else {
+                body.style.backgroundColor = '#000';
+                body.style.color = '#0f0';
+                ctx.fillStyle = '#0f0';
+            }
+            drawNetwork();
+        }
+
+        document.getElementById('modeSelect').addEventListener('change', drawNetwork);
+        document.getElementById('assignRoleBtn').addEventListener('click', assignRole);
+        document.getElementById('runTestBtn').addEventListener('click', runTest);
+        document.getElementById('exportWizardBtn').addEventListener('click', exportWizard);
+        document.getElementById('importBtn').addEventListener('click', importNetwork);
+        document.getElementById('showGraphBtn').addEventListener('click', showGraphPopup);
+        document.getElementById('toggleARVRBtn').addEventListener('click', toggleARVR);
+        document.getElementById('benchmarkBtn').addEventListener('click', benchmarkNetwork);
+        document.getElementById('themeBtn').addEventListener('click', switchTheme);
+        document.getElementById('closeHistoryPopup').addEventListener('click', closeHistoryPopup);
+        document.getElementById('closeGraphPopup').addEventListener('click', closeGraphPopup);
+        document.getElementById('closeWizardPopup').addEventListener('click', closeWizardPopup);
+
+        resizeCanvas();
+    </script>
 </body>
 </html>
 ```
