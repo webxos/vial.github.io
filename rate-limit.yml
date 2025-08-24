@@ -1,0 +1,36 @@
+```yaml
+name: Rate Limit Management
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  manage-rate-limit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Rate Limit and Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const rateLimit = await github.rest.rateLimit.get();
+            const issueNumber = context.issue.number;
+            if (rateLimit.data.remaining < 50) {
+              console.log(`Rate limit low (${rateLimit.data.remaining} remaining). Waiting...`);
+              await new Promise(resolve => setTimeout(resolve, 120000)); // 2-minute delay
+            }
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Issue opened. Rate limit managed at 04:50 PM EDT, 08/24/2025.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
