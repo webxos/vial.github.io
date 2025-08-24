@@ -8,7 +8,7 @@
 
 ## Introduction
 
-The **Vial MCP Controller** is a pioneering open source platform for WebXOS 2025, designed to empower the global open source community to orchestrate quantum-enhanced workflows, multi-LLM routing, real-time video processing, and decentralized automation through the **Model Context Protocol (MCP)**. This project integrates quantum computing, artificial intelligence, and blockchain technologies into a lightweight, secure, and forkable environment, making advanced tools accessible to developers, researchers, and creators. Key capabilities include:
+The **Vial MCP** is an open source MCP server, designed to empower the global open source community to orchestrate quantum-enhanced workflows, multi-LLM routing, real-time video processing, and decentralized automation through the **Model Context Protocol (MCP)**. This project integrates quantum computing, artificial intelligence, and blockchain technologies into a lightweight, secure, and forkable environment, making advanced tools accessible to developers, researchers, and creators. Key capabilities include:
 
 - **Quantum-Enhanced RAG Queries**: Execute retrieval-augmented generation (RAG) queries using Qiskit and Kyber-512 post-quantum cryptography.
 - **Multi-LLM Orchestration**: Route requests across Anthropic, Mistral, Google, xAI, Meta, and local LLMs with `litellm`.
