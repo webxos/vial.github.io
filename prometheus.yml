@@ -1,29 +1,17 @@
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
+```yaml
 scrape_configs:
   - job_name: 'mcp-server'
     static_configs:
-      - targets: ['mcp-server:8000']
-        labels:
-          group: 'vial-mcp'
-
-  - job_name: 'redis'
+      - targets: ['localhost:1234']
+    scrape_interval: 5s
+  - job_name: 'astronomy-agent'
     static_configs:
-      - targets: ['redis:6379']
-        labels:
-          group: 'vial-mcp'
-
-  - job_name: 'mongodb'
+      - targets: ['localhost:1234']
+    scrape_interval: 5s
+    metrics_path: /metrics/astronomy
+  - job_name: 'gibs-agent'
     static_configs:
-      - targets: ['mongodb:27017']
-        labels:
-          group: 'vial-mcp'
-
-  # Placeholder: OBS/SVG video metrics
-  # - job_name: 'obs'
-  #   static_configs:
-  #     - targets: ['mcp-server:4455']
-  #       labels:
-  #         group: 'vial-mcp-obs'
+      - targets: ['localhost:1234']
+    scrape_interval: 5s
+    metrics_path: /metrics/gibs
+```
