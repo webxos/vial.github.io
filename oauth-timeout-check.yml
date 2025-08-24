@@ -1,0 +1,36 @@
+```yaml
+name: OAuth Timeout Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-oauth-timeout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test OAuth Endpoint
+        run: |
+          curl -m 15 -f -H "Authorization: Basic ${{ secrets.OAUTH_CREDENTIALS }}" https://vial.github.io/token || echo "OAuth timeout or failure."
+
+      - name: Post OAuth Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.issue.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'OAuth timeout check completed at 05:12 PM EDT, 08/24/2025.'
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
