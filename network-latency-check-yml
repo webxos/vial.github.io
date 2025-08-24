@@ -1,0 +1,45 @@
+```yaml
+name: Network Latency Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-network-latency:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test Network Latency
+        run: |
+          time=$(curl -o /dev/null -s -w "%{time_total}\n" https://vial.github.io/api/mcp/health)
+          if (( $(echo "$time > 2.0" | bc -l) )); then
+            echo "High latency detected: $time seconds"
+          fi
+
+      - name: Post Latency Status
+        if: github.event.pull_request.number || github.event.issue.number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: 'Network latency check completed at 05:57 PM EDT.'
+              });
+            } else {
+              console.log('No issue/PR context available, skipping comment');
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        permissions:
+          issues: write
+          pull-requests: write
+```
