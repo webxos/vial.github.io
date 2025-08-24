@@ -1,25 +1,14 @@
-# server/api/middleware.py
-from fastapi import Request, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from server.services.advanced_logging import AdvancedLogger
+```python
+from fastapi import HTTPException, Request
+from fastapi.security import APIKeyHeader
 import os
 
-class VercelMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        """Validate requests with Vercel token and log events."""
-        try:
-            token = request.headers.get("Authorization", "").replace("Bearer ", "")
-            if token != os.getenv("VERCEL_TOKEN"):
-                raise HTTPException(
-                    status_code=401,
-                    detail="Invalid Vercel token"
-                )
-            logger = AdvancedLogger()
-            await logger.log_event(
-                event=f"Request to {request.url.path}",
-                wallet_address="e8aa2491-f9a4-4541-ab68-fe7a32fb8f1d"
-            )
-            response = await call_next(request)
-            return response
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def oauth_middleware(request: Request):
+    api_key = await api_key_header(request)
+    expected_key = os.getenv("NASA_API_KEY")
+    if not api_key or api_key != expected_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing NASA API key")
+    return request
+```
