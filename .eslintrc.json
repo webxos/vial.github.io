@@ -1,12 +1,12 @@
-```json
 {
   "env": {
     "browser": true,
-    "node": true,
-    "es2021": true
+    "es2021": true,
+    "node": true
   },
   "extends": [
     "eslint:recommended",
+    "plugin:react/recommended",
     "plugin:@typescript-eslint/recommended"
   ],
   "parser": "@typescript-eslint/parser",
@@ -15,6 +15,7 @@
     "sourceType": "module"
   },
   "plugins": [
+    "react",
     "@typescript-eslint"
   ],
   "rules": {
@@ -24,10 +25,9 @@
     "semi": ["error", "always"],
     "@typescript-eslint/no-unused-vars": ["error"]
   },
-  "ignorePatterns": [
-    "node_modules/",
-    "dist/",
-    ".next/"
-  ]
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  }
 }
-```
