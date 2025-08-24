@@ -32,13 +32,13 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Notify on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && github.event.pull_request.number
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            Deployment failed! Check logs.
-      - name: Log failure for push events
-        if: failure() && github.event_name == 'push'
+            Deployment failed! Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.
+      - name: Log failure for other events
+        if: failure()
         run: |
-          echo "Deployment failed! Check logs." >> logs/ci_failure.log
+          echo "Deployment failed! Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}." >> logs/ci_failure.log
