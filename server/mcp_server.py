@@ -1,67 +1,51 @@
 ```python
-from mcp.server import Server
-from mcp.types import Tool, Resource
-import qiskit
-import asyncio
-import json
-from .services.spacex_service import SpaceXService
-from .database.session import session_scope
-from .models.base import NASADataset
-from .ai.model_manager import ModelManager
-from .transports.websocket import WebSocketTransport
+import uvicorn
+from fastapi import FastAPI
+from .config import Config
+from .api.fastapi_router import app as fastapi_app
+from .agents.astronomy import AstronomyAgent
+from prometheus_client import Counter, Gauge
+from modelcontextprotocol import MCPClient, TransportWebSocket
+
+server_starts_total = Counter('mcp_server_starts_total', 'Total server starts')
+server_active = Gauge('mcp_server_active', 'Server active status')
+astronomy_tasks_total = Counter('mcp_astronomy_tasks_total', 'Total astronomy agent tasks')
+gibs_requests_total = Counter('mcp_gibs_requests_total', 'Total GIBS requests')
 
 class VialMCPServer:
     def __init__(self):
-        self.server = Server("vial-mcp")
-        self.model_manager = ModelManager()
-        self.register_tools()
-        self.register_resources()
+        self.config = Config()
+        self.app = fastapi_app
+        self.server = MCPClient(transport=TransportWebSocket(host=self.config.host, port=self.config.port))
+        self.astronomy_agent = AstronomyAgent()
 
-    def register_tools(self):
-        @self.server.tool(name="quantum_sync", description="Run Qiskit quantum circuit")
-        async def quantum_sync(qasm: str) -> dict:
-            try:
-                circuit = qiskit.QuantumCircuit.from_qasm_str(qasm)
-                backend = qiskit.Aer.get_backend('qasm_simulator')
-                result = qiskit.execute(circuit, backend, shots=1024).result()
-                return {"counts": result.get_counts()}
-            except Exception as e:
-                return {"error": str(e)}
+    async def list_tools(self):
+        return await self.server.list_tools()
 
-        @self.server.tool(name="quantum_optimize", description="Optimize circuit with PyTorch")
-        async def quantum_optimize(qasm: str) -> dict:
-            input_data = [float(ord(c)) for c in qasm[:128]]
-            result = await self.model_manager.inference("quantum_optimizer", input_data)
-            return {"predictions": result.tolist()}
-
-    def register_resources(self):
-        @self.server.resource(name="nasa_data", description="Query NASA datasets")
-        async def nasa_data(query: str) -> list:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    "https://api.nasa.gov/planetary/apod",
-                    params={"api_key": os.getenv("NASA_API_KEY"), "date": query}
-                )
-                with session_scope() as session:
-                    dataset = NASADataset(
-                        dataset_id=response.json().get("date"),
-                        title=response.json().get("title", "Untitled"),
-                        description=response.json().get("explanation")
-                    )
-                    session.add(dataset)
-                return [response.json()]
-
-        @self.server.resource(name="spacex_launches", description="Fetch SpaceX launches")
-        async def spacex_launches(limit: int = 10) -> list:
-            return await SpaceXService().get_launches(limit)
-
-        @self.server.resource(name="spacex_starlink", description="Fetch Starlink satellites")
-        async def spacex_starlink(limit: int = 100) -> list:
-            return await SpaceXService().get_starlink_satellites(limit)
+    async def process_request(self, request: dict):
+        if request.get('tool') == 'astronomy_data':
+            astronomy_tasks_total.inc()
+            return await self.astronomy_agent.fetch_data(request.get('args', {}))
+        if request.get('tool') == 'gibs_data':
+            gibs_requests_total.inc()
+            return await self.astronomy_agent.fetch_gibs_data(request.get('args', {}))
+        return await self.server.process_request(request)
 
     async def start(self):
-        with open("server/mcp_config.json") as f:
-            config = json.load(f)
-        transport = WebSocketTransport(self.server, config["settings"]["host"], config["settings"]["port"])
-        await transport.start()
+        server_starts_total.inc()
+        server_active.set(1)
+        try:
+            await uvicorn.run(
+                self.app,
+                host=self.config.host,
+                port=self.config.port,
+                log_level="info"
+            )
+        finally:
+            server_active.set(0)
+
+if __name__ == "__main__":
+    import asyncio
+    server = VialMCPServer()
+    asyncio.run(server.start())
 ```
