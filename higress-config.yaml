@@ -1,0 +1,18 @@
+```yaml
+services:
+  higress-gateway:
+    image: higress-registry.cn-hangzhou.cr.aliyuncs.com/higress/all-in-one:latest
+    ports:
+      - "8001:8001"  # Admin API
+      - "8080:8080"  # HTTP
+      - "8443:8443"  # HTTPS
+    environment:
+      - MCP_PROTOCOL_VERSION=2025-03-26
+      - ALIBABA_API_KEY=${ALIBABA_API_KEY}
+      - LANGCHAIN_ENABLED=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
