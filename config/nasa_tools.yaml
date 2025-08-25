@@ -1,0 +1,37 @@
+nasa_tools:
+  api:
+    base_url: "https://cmr.earthdata.nasa.gov/search/"
+    api_key: "${NASA_API_KEY}"
+    timeout: 10
+  search_cluster:
+    tools:
+      - earthdata_search
+      - giovanni
+      - asf_searchapi
+    enabled: true
+  visualization_cluster:
+    tools:
+      - panoply
+      - minx
+      - openaltimetry
+      - field_campaign_explorer
+    enabled: true
+  data_access_cluster:
+    tools:
+      - earthaccess
+      - appeears
+      - nasa_harmony
+      - hyp3
+    enabled: true
+  monitoring_cluster:
+    tools:
+      - firms
+      - eonet
+      - guardian
+    enabled: true
+  caching:
+    redis_ttl: 3600
+    sqlite_cache_size: 1000
+  security:
+    rate_limit: 1000
+    token_refresh_interval: 86400
