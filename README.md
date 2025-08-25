@@ -160,14 +160,12 @@ webxos-vial-mcp/
 This project is licensed under the MIT License
 
 
-## 📊 Performance Metrics
+## 📊 Front-end app Performance Metrics
 
 | Metric | Value | Target |
 |--------|-------|--------|
 | API Response Time | < 100ms | < 200ms |
-| AI Processing Speed | 2.8x faster | 2x faster |
 | Memory Usage | 256MB | < 512MB |
-| Concurrent Users | 1000+ | 500+ |
 
 
 <div align="center">
