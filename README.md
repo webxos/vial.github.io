@@ -162,7 +162,7 @@ This project is licensed under the MIT License
 
 ## 📊 Front-end app Performance Metrics
 
-| Metric | Value | Target |
+| Metric | Low | High |
 |--------|-------|--------|
 | API Response Time | < 100ms | < 200ms |
 | Memory Usage | 256MB | < 512MB |
