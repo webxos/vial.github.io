@@ -37,8 +37,6 @@ npm run dev
 
 ### 🧠 AI Integration
 
-![Claude-Flow Hive-Mind](https://raw.githubusercontent.com/webxos/webxos-vial-mcp/main/docs/claude-flow-hive-mind.svg)
-
 Our SDK integrates multiple AI orchestration frameworks:
 
 - **🐝 Claude-Flow v2.0.0 Alpha**: 87+ MCP tools with hive-mind intelligence
@@ -148,93 +146,6 @@ webxos-vial-mcp/
    npm run dev
    ```
 
-### 🧪 Testing
-
-```bash
-# Run Python tests
-pytest server/tests/
-
-# Test AI integration
-npx claude-flow@alpha hive-mind test --agents 5
-npx openai-swarm test --mode galaxyquest
-npx crewai test --task optimize
-```
-
-## 🎮 Using the SDK
-
-### SVG Diagram Mode (Coming Soon)
-
-The SVG Diagram Mode allows you to design and train 8-point quantum neural networks:
-
-```javascript
-// Example: Creating a quantum network
-const quantumNetwork = {
-  points: 8,
-  connections: [
-    { from: 0, to: 1, weight: 0.5 },
-    { from: 1, to: 2, weight: 0.3 },
-    // ... more connections
-  ],
-  trainingData: [],
-  train: function() {
-    // Training logic here
-  }
-};
-```
-
-### Dropship Mode Simulation Mode (Coming Soon)
-
-Dropship Mode provides REST API creation with OBS streaming integration:
-
-```bash
-# Create a new API endpoint
-curl -X POST http://localhost:8000/api/endpoints \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "user-api",
-    "methods": ["GET", "POST"],
-    "path": "/users"
-  }'
-```
-
-### GalaxyQuest Mode
-
-Experience space exploration with AI swarm coordination:
-
-```javascript
-// Initialize GalaxyQuest
-const galaxyQuest = new GalaxyQuest({
-  difficulty: 'medium',
-  aiPlayers: 4,
-  resources: ['quantum', 'neural', 'swarm']
-});
-
-// Start a mission
-galaxyQuest.startMission('andromeda-exploration');
-```
-
-## 🔧 Configuration
-
-### MCP Settings
-
-Edit `mcp.toml` to configure your MCP server:
-
-```toml
-[server]
-port = 8000
-host = "localhost"
-debug = true
-
-[ai]
-claude_flow = true
-openai_swarm = true
-crewai = true
-
-[database]
-type = "sqlalchemy"
-url = "sqlite:///./test.db"
-```
-
 
 ## 🤝 Contributing
 
@@ -248,23 +159,6 @@ url = "sqlite:///./test.db"
 
 This project is licensed under the MIT License
 
-## 🌟 Acknowledgments
-
-- Claude-Flow team for the amazing AI orchestration framework
-- OpenAI for swarm intelligence capabilities
-- CrewAI for task automation features
-- NASA and SpaceX for their public APIs
-- The open-source community for continuous inspiration
-
----
-
-<div align="center">
-
-## 🔄 Recent Updates
-
-- **v1.2.0**: Added GalaxyQuest mode with swarm intelligence
-- **v1.1.0**: Integrated Claude-Flow v2.0.0 Alpha
-- **v1.0.0**: Initial release with core MCP capabilities
 
 ## 📊 Performance Metrics
 
@@ -275,44 +169,11 @@ This project is licensed under the MIT License
 | Memory Usage | 256MB | < 512MB |
 | Concurrent Users | 1000+ | 500+ |
 
-## 🚀 Deployment
-
-### Docker Deployment
-
-```bash
-# Build the Docker image
-docker build -t webxos-mcp .
-
-# Run the container
-docker run -p 8000:8000 -p 3000:3000 webxos-mcp
-```
-
-### Kubernetes Deployment
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: webxos-mcp
-spec:
-  replicas: 3
-  template:
-    spec:
-      containers:
-      - name: webxos-mcp
-        image: webxos-mcp:latest
-        ports:
-        - containerPort: 8000
-        - containerPort: 3000
-```
-
-
-
 
 <div align="center">
 
 **🌌 Explore the future of AI orchestration with WebXOS 2025! 🌠**
 
-[Get Started](#quick-start) | [View Documentation](https://github.com/webxos/webxos-vial-mcp/wiki) | [Join Community](https://discord.gg/webxos)
+[View Documentation](webxos.netlify.app) | [Join Community](webxos.netlify.app)
 
 </div>
