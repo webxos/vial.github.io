@@ -32,7 +32,7 @@ npm run dev
 | Mode | Description | Visualization |
 |------|-------------|---------------|
 | **⚛️ SVG Diagram Mode** | 8-Point Quantum Neural Network Training | ![8-Point Quantum Network](https://raw.githubusercontent.com/webxos/webxos-vial-mcp/main/docs/8-point-quantum-network.svg) |
-| **🚚 Dropship Mode** | REST API & OBS Streaming | ![Dropship Mode](https://via.placeholder.com/300x200/000000/00ff00?text=Dropship+Mode) |
+| **🚚 Dropship Simulation Mode** | REST API & OBS Streaming | ![Dropship Mode](https://via.placeholder.com/300x200/000000/00ff00?text=Dropship+Mode) |
 | **🌠 GalaxyQuest Mode** | Space Exploration & Swarm Gaming | ![GalaxyQuest Network](https://raw.githubusercontent.com/webxos/webxos-vial-mcp/main/docs/galaxyquest-network.svg) |
 
 ### 🧠 AI Integration
