@@ -1,0 +1,16 @@
+apiVersion: v2
+name: mcp-stack
+description: A Helm chart for deploying the WebXOS 2025 Vial MCP SDK with CUDA and scientific diagnostics.
+type: application
+version: 0.1.0
+appVersion: "v1.0.0"
+
+dependencies:
+  - name: redis
+    version: "18.0.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: prometheus
+    version: "19.0.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: monitoring.enabled
