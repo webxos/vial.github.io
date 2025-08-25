@@ -172,6 +172,6 @@ This project is licensed under the MIT License
 
 **🌌 Explore the future of AI orchestration with WebXOS 2025! 🌠**
 
-[View Documentation](webxos.netlify.app) | [Join Community](webxos.netlify.app)
+[Official Site](webxos.netlify.app) | [Vial Mcp BETA TEST](webxos.netlify.app/vial)
 
 </div>
