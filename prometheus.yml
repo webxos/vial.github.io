@@ -1,17 +1,18 @@
-```yaml
+global:
+  scrape_interval: 15s
 scrape_configs:
   - job_name: 'mcp-server'
     static_configs:
-      - targets: ['localhost:1234']
-    scrape_interval: 5s
-  - job_name: 'astronomy-agent'
+      - targets: ['localhost:8000']
+        labels:
+          service: 'mcp-api'
+  - job_name: 'spacex-api-metrics'
     static_configs:
-      - targets: ['localhost:1234']
-    scrape_interval: 5s
-    metrics_path: /metrics/astronomy
-  - job_name: 'gibs-agent'
+      - targets: ['api.spacexdata.com:443']
+        labels:
+          service: 'spacex-api'
+  - job_name: 'nasa-api-metrics'
     static_configs:
-      - targets: ['localhost:1234']
-    scrape_interval: 5s
-    metrics_path: /metrics/gibs
-```
+      - targets: ['api.nasa.gov:443']
+        labels:
+          service: 'nasa-api'
