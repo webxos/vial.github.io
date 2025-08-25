@@ -21,9 +21,9 @@ cp .env.example .env
 npm run dev
 ```
 
-## 🏗️ Architecture Overview
+## 🏗️ webXOS Overview
 
-![MCP Server Architecture](https://raw.githubusercontent.com/webxos/webxos-vial-mcp/main/docs/mcp-architecture.svg)
+![webXos.netlify.app](webxos.netlify.app)
 
 ## ✨ Key Features
 
