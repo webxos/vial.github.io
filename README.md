@@ -8,9 +8,9 @@ Welcome to the **WebXOS 2025 Vial Model Context Protocol (MCP) SDK**, a quantum-
 
 | Mode | Description | Visualization |
 |------|-------------|---------------|
-| **⚛️ SVG Diagram Mode** | 8-Point Quantum Neural Network Training with interactive a SVG diagram circuit board and cuda cores (Coming Soon) |
-| **🚚 Dropship Mode** | Simulate Coordinated Drop ships between earth, the moon, and mars. (Coming Soon) | 
-| **🌠 GalaxyCraft Mode** | Space Open Sandbox where user can explore a three js galaxy. (Coming Soon) | 
+| **⚛️ SVG Diagram Creation** | 8-Point Quantum Neural Network Training with interactive real time SVG diagram circuit board (Coming Soon) |
+| **🚚 Dropship Sim** | Simulate Coordinated Drop ships between earth, the moon, and mars. (Coming Soon) | 
+| **🌠 GalaxyCraft** | Space Open Sandbox where user can explore a three js galaxy. (Coming Soon) | 
 | **🌠 Telescope** | View NASA API Data real time with Gibs telescope terminal and AR features. OBS Streaming Output (Coming Soon) | 
 
 ### 🧠 AI Integration
