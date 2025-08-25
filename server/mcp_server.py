@@ -1,51 +1,48 @@
-```python
-import uvicorn
-from fastapi import FastAPI
-from .config import Config
-from .api.fastapi_router import app as fastapi_app
-from .agents.astronomy import AstronomyAgent
-from prometheus_client import Counter, Gauge
-from modelcontextprotocol import MCPClient, TransportWebSocket
+from mcp.server import Server
+from mcp.types import Tool, Resource
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+import asyncio
+from typing import List, Dict
+from server.services.auth_service import verify_token
+from server.services.quantum_service import QuantumService
 
-server_starts_total = Counter('mcp_server_starts_total', 'Total server starts')
-server_active = Gauge('mcp_server_active', 'Server active status')
-astronomy_tasks_total = Counter('mcp_astronomy_tasks_total', 'Total astronomy agent tasks')
-gibs_requests_total = Counter('mcp_gibs_requests_total', 'Total GIBS requests')
+app = FastAPI()
+mcp_server = Server("webxos-vial-mcp")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+quantum_service = QuantumService()
 
-class VialMCPServer:
-    def __init__(self):
-        self.config = Config()
-        self.app = fastapi_app
-        self.server = MCPClient(transport=TransportWebSocket(host=self.config.host, port=self.config.port))
-        self.astronomy_agent = AstronomyAgent()
+@mcp_server.list_tools()
+async def list_tools() -> List[Tool]:
+    return [
+        Tool(name="quantum_sync", description="Synchronize quantum circuit data"),
+        Tool(name="svg_render", description="Render SVG for video processing"),
+        Tool(name="wallet_balance", description="Check .md wallet balance")
+    ]
 
-    async def list_tools(self):
-        return await self.server.list_tools()
+@mcp_server.resource("quantum_network")
+async def quantum_network() -> Resource:
+    return Resource(name="quantum_network", data={"status": "active", "qubits": []})
 
-    async def process_request(self, request: dict):
-        if request.get('tool') == 'astronomy_data':
-            astronomy_tasks_total.inc()
-            return await self.astronomy_agent.fetch_data(request.get('args', {}))
-        if request.get('tool') == 'gibs_data':
-            gibs_requests_total.inc()
-            return await self.astronomy_agent.fetch_gibs_data(request.get('args', {}))
-        return await self.server.process_request(request)
+@app.get("/mcp/health")
+async def health_check():
+    return {"status": "healthy", "mcp_version": "2025-03-26"}
 
-    async def start(self):
-        server_starts_total.inc()
-        server_active.set(1)
-        try:
-            await uvicorn.run(
-                self.app,
-                host=self.config.host,
-                port=self.config.port,
-                log_level="info"
-            )
-        finally:
-            server_active.set(0)
+@app.post("/mcp/tools/quantum_sync")
+async def quantum_sync(params: Dict, token: str = Depends(oauth2_scheme)):
+    verify_token(token)
+    try:
+        result = await quantum_service.sync_circuit(params.get("circuit_id"))
+        return {"status": "success", "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mcp/tools/wallet_balance")
+async def get_wallet_balance(wallet_id: str, token: str = Depends(oauth2_scheme)):
+    verify_token(token)
+    balance = await quantum_service.get_wallet_balance(wallet_id)
+    return {"wallet_id": wallet_id, "balance": balance}
 
 if __name__ == "__main__":
-    import asyncio
-    server = VialMCPServer()
-    asyncio.run(server.start())
-```
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
