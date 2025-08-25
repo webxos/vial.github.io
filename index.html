@@ -1,93 +1,280 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebXOS 2025 Vial MCP SDK</title>
+    <title>WebXOS 2025 Vial MCP SDK - Space Explorer Workstation</title>
     <style>
-        body {
-            margin: 0;
-            padding: 10px;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #000;
-            color: #0f0;
+        :root {
+            --neon-green: #0f0;
+            --neon-blue: #00ccff;
+            --neon-purple: #cc00ff;
+            --dark-bg: #000;
+            --panel-bg: rgba(20, 20, 30, 0.9);
+            --panel-border: 1px solid rgba(0, 255, 0, 0.3);
         }
-        #sidebar {
-            width: 250px;
-            background: #222;
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Orbitron', 'Courier New', monospace;
+        }
+        
+        body {
+            background: var(--dark-bg);
+            color: var(--neon-green);
+            overflow: hidden;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas: 
+                "header header"
+                "sidebar main"
+                "footer footer";
+        }
+        
+        header {
+            grid-area: header;
+            background: var(--panel-bg);
             padding: 10px;
-            position: fixed;
-            left: 0;
-            top: 0;
-            height: 100%;
+            border-bottom: var(--panel-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #sidebar {
+            grid-area: sidebar;
+            background: var(--panel-bg);
+            padding: 10px;
+            border-right: var(--panel-border);
             overflow-y: auto;
         }
-        #networkCanvas {
-            border: 1px solid #0f0;
-            margin-left: 260px;
-            max-width: calc(100% - 260px);
-            height: auto;
-            background-color: #000;
+        
+        #main-content {
+            grid-area: main;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
+        
+        #network-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #networkCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
         #controls {
-            margin-top: 10px;
+            grid-area: footer;
+            background: var(--panel-bg);
+            padding: 10px;
+            border-top: var(--panel-border);
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
             justify-content: center;
+            align-items: center;
         }
-        button, select, input {
+        
+        .control-panel {
+            background: rgba(0, 30, 30, 0.8);
+            border: var(--panel-border);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .control-panel h3 {
+            margin-bottom: 8px;
+            color: var(--neon-blue);
+            font-size: 0.9rem;
+        }
+        
+        #agent-list {
+            list-style: none;
+        }
+        
+        #agent-list li {
             padding: 8px;
-            font-size: 14px;
-            border: 1px solid #0f0;
+            margin: 5px 0;
+            background: rgba(0, 50, 0, 0.3);
             border-radius: 4px;
-            background-color: #0f0;
-            color: #000;
             cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        button:hover, select:hover, input:hover {
-            background-color: #00cc00;
+        
+        #agent-list li:hover {
+            background: rgba(0, 100, 0, 0.4);
         }
-        #historyPopup, #graphPopup, #wizardPopup {
+        
+        .agent-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background: var(--neon-green);
+            box-shadow: 0 0 5px var(--neon-green);
+        }
+        
+        .status-inactive {
+            background: #666;
+        }
+        
+        .status-error {
+            background: #f00;
+            box-shadow: 0 0 5px #f00;
+        }
+        
+        button, select, input {
+            background: rgba(0, 50, 50, 0.7);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s;
+        }
+        
+        button:hover, select:hover {
+            background: rgba(0, 100, 100, 0.8);
+            box-shadow: 0 0 8px var(--neon-green);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        input {
+            background: rgba(0, 30, 30, 0.8);
+            padding: 6px 10px;
+        }
+        
+        #wallet-info {
+            background: rgba(0, 40, 40, 0.7);
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+        
+        #mode-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .mode-tab {
+            flex: 1;
+            text-align: center;
+            padding: 5px;
+            cursor: pointer;
+            background: rgba(0, 40, 40, 0.5);
+            border-radius: 3px;
+        }
+        
+        .mode-tab.active {
+            background: rgba(0, 100, 100, 0.7);
+            box-shadow: 0 0 5px var(--neon-green);
+        }
+        
+        #visualization-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 250px;
+            height: 250px;
+            background: rgba(0, 0, 0, 0.7);
+            border: var(--panel-border);
+            border-radius: 5px;
+            z-index: 10;
+            overflow: hidden;
+        }
+        
+        #visualization-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #console-output {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: var(--panel-border);
+            border-radius: 5px;
+            padding: 8px;
+            font-size: 0.7rem;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        
+        .console-message {
+            margin-bottom: 3px;
+        }
+        
+        .console-error {
+            color: #ff5555;
+        }
+        
+        .console-success {
+            color: #55ff55;
+        }
+        
+        .popup {
             display: none;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #222;
-            border: 2px solid #0f0;
-            padding: 10px;
-            width: 90%;
-            height: auto;
-            max-height: 80vh;
-            box-sizing: border-box;
-            color: #0f0;
+            background: var(--panel-bg);
+            border: 2px solid var(--neon-green);
+            padding: 15px;
             z-index: 1000;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
             overflow-y: auto;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
         }
-        #graphPopup canvas {
-            max-width: 100%;
-            height: auto;
-            max-height: calc(80vh - 40px);
+        
+        .popup h2 {
+            color: var(--neon-blue);
+            margin-bottom: 15px;
+            text-align: center;
         }
+        
         .close-btn {
             position: absolute;
             top: 5px;
             right: 5px;
-            padding: 5px 10px;
-            font-size: 16px;
-            background-color: #f00;
-            color: #fff;
+            background: #f00;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
             cursor: pointer;
-            border-radius: 3px;
         }
-        .close-btn:hover {
-            background-color: #cc0000;
-        }
+        
         #overlay {
             display: none;
             position: fixed;
@@ -98,283 +285,813 @@
             background: rgba(0, 0, 0, 0.7);
             z-index: 999;
         }
-        #errorMessage {
-            color: #f00;
-            margin-top: 10px;
+        
+        .auth-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
         }
-        @media (max-width: 600px) {
-            #sidebar { width: 100%; position: relative; }
-            #networkCanvas { margin-left: 0; max-width: 100%; }
-            #controls { flex-direction: column; }
-            button, select, input { width: 100%; }
-            #historyPopup, #graphPopup, #wizardPopup { width: 95%; padding: 8px; max-height: 75vh; }
+        
+        .auth-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f00;
+        }
+        
+        .auth-dot.authenticated {
+            background: #0f0;
+            box-shadow: 0 0 5px #0f0;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "header"
+                    "main"
+                    "sidebar"
+                    "footer";
+            }
+            
+            #sidebar {
+                border-right: none;
+                border-top: var(--panel-border);
+                max-height: 200px;
+            }
+            
+            #visualization-container {
+                width: 150px;
+                height: 150px;
+            }
+            
+            #console-output {
+                width: 200px;
+                height: 120px;
+            }
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="sidebar">
-        <h3>Agent Dashboard</h3>
-        <input type="text" id="agentFilter" placeholder="Filter agents...">
-        <ul id="agentList"></ul>
-    </div>
-    <canvas id="networkCanvas"></canvas>
-    <div id="controls">
-        <select id="modeSelect">
-            <option value="dropship">Dropship</option>
-            <option value="galaxycraft">Galaxycraft</option>
-            <option value="telescope">Telescope</option>
-        </select>
+    <header>
+        <h1>WebXOS 2025 Vial MCP SDK</h1>
+        <div class="auth-badge">
+            <div class="auth-dot" id="auth-status"></div>
+            <span id="auth-text">Not Authenticated</span>
+        </div>
+    </header>
+    
+    <aside id="sidebar">
+        <div class="control-panel">
+            <h3>Agent Dashboard</h3>
+            <input type="text" id="agentFilter" placeholder="Filter agents...">
+            <ul id="agent-list"></ul>
+        </div>
+        
+        <div class="control-panel">
+            <h3>Wallet Information</h3>
+            <div id="wallet-info">
+                <div>Balance: <span id="wallet-balance">0.0000</span> $WEBXOS</div>
+                <div>Reputation: <span id="wallet-reputation">0</span></div>
+                <div>Address: <span id="wallet-address">N/A</span></div>
+            </div>
+        </div>
+        
+        <div class="control-panel">
+            <h3>Quantum Network</h3>
+            <button id="quantum-link-btn">Activate Quantum Link</button>
+            <div id="quantum-status">Status: Inactive</div>
+        </div>
+    </aside>
+    
+    <main id="main-content">
+        <div id="network-container">
+            <canvas id="networkCanvas"></canvas>
+            
+            <div id="visualization-container">
+                <canvas id="visualization-canvas"></canvas>
+            </div>
+            
+            <div id="console-output"></div>
+        </div>
+    </main>
+    
+    <footer id="controls">
+        <div id="mode-tabs">
+            <div class="mode-tab active" data-mode="dropship">Dropship</div>
+            <div class="mode-tab" data-mode="galaxycraft">Galaxycraft</div>
+            <div class="mode-tab" data-mode="telescope">Telescope</div>
+            <div class="mode-tab" data-mode="vial">Vial MCP</div>
+            <div class="mode-tab" data-mode="trios">Trios</div>
+        </div>
+        
         <select id="roleSelect">
             <option value="agent">Agent</option>
             <option value="api">API Endpoint</option>
             <option value="custom">Custom Extension</option>
+            <option value="dropship">Dropship Node</option>
+            <option value="satellite">Satellite</option>
         </select>
+        
         <button id="assignRoleBtn">Assign Role</button>
         <button id="runTestBtn">Run Test</button>
+        <button id="authBtn">Authenticate</button>
         <button id="exportWizardBtn">Export Wizard</button>
         <button id="importBtn">Import</button>
         <button id="showGraphBtn">Show Graph</button>
         <button id="toggleARVRBtn">Toggle AR/VR</button>
         <button id="benchmarkBtn">Benchmark</button>
-        <button id="themeBtn">Switch Theme</button>
-    </div>
-    <div id="errorMessage"></div>
+    </footer>
+    
     <div id="overlay"></div>
-    <div id="historyPopup">
+    
+    <div id="historyPopup" class="popup">
         <h2 id="popupTitle">Agent History</h2>
         <ul id="historyList"></ul>
-        <button id="closeHistoryPopup" class="close-btn">X</button>
+        <button class="close-btn" id="closeHistoryPopup">X</button>
     </div>
-    <div id="graphPopup">
+    
+    <div id="graphPopup" class="popup">
         <h2>MCP Performance Graph</h2>
         <canvas id="mcpChartPopup"></canvas>
-        <button id="closeGraphPopup" class="close-btn">X</button>
+        <button class="close-btn" id="closeGraphPopup">X</button>
     </div>
-    <div id="wizardPopup">
+    
+    <div id="wizardPopup" class="popup">
         <h2>Export/Import Wizard</h2>
         <div id="wizardSteps"></div>
-        <button id="closeWizardPopup" class="close-btn">X</button>
+        <button class="close-btn" id="closeWizardPopup">X</button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script type="module">
-        import DropshipVisualizer from './public/js/dropship-visualizer.js';
-        import GalaxycraftVisualizer from './public/js/galaxycraft-visualizer.js';
-        import TelescopeVisualizer from './public/js/telescope-visualizer.js';
-        import SVGTranspiler from './public/js/svg-transpiler.js';
-        import MCPClient from './public/js/mcp-client.js';
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Global state
+        const state = {
+            agents: [],
+            selectedAgent: null,
+            mcpData: [],
+            arvrEnabled: false,
+            isAuthenticated: false,
+            wallet: {
+                balance: 0,
+                reputation: 0,
+                address: null
+            },
+            quantumLinked: false,
+            currentMode: 'dropship',
+            autoScanInterval: null
+        };
 
+        // DOM elements
         const canvas = document.getElementById('networkCanvas');
         const ctx = canvas.getContext('2d');
-        const agents = [];
+        const vizCanvas = document.getElementById('visualization-canvas');
+        const vizCtx = vizCanvas.getContext('2d');
         const numAgents = 8;
         const radius = 20;
-        let selectedAgent = null;
-        let mcpData = [];
-        let arvrEnabled = false;
-        const modes = {
-            dropship: DropshipVisualizer({ containerId: 'output', canvasId: 'networkCanvas', onError }),
-            galaxycraft: GalaxycraftVisualizer({ containerId: 'output', canvasId: 'networkCanvas', onError }),
-            telescope: TelescopeVisualizer({ containerId: 'output', canvasId: 'networkCanvas', onError })
-        };
-        const svgTranspiler = new SVGTranspiler({ containerId: 'svg-output', onError });
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.createElement('canvas') });
 
-        function onError(message) {
-            document.getElementById('errorMessage').textContent = message;
+        // Initialize Three.js for AR/VR
+        let scene, camera, renderer;
+        
+        // Initialize the application
+        function init() {
+            resizeCanvas();
+            initializeAgents();
+            drawNetwork();
+            setupEventListeners();
+            initThreeJS();
+            updateAuthenticationUI();
+            
+            // Add initial console message
+            addConsoleMessage("WebXOS Vial MCP SDK initialized. Ready for space exploration and dropship routing.", "success");
         }
 
+        // Setup event listeners
+        function setupEventListeners() {
+            // Window resize
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Canvas click for agent selection
+            canvas.addEventListener('click', handleCanvasClick);
+            
+            // Mode tabs
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    state.currentMode = tab.dataset.mode;
+                    addConsoleMessage(`Mode switched to: ${state.currentMode}`, "success");
+                    updateVisualization();
+                });
+            });
+            
+            // Control buttons
+            document.getElementById('assignRoleBtn').addEventListener('click', assignRole);
+            document.getElementById('runTestBtn').addEventListener('click', runTest);
+            document.getElementById('authBtn').addEventListener('click', toggleAuthentication);
+            document.getElementById('exportWizardBtn').addEventListener('click', exportWizard);
+            document.getElementById('importBtn').addEventListener('click', importNetwork);
+            document.getElementById('showGraphBtn').addEventListener('click', showGraphPopup);
+            document.getElementById('toggleARVRBtn').addEventListener('click', toggleARVR);
+            document.getElementById('benchmarkBtn').addEventListener('click', benchmarkNetwork);
+            document.getElementById('quantum-link-btn').addEventListener('click', toggleQuantumLink);
+            
+            // Popup close buttons
+            document.getElementById('closeHistoryPopup').addEventListener('click', closeHistoryPopup);
+            document.getElementById('closeGraphPopup').addEventListener('click', closeGraphPopup);
+            document.getElementById('closeWizardPopup').addEventListener('click', closeWizardPopup);
+            
+            // Agent filter
+            document.getElementById('agentFilter').addEventListener('input', updateAgentDashboard);
+        }
+
+        // Initialize Three.js
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, vizCanvas.width / vizCanvas.height, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas: vizCanvas, antialias: true, alpha: true });
+            renderer.setSize(vizCanvas.width, vizCanvas.height);
+            
+            // Add a simple globe for visualization
+            const geometry = new THREE.SphereGeometry(2, 32, 32);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00,
+                wireframe: true
+            });
+            const globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+            
+            // Add some particles for stars
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.1,
+                sizeAttenuation: true
+            });
+            
+            const starsVertices = [];
+            for (let i = 0; i < 1000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            const starField = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(starField);
+            
+            camera.position.z = 5;
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                globe.rotation.y += 0.005;
+                starField.rotation.x += 0.0005;
+                starField.rotation.y += 0.0005;
+                
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+        }
+
+        // Resize canvas to fit window
         function resizeCanvas() {
-            canvas.width = Math.min(800, window.innerWidth - 260);
-            canvas.height = Math.min(600, window.innerHeight * 0.6);
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            
+            vizCanvas.width = document.getElementById('visualization-container').clientWidth;
+            vizCanvas.height = document.getElementById('visualization-container').clientHeight;
+            
+            if (renderer) {
+                renderer.setSize(vizCanvas.width, vizCanvas.height);
+                camera.aspect = vizCanvas.width / vizCanvas.height;
+                camera.updateProjectionMatrix();
+            }
+            
             initializeAgents();
             drawNetwork();
         }
-        window.addEventListener('resize', resizeCanvas);
 
+        // Initialize agents in a circular pattern
         function initializeAgents() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const spread = Math.min(canvas.width, canvas.height) * 0.35;
-            agents.length = 0;
-            for (let i = 0; i < numAgents; i++) {
-                const angle = (2 * Math.PI / numAgents) * i;
-                agents.push({
-                    x: centerX + spread * Math.cos(angle),
-                    y: centerY + spread * Math.sin(angle),
-                    role: 'unassigned',
-                    data: {},
-                    history: []
-                });
+            
+            if (state.agents.length === 0) {
+                for (let i = 0; i < numAgents; i++) {
+                    const angle = (2 * Math.PI / numAgents) * i;
+                    state.agents.push({
+                        id: i,
+                        x: centerX + spread * Math.cos(angle),
+                        y: centerY + spread * Math.sin(angle),
+                        role: 'unassigned',
+                        status: 'inactive',
+                        data: {},
+                        history: [],
+                        latency: 0,
+                        quantumLinked: false
+                    });
+                }
+            } else {
+                // Update positions while maintaining state
+                for (let i = 0; i < numAgents; i++) {
+                    const angle = (2 * Math.PI / numAgents) * i;
+                    state.agents[i].x = centerX + spread * Math.cos(angle);
+                    state.agents[i].y = centerY + spread * Math.sin(angle);
+                }
             }
+            
             updateAgentDashboard();
         }
 
+        // Draw the network visualization
         function drawNetwork() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw connections
             ctx.strokeStyle = '#0f0';
             ctx.lineWidth = 1;
             for (let i = 0; i < numAgents; i++) {
                 for (let j = i + 1; j < numAgents; j++) {
-                    ctx.beginPath();
-                    ctx.moveTo(agents[i].x, agents[i].y);
-                    ctx.lineTo(agents[j].x, agents[j].y);
-                    ctx.stroke();
+                    // Only draw connections between active agents
+                    if (state.agents[i].status === 'active' && state.agents[j].status === 'active') {
+                        ctx.beginPath();
+                        ctx.moveTo(state.agents[i].x, state.agents[i].y);
+                        ctx.lineTo(state.agents[j].x, state.agents[j].y);
+                        ctx.stroke();
+                    }
                 }
             }
-            agents.forEach((agent, index) => {
+            
+            // Draw agents
+            state.agents.forEach(agent => {
                 ctx.beginPath();
                 ctx.arc(agent.x, agent.y, radius, 0, 2 * Math.PI);
-                ctx.fillStyle = agent.role === 'agent' ? '#00cc00' : agent.role === 'api' ? '#00f' : '#0f0';
+                
+                // Different colors based on role and status
+                if (agent.status === 'active') {
+                    if (agent.role === 'agent') ctx.fillStyle = '#00cc00';
+                    else if (agent.role === 'api') ctx.fillStyle = '#0066ff';
+                    else if (agent.role === 'dropship') ctx.fillStyle = '#ff9900';
+                    else if (agent.role === 'satellite') ctx.fillStyle = '#cc00ff';
+                    else ctx.fillStyle = '#0f0';
+                } else {
+                    ctx.fillStyle = '#333';
+                }
+                
                 ctx.fill();
                 ctx.strokeStyle = '#0f0';
                 ctx.stroke();
+                
+                // Agent label
                 ctx.fillStyle = '#000';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(`A${index + 1} (${agent.role})`, agent.x, agent.y + 15);
+                ctx.fillText(`A${agent.id + 1} (${agent.role})`, agent.x, agent.y + 5);
+                
+                // Latency indicator if available
+                if (agent.latency > 0) {
+                    ctx.fillText(`${agent.latency}ms`, agent.x, agent.y + 20);
+                }
+                
+                // Quantum link indicator
+                if (agent.quantumLinked) {
+                    ctx.beginPath();
+                    ctx.arc(agent.x, agent.y, radius + 5, 0, 2 * Math.PI);
+                    ctx.strokeStyle = '#cc00ff';
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
             });
-            if (arvrEnabled) drawARVROverlay();
+            
+            // Draw average latency in the center if available
+            const avgLatency = calculateAverageLatency();
+            if (avgLatency > 0) {
+                ctx.fillStyle = '#0f0';
+                ctx.font = '16px Arial';
+                ctx.fillText(`Avg: ${avgLatency.toFixed(2)} ms`, canvas.width / 2, canvas.height / 2);
+            }
+            
+            // AR/VR overlay if enabled
+            if (state.arvrEnabled) {
+                drawARVROverlay();
+            }
         }
 
+        // Calculate average latency across all agents
+        function calculateAverageLatency() {
+            const activeAgents = state.agents.filter(agent => agent.latency > 0);
+            if (activeAgents.length === 0) return 0;
+            
+            const totalLatency = activeAgents.reduce((sum, agent) => sum + agent.latency, 0);
+            return totalLatency / activeAgents.length;
+        }
+
+        // Draw AR/VR overlay
         function drawARVROverlay() {
-            const geometry = new THREE.PlaneGeometry(4, 2);
-            const material = new THREE.MeshBasicMaterial({ color: 0x0f0 });
-            const plane = new THREE.Mesh(geometry, material);
-            scene.add(plane);
-            renderer.render(scene, camera);
-            document.getElementById('networkCanvas').appendChild(renderer.domElement);
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
+            ctx.lineWidth = 0.5;
+            
+            // Draw grid lines
+            for (let x = 0; x < canvas.width; x += 20) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y < canvas.height; y += 20) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw AR/VR mode text
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('AR/VR MODE', canvas.width / 2, 30);
         }
 
-        canvas.addEventListener('click', (e) => {
+        // Handle canvas click for agent selection
+        function handleCanvasClick(e) {
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
-            selectedAgent = null;
-            agents.forEach((agent, index) => {
+            
+            state.selectedAgent = null;
+            state.agents.forEach((agent, index) => {
                 const dx = clickX - agent.x;
                 const dy = clickY - agent.y;
                 if (Math.sqrt(dx * dx + dy * dy) < radius) {
-                    selectedAgent = index;
+                    state.selectedAgent = index;
                     showAgentHistory(index);
                 }
             });
-        });
-
-        async function runTest() {
-            const mode = document.getElementById('modeSelect').value;
-            const walletId = 'test-wallet';
-            const config = 'moon-mars,2023-01-01';
-            try {
-                if (agents.every(a => a.role === 'unassigned')) throw new Error('Assign at least one role');
-                const response = await modes[mode][`visualize${mode.charAt(0).toUpperCase() + mode.slice(1)}`](config, walletId);
-                agents.forEach((agent, index) => {
-                    if (agent.role === 'agent') {
-                        agent.data = response;
-                        agent.history.push({ data: response, time: new Date().toLocaleString() });
-                    }
-                });
-                mcpData.push({ mode, data: response, time: new Date().toLocaleString() });
-                updateGraphPopup();
-                drawNetwork();
-            } catch (error) {
-                onError(`Test Error: ${error.message}`);
-            }
         }
 
-        function assignRole() {
-            if (selectedAgent === null) {
-                onError('Select an agent to assign a role');
+        // Update agent dashboard
+        function updateAgentDashboard() {
+            const list = document.getElementById('agent-list');
+            const filter = document.getElementById('agentFilter').value.toLowerCase();
+            
+            list.innerHTML = '';
+            state.agents
+                .filter(agent => `A${agent.id + 1} (${agent.role})`.toLowerCase().includes(filter))
+                .forEach(agent => {
+                    const li = document.createElement('li');
+                    
+                    const statusClass = agent.status === 'active' ? 'status-active' : 
+                                      agent.status === 'error' ? 'status-error' : 'status-inactive';
+                    
+                    li.innerHTML = `
+                        <div>
+                            <span class="agent-status ${statusClass}"></span>
+                            A${agent.id + 1} (${agent.role})
+                        </div>
+                        <div>${agent.latency > 0 ? agent.latency + 'ms' : ''}</div>
+                    `;
+                    
+                    li.addEventListener('click', () => showAgentHistory(agent.id));
+                    list.appendChild(li);
+                });
+        }
+
+        // Update authentication UI
+        function updateAuthenticationUI() {
+            const authStatus = document.getElementById('auth-status');
+            const authText = document.getElementById('auth-text');
+            const authBtn = document.getElementById('authBtn');
+            
+            if (state.isAuthenticated) {
+                authStatus.classList.add('authenticated');
+                authText.textContent = 'Authenticated';
+                authBtn.textContent = 'Logout';
+                
+                // Enable features that require authentication
+                document.getElementById('quantum-link-btn').disabled = false;
+                document.getElementById('exportWizardBtn').disabled = false;
+                
+                addConsoleMessage("Authentication successful. Quantum network and export features enabled.", "success");
+            } else {
+                authStatus.classList.remove('authenticated');
+                authText.textContent = 'Not Authenticated';
+                authBtn.textContent = 'Authenticate';
+                
+                // Disable features that require authentication
+                document.getElementById('quantum-link-btn').disabled = true;
+                document.getElementById('exportWizardBtn').disabled = true;
+                state.quantumLinked = false;
+                document.getElementById('quantum-status').textContent = 'Status: Inactive';
+                
+                addConsoleMessage("Logged out. Authentication required for advanced features.", "error");
+            }
+            
+            // Update wallet display
+            document.getElementById('wallet-balance').textContent = state.wallet.balance.toFixed(4);
+            document.getElementById('wallet-reputation').textContent = state.wallet.reputation;
+            document.getElementById('wallet-address').textContent = state.wallet.address || 'N/A';
+        }
+
+        // Toggle authentication
+        function toggleAuthentication() {
+            if (state.isAuthenticated) {
+                state.isAuthenticated = false;
+                state.wallet = { balance: 0, reputation: 0, address: null };
+                
+                // Stop any auto processes
+                if (state.autoScanInterval) {
+                    clearInterval(state.autoScanInterval);
+                    state.autoScanInterval = null;
+                }
+            } else {
+                state.isAuthenticated = true;
+                
+                // Generate a mock wallet
+                state.wallet = {
+                    balance: Math.random() * 100,
+                    reputation: Math.floor(Math.random() * 100),
+                    address: '0x' + Math.random().toString(16).substr(2, 40)
+                };
+                
+                addConsoleMessage("Web3 wallet connected. $WEBXOS tokens allocated.", "success");
+            }
+            
+            updateAuthenticationUI();
+        }
+
+        // Toggle quantum link
+        function toggleQuantumLink() {
+            if (!state.isAuthenticated) {
+                addConsoleMessage("Authentication required to activate Quantum Link.", "error");
                 return;
             }
-            const role = document.getElementById('roleSelect').value;
-            agents[selectedAgent].role = role;
+            
+            state.quantumLinked = !state.quantumLinked;
+            
+            if (state.quantumLinked) {
+                document.getElementById('quantum-status').textContent = 'Status: Active';
+                addConsoleMessage("Quantum Link activated. Neural network syncing across all agents.", "success");
+                
+                // Simulate quantum linking effect on agents
+                state.agents.forEach(agent => {
+                    agent.quantumLinked = true;
+                    agent.status = 'active';
+                    
+                    // Simulate latency improvement from quantum linking
+                    if (agent.latency > 0) {
+                        agent.latency = Math.max(1, agent.latency * 0.7);
+                    }
+                });
+            } else {
+                document.getElementById('quantum-status').textContent = 'Status: Inactive';
+                addConsoleMessage("Quantum Link deactivated.", "error");
+                
+                state.agents.forEach(agent => {
+                    agent.quantumLinked = false;
+                });
+            }
+            
             drawNetwork();
             updateAgentDashboard();
         }
 
-        async function exportWizard() {
-            document.getElementById('wizardPopup').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-            document.getElementById('wizardSteps').innerHTML = `
-                <div>Step 1: Select Components</div>
-                <input type="checkbox" id="exportSVG"> SVG
-                <input type="checkbox" id="exportWallet"> .md Wallet
-                <div>Step 2: Download</div>
-                <button id="downloadBtn">Download</button>
-            `;
-            document.getElementById('downloadBtn').addEventListener('click', () => {
-                const svg = document.getElementById('exportSVG').checked ? svgTranspiler.transpileSVG(generateSVG()) : '';
-                const wallet = document.getElementById('exportWallet').checked ? { wallet_id: 'test-wallet', points: 10 } : {};
-                const blob = new Blob([JSON.stringify({ svg, wallet })], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'network.json';
-                a.click();
-                URL.revokeObjectURL(url);
-                closeWizardPopup();
-            });
+        // Assign role to selected agent
+        function assignRole() {
+            if (state.selectedAgent === null) {
+                addConsoleMessage("Please select an agent first by clicking on it.", "error");
+                return;
+            }
+            
+            const role = document.getElementById('roleSelect').value;
+            state.agents[state.selectedAgent].role = role;
+            state.agents[state.selectedAgent].status = 'active';
+            
+            addConsoleMessage(`Assigned role "${role}" to Agent A${state.selectedAgent + 1}.`, "success");
+            
+            drawNetwork();
+            updateAgentDashboard();
         }
 
-        async function importNetwork() {
-            try {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                input.onchange = async (e) => {
-                    const file = e.target.files[0];
-                    const text = await file.text();
-                    const { svg, wallet } = JSON.parse(text);
-                    if (svg) svgTranspiler.transpileSVG(svg);
-                    if (wallet) console.log('Wallet imported:', wallet);
-                    agents.forEach((agent, i) => {
-                        agent.role = svg.includes(`A${i + 1}`) ? 'agent' : 'unassigned';
-                    });
-                    drawNetwork();
-                };
-                input.click();
-            } catch (error) {
-                onError(`Import Error: ${error.message}`);
+        // Run test based on current mode
+        function runTest() {
+            addConsoleMessage(`Running ${state.currentMode} test...`, "success");
+            
+            switch (state.currentMode) {
+                case 'dropship':
+                    simulateDropshipTest();
+                    break;
+                case 'galaxycraft':
+                    simulateGalaxycraftTest();
+                    break;
+                case 'telescope':
+                    simulateTelescopeTest();
+                    break;
+                case 'vial':
+                    simulateVialTest();
+                    break;
+                case 'trios':
+                    simulateTriosTest();
+                    break;
             }
         }
 
-        function generateSVG() {
-            return `<svg width="${canvas.width}" height="${canvas.height}">
-                ${agents.map((a, i) => `<circle cx="${a.x}" cy="${a.y}" r="${radius}" fill="${a.role === 'agent' ? '#00cc00' : '#0f0'}"/>`).join('')}
-                ${agents.map((a, i) => `<text x="${a.x}" y="${a.y + 15}" fill="#000">A${i + 1} (${a.role})</text>`).join('')}
-            </svg>`;
+        // Simulate dropship test
+        function simulateDropshipTest() {
+            // Simulate latency test for all agents
+            state.agents.forEach(agent => {
+                if (agent.status === 'active') {
+                    // Base latency based on role
+                    let baseLatency = 100;
+                    if (agent.role === 'dropship') baseLatency = 50;
+                    if (agent.role === 'satellite') baseLatency = 200;
+                    
+                    // Apply random variation
+                    const latency = baseLatency * (0.8 + Math.random() * 0.4);
+                    
+                    // Quantum link improves latency
+                    agent.latency = Math.round(state.quantumLinked ? latency * 0.7 : latency);
+                    
+                    // Add to history
+                    agent.history.push({
+                        latency: agent.latency,
+                        time: new Date().toLocaleTimeString(),
+                        mode: state.currentMode
+                    });
+                }
+            });
+            
+            // Record MCP data
+            const avgLatency = calculateAverageLatency();
+            state.mcpData.push({
+                mode: state.currentMode,
+                data: { performance: avgLatency },
+                time: new Date().toLocaleString()
+            });
+            
+            addConsoleMessage(`Dropship test completed. Average latency: ${avgLatency.toFixed(2)}ms`, "success");
+            
+            drawNetwork();
+            updateAgentDashboard();
+            updateGraphPopup();
         }
 
+        // Simulate other tests (simplified)
+        function simulateGalaxycraftTest() {
+            addConsoleMessage("Galaxycraft simulation activated. Generating celestial navigation data.", "success");
+            
+            // Placeholder for galaxycraft simulation
+            setTimeout(() => {
+                const performance = 80 + Math.random() * 20;
+                state.mcpData.push({
+                    mode: state.currentMode,
+                    data: { performance },
+                    time: new Date().toLocaleString()
+                });
+                
+                addConsoleMessage(`Galaxycraft simulation completed. Performance: ${performance.toFixed(2)}%`, "success");
+                updateGraphPopup();
+            }, 1500);
+        }
+
+        function simulateTelescopeTest() {
+            addConsoleMessage("Telescope calibration initiated. Scanning deep space objects.", "success");
+            
+            // Placeholder for telescope simulation
+            setTimeout(() => {
+                const performance = 85 + Math.random() * 15;
+                state.mcpData.push({
+                    mode: state.currentMode,
+                    data: { performance },
+                    time: new Date().toLocaleString()
+                });
+                
+                addConsoleMessage(`Telescope calibration completed. Resolution: ${performance.toFixed(2)}%`, "success");
+                updateGraphPopup();
+            }, 2000);
+        }
+
+        function simulateVialTest() {
+            addConsoleMessage("Vial MCP neural network training started.", "success");
+            
+            // Placeholder for Vial MCP simulation
+            setTimeout(() => {
+                const performance = 75 + Math.random() * 25;
+                state.mcpData.push({
+                    mode: state.currentMode,
+                    data: { performance },
+                    time: new Date().toLocaleString()
+                });
+                
+                // Update wallet with mock earnings
+                if (state.isAuthenticated) {
+                    const earnings = Math.random() * 5;
+                    state.wallet.balance += earnings;
+                    state.wallet.reputation += 1;
+                    updateAuthenticationUI();
+                    
+                    addConsoleMessage(`Vial training completed. Earned ${earnings.toFixed(4)} $WEBXOS. Performance: ${performance.toFixed(2)}%`, "success");
+                } else {
+                    addConsoleMessage(`Vial training completed. Performance: ${performance.toFixed(2)}%`, "success");
+                }
+                
+                updateGraphPopup();
+            }, 3000);
+        }
+
+        function simulateTriosTest() {
+            addConsoleMessage("Trios console integration test running.", "success");
+            
+            // Placeholder for Trios simulation
+            setTimeout(() => {
+                const performance = 90 + Math.random() * 10;
+                state.mcpData.push({
+                    mode: state.currentMode,
+                    data: { performance },
+                    time: new Date().toLocaleString()
+                });
+                
+                addConsoleMessage(`Trios test completed. Code efficiency: ${performance.toFixed(2)}%`, "success");
+                updateGraphPopup();
+            }, 1000);
+        }
+
+        // Update visualization based on current mode
+        function updateVisualization() {
+            // This would be expanded to show different visualizations per mode
+            addConsoleMessage(`Visualization updated for ${state.currentMode} mode.`, "success");
+        }
+
+        // Benchmark network
+        function benchmarkNetwork() {
+            addConsoleMessage("Running network benchmark...", "success");
+            
+            // Simulate benchmark
+            const results = state.agents
+                .filter(agent => agent.status === 'active')
+                .map(() => Math.random() * 100);
+                
+            const performance = results.reduce((a, b) => a + b, 0) / results.length;
+            
+            state.mcpData.push({
+                mode: 'benchmark',
+                data: { performance },
+                time: new Date().toLocaleString()
+            });
+            
+            addConsoleMessage(`Network benchmark completed. Score: ${performance.toFixed(2)}%`, "success");
+            updateGraphPopup();
+            drawNetwork();
+        }
+
+        // Toggle AR/VR mode
+        function toggleARVR() {
+            state.arvrEnabled = !state.arvrEnabled;
+            addConsoleMessage(`AR/VR mode ${state.arvrEnabled ? 'enabled' : 'disabled'}.`, "success");
+            drawNetwork();
+        }
+
+        // Show agent history popup
         function showAgentHistory(agentIndex) {
-            const agent = agents[agentIndex];
+            const agent = state.agents[agentIndex];
             const list = document.getElementById('historyList');
+            
             list.innerHTML = '';
             document.getElementById('popupTitle').textContent = `Agent A${agentIndex + 1} History`;
+            
             if (agent.history.length === 0) {
                 const li = document.createElement('li');
-                li.textContent = 'No tests yet';
+                li.textContent = 'No tests recorded yet';
                 list.appendChild(li);
             } else {
                 agent.history.forEach(entry => {
                     const li = document.createElement('li');
-                    li.textContent = `Data: ${JSON.stringify(entry.data)} - ${entry.time}`;
+                    li.textContent = `${entry.time} - ${entry.mode}: ${entry.latency || entry.performance?.toFixed(2) || 'N/A'}${entry.latency ? 'ms' : '%'}`;
                     list.appendChild(li);
                 });
             }
+            
             document.getElementById('historyPopup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
 
+        // Show graph popup
         function showGraphPopup() {
             document.getElementById('graphPopup').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
             updateGraphPopup();
         }
 
+        // Close popups
         function closeHistoryPopup() {
             document.getElementById('historyPopup').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
@@ -390,105 +1107,154 @@
             document.getElementById('overlay').style.display = 'none';
         }
 
-        const ctxChartPopup = document.getElementById('mcpChartPopup').getContext('2d');
-        const mcpChartPopup = new Chart(ctxChartPopup, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'MCP Performance',
-                    data: [],
-                    borderColor: '#0f0',
-                    backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 1,
-                    pointHoverRadius: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { title: { display: true, text: 'Test #', color: '#0f0', font: { size: 10 } }, ticks: { color: '#0f0', font: { size: 8 }, maxTicksLimit: 10 } },
-                    y: { beginAtZero: true, title: { display: true, text: 'Performance', color: '#0f0', font: { size: 10 } }, ticks: { color: '#0f0', font: { size: 8 }, maxTicksLimit: 5 } }
-                },
-                plugins: { legend: { labels: { color: '#0f0', font: { size: 10 } }, position: 'bottom' } },
-                layout: { padding: 0 }
+        // Export wizard
+        function exportWizard() {
+            if (!state.isAuthenticated) {
+                addConsoleMessage("Authentication required for export功能.", "error");
+                return;
             }
-        });
+            
+            document.getElementById('wizardPopup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            
+            document.getElementById('wizardSteps').innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <h3>Export Options</h3>
+                    <input type="checkbox" id="exportAgents"> Agent Configurations<br>
+                    <input type="checkbox" id="exportData"> Test Data<br>
+                    <input type="checkbox" id="exportWallet"> Wallet Data<br>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <h3>Export Format</h3>
+                    <select id="exportFormat">
+                        <option value="json">JSON</option>
+                        <option value="md">Markdown</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                <button id="exportExecute">Export</button>
+            `;
+            
+            document.getElementById('exportExecute').addEventListener('click', () => {
+                const exportData = {
+                    agents: state.agents,
+                    mcpData: state.mcpData,
+                    wallet: state.wallet,
+                    timestamp: new Date().toISOString()
+                };
+                
+                const format = document.getElementById('exportFormat').value;
+                let dataStr, fileName, mimeType;
+                
+                if (format === 'json') {
+                    dataStr = JSON.stringify(exportData, null, 2);
+                    fileName = 'webxos_export.json';
+                    mimeType = 'application/json';
+                } else if (format === 'md') {
+                    dataStr = `# WebXOS Export\n\n## Agents\n${state.agents.map(a => `- A${a.id + 1}: ${a.role} (${a.status})`).join('\n')}\n\n## Performance Data\n${state.mcpData.map(d => `- ${d.time}: ${d.mode} - ${d.data.performance?.toFixed(2) || 'N/A'}%`).join('\n')}\n\n## Wallet\n- Balance: ${state.wallet.balance.toFixed(4)} $WEBXOS\n- Reputation: ${state.wallet.reputation}\n- Address: ${state.wallet.address || 'N/A'}`;
+                    fileName = 'webxos_export.md';
+                    mimeType = 'text/markdown';
+                } else {
+                    dataStr = 'Agent,Role,Status,Latency\n' + state.agents.map(a => `A${a.id + 1},${a.role},${a.status},${a.latency}`).join('\n');
+                    fileName = 'webxos_export.csv';
+                    mimeType = 'text/csv';
+                }
+                
+                const blob = new Blob([dataStr], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                addConsoleMessage(`Exported data as ${format.toUpperCase()}`, "success");
+                closeWizardPopup();
+            });
+        }
 
+        // Import network
+        function importNetwork() {
+            addConsoleMessage("Import functionality would open a file dialog here.", "success");
+            // Actual implementation would involve reading files
+        }
+
+        // Update graph popup
         function updateGraphPopup() {
-            const labels = Array.from({ length: mcpData.length }, (_, i) => i + 1);
-            mcpChartPopup.data.labels = labels;
-            mcpChartPopup.data.datasets[0].data = mcpData.map(d => d.data.performance || 0);
-            mcpChartPopup.update();
-        }
-
-        function updateAgentDashboard() {
-            const list = document.getElementById('agentList');
-            list.innerHTML = '';
-            agents.forEach((agent, index) => {
-                const li = document.createElement('li');
-                li.textContent = `A${index + 1} (${agent.role}) - Active: ${agent.data ? 'Yes' : 'No'}`;
-                li.addEventListener('click', () => showAgentHistory(index));
-                list.appendChild(li);
-            });
-            document.getElementById('agentFilter').addEventListener('input', (e) => {
-                const filter = e.target.value.toLowerCase();
-                list.innerHTML = '';
-                agents.filter(a => `A${agents.indexOf(a) + 1} (${a.role})`.toLowerCase().includes(filter))
-                    .forEach((agent, index) => {
-                        const li = document.createElement('li');
-                        li.textContent = `A${index + 1} (${agent.role}) - Active: ${agent.data ? 'Yes' : 'No'}`;
-                        li.addEventListener('click', () => showAgentHistory(index));
-                        list.appendChild(li);
-                    });
-            });
-        }
-
-        function toggleARVR() {
-            arvrEnabled = !arvrEnabled;
-            drawNetwork();
-        }
-
-        function benchmarkNetwork() {
-            // Simulate benchmark
-            const results = agents.map(() => Math.random() * 100);
-            mcpData.push({ mode: 'benchmark', data: { performance: results.reduce((a, b) => a + b, 0) / results.length }, time: new Date().toLocaleString() });
-            updateGraphPopup();
-            drawNetwork();
-        }
-
-        function switchTheme() {
-            const body = document.body;
-            if (body.style.backgroundColor === 'black') {
-                body.style.backgroundColor = '#fff';
-                body.style.color = '#000';
-                ctx.fillStyle = '#000';
-            } else {
-                body.style.backgroundColor = '#000';
-                body.style.color = '#0f0';
-                ctx.fillStyle = '#0f0';
+            if (!window.mcpChartPopup) {
+                const ctxChartPopup = document.getElementById('mcpChartPopup').getContext('2d');
+                window.mcpChartPopup = new Chart(ctxChartPopup, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'MCP Performance',
+                            data: [],
+                            borderColor: '#0f0',
+                            backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Test #',
+                                    color: '#0f0'
+                                },
+                                ticks: {
+                                    color: '#0f0'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Performance %',
+                                    color: '#0f0'
+                                },
+                                ticks: {
+                                    color: '#0f0'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#0f0'
+                                }
+                            }
+                        }
+                    }
+                });
             }
-            drawNetwork();
+            
+            const labels = Array.from({ length: state.mcpData.length }, (_, i) => i + 1);
+            const performanceData = state.mcpData.map(d => d.data.performance || 0);
+            
+            window.mcpChartPopup.data.labels = labels;
+            window.mcpChartPopup.data.datasets[0].data = performanceData;
+            window.mcpChartPopup.update();
         }
 
-        document.getElementById('modeSelect').addEventListener('change', drawNetwork);
-        document.getElementById('assignRoleBtn').addEventListener('click', assignRole);
-        document.getElementById('runTestBtn').addEventListener('click', runTest);
-        document.getElementById('exportWizardBtn').addEventListener('click', exportWizard);
-        document.getElementById('importBtn').addEventListener('click', importNetwork);
-        document.getElementById('showGraphBtn').addEventListener('click', showGraphPopup);
-        document.getElementById('toggleARVRBtn').addEventListener('click', toggleARVR);
-        document.getElementById('benchmarkBtn').addEventListener('click', benchmarkNetwork);
-        document.getElementById('themeBtn').addEventListener('click', switchTheme);
-        document.getElementById('closeHistoryPopup').addEventListener('click', closeHistoryPopup);
-        document.getElementById('closeGraphPopup').addEventListener('click', closeGraphPopup);
-        document.getElementById('closeWizardPopup').addEventListener('click', closeWizardPopup);
+        // Add message to console
+        function addConsoleMessage(message, type = 'normal') {
+            const consoleOutput = document.getElementById('console-output');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `console-message ${type === 'error' ? 'console-error' : type === 'success' ? 'console-success' : ''}`;
+            messageDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleOutput.appendChild(messageDiv);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
 
-        resizeCanvas();
+        // Initialize the application
+        init();
     </script>
 </body>
 </html>
-```
