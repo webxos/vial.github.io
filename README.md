@@ -1,6 +1,6 @@
 # 🌌 **WebXOS 2025 Vial MCP SDK: AI-Powered Quantum Frontier (OPEN SOURCE BETA)**
 
-Welcome to the **WebXOS 2025 Vial Model Context Protocol (MCP) SDK**, a quantum-distributed, AI-orchestrated powerhouse hosted on GitHub! Powered by **Claude-Flow v2.0.0 Alpha**, **OpenAI Swarm**, and **CrewAI**, this SDK fuses 4x Vial agents, PyTorch cores, SQLAlchemy databases, and `.md` wallet functions into a versatile toolkit.
+Welcome to the **WebXOS 2025 Vial Model Context Protocol (MCP) SDK**, a quantum-distributed, AI-orchestrated powerhouse hosted on GitHub! Powered by **Claude-Flow v2.0.0 Alpha**, **OpenAI Swarm**, and **CrewAI**, this SDK fuses 4x Vial agents, PyTorch cores, SQLAlchemy databases, and `.md` wallet functions into a versatile toolkit. It acts as a collection of tools and agents for users to fork and build off of as boilerplates and oem project guides. 
 
 ## ✨ Key Features
 
