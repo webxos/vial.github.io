@@ -1,0 +1,58 @@
+replicaCount: 2
+
+image:
+  backend:
+    repository: webxos-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  frontend:
+    repository: webxos-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  vial:
+    repository: vial-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+service:
+  backend:
+    type: ClusterIP
+    port: 8000
+  frontend:
+    type: ClusterIP
+    port: 3000
+  vial:
+    type: ClusterIP
+    port: 3000
+
+env:
+  backend:
+    - name: OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: webxos-secrets
+          key: openai-api-key
+    - name: NASA_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: webxos-secrets
+          key: nasa-api-key
+    - name: WALLET_PASSWORD
+      value: secure_wallet_password
+  frontend:
+    - name: VIAL_API_URL
+      value: http://backend:8000
+    - name: VIAL_OAUTH_REDIRECT_URI
+      value: http://localhost:3000/callback
+
+resources:
+  limits:
+    cpu: "1"
+    memory: "512Mi"
+  requests:
+    cpu: "500m"
+    memory: "256Mi"
+
+prometheus:
+  enabled: true
+  scrapeInterval: 15s
