@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mcp-server
+  labels:
+    {{- include "mcp-stack.labels" . | nindent 4 }}
+    component: server
+spec:
+  replicas: {{ .Values.mcpServer.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+      component: server
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        component: server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+    spec:
+      serviceAccountName: {{ .Release.Name }}-sa
+      containers:
+        - name: mcp-server
+          image: "{{ .Values.mcpServer.image.repository }}:{{ .Values.mcpServer.image.tag }}"
+          imagePullPolicy: {{ .Values.mcpServer.image.pullPolicy }}
+          env:
+            - name: OBS_PIPELINE_ENABLED
+              value: "true"
+            - name: CUDA_DEVICE_ORDER
+              value: PCI_BUS_ID
+          resources:
+            limits:
+              cpu: {{ .Values.mcpServer.resources.limits.cpu }}
+              memory: {{ .Values.mcpServer.resources.limits.memory }}
+              nvidia.com/gpu: {{ .Values.mcpServer.resources.limits.nvidia.com.gpu }}
+            requests:
+              cpu: {{ .Values.mcpServer.resources.requests.cpu }}
+              memory: {{ .Values.mcpServer.resources.requests.memory }}
+              nvidia.com/gpu: {{ .Values.mcpServer.resources.requests.nvidia.com.gpu }}
+          volumeMounts:
+            - name: cuda-libs
+              mountPath: /usr/local/cuda-12.3/compat
+              readOnly: true
+      volumes:
+        - name: cuda-libs
+          hostPath:
+            path: /usr/local/cuda-12.3/targets/x86_64-linux/lib
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.present
+                    operator: Exists
