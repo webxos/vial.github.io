@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nasa-backup
+  labels:
+    app: webxos-nasa
+spec:
+  schedule: "0 0 * * *"  # Daily at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: webxos-mcp-nasa:latest
+            command: ["python", "-c", "from server.utils.backup import backup_nasa_data; backup_nasa_data()"]
+            env:
+            - name: MONGODB_URI
+              value: "mongodb://mongodb:27017/webxos_rag"
+            - name: BACKUP_PATH
+              value: "/backups"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: "/backups"
+            resources:
+              limits:
+                cpu: "500m"
+                memory: "256Mi"
+              requests:
+                cpu: "250m"
+                memory: "128Mi"
+          restartPolicy: OnFailure
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: nasa-backup-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nasa-backup-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
