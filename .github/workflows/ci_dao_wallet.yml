@@ -1,0 +1,20 @@
+name: CI DAO Wallet Validation
+
+on: [push, pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Validate DAO wallets
+        run: |
+          python server/wallets/dao_validator.py sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
