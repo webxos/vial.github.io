@@ -1,0 +1,30 @@
+name: CI MCP Lint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Run gofmt
+        run: gofmt -s -w .
+      - name: Install golangci-lint
+        run: |
+          BINDIR="$(git rev-parse --show-toplevel)/bin"
+          BINARY=$BINDIR/golangci-lint
+          GOLANGCI_LINT_VERSION=v2.2.1
+          if [ ! -f "$BINARY" ]; then
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $BINDIR $GOLANGCI_LINT_VERSION
+          fi
+      - name: Lint
+        run: $BINDIR/golangci-lint run
+      - name: Check Wallets
+        run: |
+          python -c "from server.config.mcp_github_config import MCPGitHubConfig; config = MCPGitHubConfig(); config.validate_wallet('test_wallet') or exit(1)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
