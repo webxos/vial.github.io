@@ -1,50 +1,56 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.security import OAuth2AuthorizationCodeBearer
-from server.api import auth_endpoint, quantum_rag_endpoint, servicenow_endpoint, monitoring_endpoint, alchemist_endpoint
-from server.services import obs_handler
-from server.config.settings import Settings
-from server.config.database import get_db
-from sqlalchemy.orm import Session
-import logging
+from fastapi import FastAPI
+from server.api.auth_endpoint import router as auth_router
+from server.webxos_wallet import WebXOSWallet
+from fastapi import Depends, HTTPException
+from server.api.auth_endpoint import verify_token
+from pydantic import BaseModel
 
-app = FastAPI(title="Vial MCP Controller", version="1.0.0")
-settings = Settings()
-logging.basicConfig(level=logging.INFO, filename="logs/server.log")
+app = FastAPI(title="WebXOS 2025 Vial MCP SDK", version="1.2.0")
+app.include_router(auth_router)
 
-oauth2_scheme = OAuth2AuthorizationCodeBearer(
-    authorizationUrl="/mcp/auth/authorize",
-    tokenUrl="/mcp/auth/token",
-    scheme_name="OAuth2PKCE"
-)
+# Wallet instance
+wallet_manager = WebXOSWallet(password="secure_wallet_password")
 
-# Global error handler
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    logging.error(f"HTTP error: {exc.status_code} - {exc.detail}")
-    return {"error": exc.detail, "status_code": exc.status_code}
+class WalletCreate(BaseModel):
+    address: str
+    private_key: str
+    balance: float = 0.0
 
-@app.exception_handler(Exception)
-async def general_exception_handler(request, exc):
-    logging.error(f"Unexpected error: {str(exc)}")
-    return {"error": "Internal server error", "status_code": 500}
-
-# Include API routers
-app.include_router(auth_endpoint.router, prefix="/mcp/auth")
-app.include_router(quantum_rag_endpoint.router, prefix="/mcp/quantum_rag")
-app.include_router(servicenow_endpoint.router, prefix="/mcp/servicenow")
-app.include_router(monitoring_endpoint.router, prefix="/mcp/monitoring")
-app.include_router(alchemist_endpoint.router, prefix="/mcp/alchemist")
-
-# OBS endpoint
-@app.post("/mcp/tools/obs.init")
-async def init_obs_scene(scene_name: str, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+@app.post("/mcp/wallet/create", tags=["wallet"])
+async def create_wallet(wallet_data: WalletCreate, token: dict = Depends(verify_token)):
     try:
-        result = await obs_handler.init_obs_scene(scene_name, settings.obs_host, settings.obs_port, settings.obs_password)
-        return {"scene": result}
-    except Exception as e:
-        logging.error(f"OBS error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        wallet = wallet_manager.create_wallet(
+            address=wallet_manager.sanitize_input(wallet_data.address),
+            private_key=wallet_manager.sanitize_input(wallet_data.private_key),
+            balance=wallet_data.balance
+        )
+        return {"address": wallet.address, "balance": wallet.balance}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+@app.get("/mcp/wallet/{address}", tags=["wallet"])
+async def get_wallet(address: str, token: dict = Depends(verify_token)):
+    address = wallet_manager.sanitize_input(address)
+    if address not in wallet_manager.wallets:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    wallet = wallet_manager.wallets[address]
+    return {"address": wallet.address, "balance": wallet.balance}
+
+@app.post("/mcp/wallet/export/{address}", tags=["wallet"])
+async def export_wallet(address: str, filename: str, token: dict = Depends(verify_token)):
+    address = wallet_manager.sanitize_input(address)
+    filename = wallet_manager.sanitize_input(filename)
+    try:
+        wallet_manager.export_wallet(address, filename)
+        return {"message": f"Wallet exported to {filename}"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/mcp/wallet/import", tags=["wallet"])
+async def import_wallet(filename: str, token: dict = Depends(verify_token)):
+    filename = wallet_manager.sanitize_input(filename)
+    try:
+        wallet = wallet_manager.import_wallet(filename)
+        return {"address": wallet.address, "balance": wallet.balance}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
