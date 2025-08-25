@@ -1,0 +1,25 @@
+name: CI Repo Tasks
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to perform (scan, fix)'
+        required: true
+        default: 'scan'
+
+jobs:
+  tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run task
+        run: python server/agents/task_runner.py ${{ github.event.inputs.task }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
