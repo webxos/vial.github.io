@@ -1,41 +1,52 @@
-import logging
-from typing import List
-from pydantic import BaseModel
-from pymongo import MongoClient
-from server.security.wallet_crypto import WalletCrypto, WalletData
+from server.security.crypto_engine import CryptoEngine
+import re
+import json
+from typing import Dict
+from pydantic import BaseModel, validator
 
-logger = logging.getLogger(__name__)
+class Wallet(BaseModel):
+    address: str
+    private_key: str
+    balance: float
 
-class DAOProposal(BaseModel):
-    proposal_id: str
-    description: str
-    votes: Dict[str, bool]
+    @validator('address')
+    def validate_address(cls, v):
+        if not re.match(r'^0x[a-fA-F0-9]{40}$', v):
+            raise ValueError('Invalid wallet address')
+        return v
+
+    @validator('private_key')
+    def validate_private_key(cls, v):
+        if not re.match(r'^[a-fA-F0-9]{64}$', v):
+            raise ValueError('Invalid private key')
+        return v
 
 class WebXOSWallet:
-    def __init__(self):
-        self.mongo = MongoClient("mongodb://mongo:27017").vial_mcp
-        self.crypto = WalletCrypto()
+    def __init__(self, password: str):
+        self.crypto = CryptoEngine(password)
+        self.wallets: Dict[str, Wallet] = {}
 
-    async def create_proposal(self, proposal: DAOProposal, signatures: List[str]) -> bool:
-        """Create DAO proposal with M-of-N signatures."""
-        try:
-            wallet_data = WalletData(address="0x123", balance=100.0, signatures=signatures)
-            if not self.crypto.verify_multi_sig(wallet_data, signatures, m=2):
-                raise ValueError("Invalid signatures")
-            self.mongo.proposals.insert_one(proposal.dict())
-            return True
-        except Exception as e:
-            logger.error(f"Proposal creation failed: {str(e)}")
-            raise
+    def create_wallet(self, address: str, private_key: str, balance: float = 0.0) -> Wallet:
+        wallet = Wallet(address=address, private_key=self.crypto.encrypt(private_key), balance=balance)
+        self.wallets[address] = wallet
+        return wallet
 
-    async def export_wallet(self, wallet_id: str, password: str) -> str:
-        """Export wallet as encrypted .md."""
-        try:
-            wallet = self.mongo.wallets.find_one({"_id": wallet_id})
-            if not wallet:
-                raise ValueError("Wallet not found")
-            wallet_data = WalletData(address=wallet["address"], balance=wallet["balance"], signatures=[])
-            return self.crypto.encrypt_wallet(wallet_data, password)
-        except Exception as e:
-            logger.error(f"Wallet export failed: {str(e)}")
-            raise
+    def export_wallet(self, address: str, filename: str):
+        if address not in self.wallets:
+            raise ValueError("Wallet not found")
+        wallet_data = self.wallets[address].dict()
+        wallet_data['private_key'] = self.crypto.decrypt(wallet_data['private_key'])
+        with open(filename, 'w') as f:
+            f.write(json.dumps(wallet_data, indent=2))
+        self.crypto.save_key(f"{filename}.key")
+
+    def import_wallet(self, filename: str):
+        with open(filename, 'r') as f:
+            wallet_data = json.load(f)
+        wallet = Wallet(**wallet_data)
+        wallet.private_key = self.crypto.encrypt(wallet_data['private_key'])
+        self.wallets[wallet.address] = wallet
+        return wallet
+
+    def sanitize_input(self, input_str: str) -> str:
+        return re.sub(r'[<>{};]', '', input_str)
