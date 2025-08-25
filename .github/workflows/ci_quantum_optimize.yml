@@ -1,0 +1,19 @@
+name: CI Quantum Optimize
+
+on: [push, pull_request]
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install qiskit torch
+      - name: Optimize quantum logic
+        run: python server/quantum/optimizer.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
