@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WEBXOS UNIVERSE 3D</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #game-container {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+        #cosmicCanvas {
+            flex: 1;
+            width: 100%;
+            touch-action: none;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #0f0;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .hud-item {
+            margin-bottom: 5px;
+        }
+        #wallet-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #0f0;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        #console {
+            position: absolute;
+            bottom: 100px;
+            left: 10px;
+            width: 300px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #0f0;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #0f0;
+            border-radius: 10px;
+            pointer-events: auto;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #0c0;
+        }
+        button:disabled {
+            background: #444;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        #agent-controls {
+            width: 300px;
+        }
+        .agent-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .agent-item {
+            padding: 5px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+        .agent-item:hover {
+            background: #0f0;
+            color: #000;
+        }
+        #mining-controls {
+            width: 250px;
+        }
+        .progress-bar {
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #0f0;
+            width: 0%;
+        }
+        #market-modal {
+            width: 350px;
+        }
+        .market-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        #wallet-modal {
+            width: 300px;
+        }
+        #login-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+        input {
+            background: #000;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            font-family: 'Courier New', monospace;
+        }
+        #game-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0f0;
+        }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #f00;
+            color: #fff;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        #notification {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            pointer-events: none;
+            z-index: 200;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="cosmicCanvas"></canvas>
+        
+        <div id="ui-overlay">
+            <div class="hud">
+                <div class="hud-item">Health: <span id="health-value">100</span></div>
+                <div class="hud-item">Fuel: <span id="fuel-value">100</span></div>
+                <div class="hud-item">Speed: <span id="speed-value">0</span></div>
+                <div class="hud-item">Location: <span id="location-value">0,0,0</span></div>
+            </div>
+            
+            <div id="wallet-info">
+                <div>$WEBXOS: <span id="balance-value">0</span></div>
+                <div>Reputation: <span id="reputation-value">0</span></div>
+            </div>
+            
+            <div id="console">
+                <div>WEBXOS UNIVERSE initialized</div>
+                <div>Welcome, Commander</div>
+            </div>
+            
+            <div id="controls">
+                <button id="mining-btn" onclick="toggleMining()">MINE</button>
+                <button onclick="showModal('agent-controls')">AGENTS</button>
+                <button onclick="showModal('market-modal')">MARKET</button>
+                <button onclick="showModal('wallet-modal')">WALLET</button>
+                <button id="quantum-btn" onclick="activateQuantum()">QUANTUM</button>
+            </div>
+            
+            <div id="notification"></div>
+        </div>
+        
+        <!-- Modals -->
+        <div id="agent-controls" class="modal">
+            <button class="close-btn" onclick="hideModal('agent-controls')">X</button>
+            <h3>AGENT CONTROL</h3>
+            <div class="agent-list">
+                <div class="agent-item" onclick="selectAgent(0)">Drone Alpha (Idle)</div>
+                <div class="agent-item" onclick="selectAgent(1)">Drone Beta (Idle)</div>
+                <div class="agent-item" onclick="selectAgent(2)">Satellite Gamma (Idle)</div>
+            </div>
+            <div>
+                <button onclick="commandAgent('mine')">MINE</button>
+                <button onclick="commandAgent('patrol')">PATROL</button>
+                <button onclick="commandAgent('return')">RETURN</button>
+            </div>
+        </div>
+        
+        <div id="mining-controls" class="modal">
+            <button class="close-btn" onclick="hideModal('mining-controls')">X</button>
+            <h3>MINING OPERATION</h3>
+            <div>Resource: <span id="mining-resource">Unobtanium</span></div>
+            <div>Yield: <span id="mining-yield">0</span> units/sec</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="mining-progress"></div>
+            </div>
+            <button onclick="stopMining()">STOP MINING</button>
+        </div>
+        
+        <div id="market-modal" class="modal">
+            <button class="close-btn" onclick="hideModal('market-modal')">X</button>
+            <h3>GALACTIC MARKET</h3>
+            <div class="market-item">
+                <span>Unobtanium</span>
+                <span>5 $WEBXOS/unit</span>
+                <button onclick="sellResource('unobtanium', 1)">SELL</button>
+            </div>
+            <div class="market-item">
+                <span>Quantum Crystals</span>
+                <span>15 $WEBXOS/unit</span>
+                <button onclick="sellResource('crystals', 1)">SELL</button>
+            </div>
+            <div class="market-item">
+                <span>Drone Upgrade</span>
+                <span>100 $WEBXOS</span>
+                <button onclick="buyUpgrade('drone')">BUY</button>
+            </div>
+        </div>
+        
+        <div id="wallet-modal" class="modal">
+            <button class="close-btn" onclick="hideModal('wallet-modal')">X</button>
+            <h3>WALLET</h3>
+            <div>Address: <span id="wallet-address">0x0000...0000</span></div>
+            <div>Balance: <span id="wallet-balance">0</span> $WEBXOS</div>
+            <div>Reputation: <span id="wallet-reputation">0</span></div>
+            <button onclick="generateCredentials()">API CREDENTIALS</button>
+            <button onclick="exportWallet()">EXPORT WALLET</button>
+        </div>
+        
+        <div id="login-screen">
+            <h1 id="game-title">WEBXOS UNIVERSE 3D</h1>
+            <p>Enter your callsign:</p>
+            <input type="text" id="player-name" placeholder="Commander Name">
+            <p>Select game mode:</p>
+            <div>
+                <button onclick="startGame('solo')">SOLO PLAY</button>
+                <button onclick="startGame('online')">ONLINE MODE</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game state
+        let gameState = {
+            player: {
+                name: '',
+                health: 100,
+                fuel: 100,
+                credits: 0,
+                reputation: 0,
+                position: { x: 0, y: 0, z: 0 },
+                velocity: { x: 0, y: 0, z: 0 },
+                rotation: { x: 0, y: 0, z: 0 }
+            },
+            resources: {
+                unobtanium: 0,
+                crystals: 0,
+                antimatter: 0
+            },
+            agents: [
+                { id: 0, type: 'drone', name: 'Alpha', status: 'idle', position: { x: 10, y: 0, z: 0 } },
+                { id: 1, type: 'drone', name: 'Beta', status: 'idle', position: { x: -10, y: 0, z: 0 } },
+                { id: 2, type: 'satellite', name: 'Gamma', status: 'idle', position: { x: 0, y: 20, z: 0 } }
+            ],
+            wallet: {
+                address: '',
+                balance: 0,
+                reputation: 0
+            },
+            online: false,
+            mining: false,
+            selectedAgent: null,
+            objects: [],
+            scene: null,
+            camera: null,
+            renderer: null
+        };
+
+        // Initialize the game
+        function initGame() {
+            // Set up Three.js scene
+            gameState.scene = new THREE.Scene();
+            gameState.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            gameState.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('cosmicCanvas'), antialias: true });
+            gameState.renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Add stars
+            const starGeometry = new THREE.BufferGeometry();
+            const starVertices = [];
+            for (let i = 0; i < 10000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starVertices.push(x, y, z);
+            }
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1 });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            gameState.scene.add(stars);
+            
+            // Add player ship
+            const shipGeometry = new THREE.ConeGeometry(5, 10, 8);
+            const shipMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            const ship = new THREE.Mesh(shipGeometry, shipMaterial);
+            gameState.scene.add(ship);
+            gameState.objects.push(ship);
+            
+            // Add some asteroids
+            for (let i = 0; i < 50; i++) {
+                const size = Math.random() * 5 + 1;
+                const geometry = new THREE.SphereGeometry(size, 8, 8);
+                const material = new THREE.MeshBasicMaterial({ color: 0x888888 });
+                const asteroid = new THREE.Mesh(geometry, material);
+                
+                asteroid.position.x = (Math.random() - 0.5) * 500;
+                asteroid.position.y = (Math.random() - 0.5) * 500;
+                asteroid.position.z = (Math.random() - 0.5) * 500;
+                
+                gameState.scene.add(asteroid);
+                gameState.objects.push(asteroid);
+            }
+            
+            // Position camera
+            gameState.camera.position.z = 50;
+            
+            // Start animation loop
+            animate();
+            
+            // Initialize wallet
+            initWallet();
+            
+            // Add event listeners
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('keyup', handleKeyUp);
+            window.addEventListener('resize', onWindowResize);
+            
+            // Update UI
+            updateUI();
+            
+            // Add to console
+            addToConsole('Game initialized. Welcome to WEBXOS UNIVERSE, ' + gameState.player.name);
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update player position based on velocity
+            gameState.player.position.x += gameState.player.velocity.x;
+            gameState.player.position.y += gameState.player.velocity.y;
+            gameState.player.position.z += gameState.player.velocity.z;
+            
+            // Update camera position
+            gameState.camera.position.x = gameState.player.position.x;
+            gameState.camera.position.y = gameState.player.position.y;
+            gameState.camera.position.z = gameState.player.position.z + 50;
+            
+            // Look at player
+            gameState.camera.lookAt(gameState.player.position.x, gameState.player.position.y, gameState.player.position.z);
+            
+            // Update UI
+            updateUI();
+            
+            // Render scene
+            gameState.renderer.render(gameState.scene, gameState.camera);
+        }
+
+        // Handle keyboard input
+        function handleKeyDown(event) {
+            const speed = 1;
+            switch(event.key) {
+                case 'ArrowUp':
+                case 'w':
+                    gameState.player.velocity.y = speed;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    gameState.player.velocity.y = -speed;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                    gameState.player.velocity.x = -speed;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    gameState.player.velocity.x = speed;
+                    break;
+                case ' ':
+                    // Space bar for special action
+                    break;
+            }
+        }
+
+        function handleKeyUp(event) {
+            switch(event.key) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                case 'w':
+                case 's':
+                    gameState.player.velocity.y = 0;
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                case 'a':
+                case 'd':
+                    gameState.player.velocity.x = 0;
+                    break;
+            }
+        }
+
+        // Window resize handler
+        function onWindowResize() {
+            gameState.camera.aspect = window.innerWidth / window.innerHeight;
+            gameState.camera.updateProjectionMatrix();
+            gameState.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Initialize wallet
+        function initWallet() {
+            // Generate a simple wallet address
+            const chars = '0123456789abcdef';
+            let address = '0x';
+            for (let i = 0; i < 40; i++) {
+                address += chars[Math.floor(Math.random() * chars.length)];
+            }
+            
+            gameState.wallet.address = address;
+            gameState.wallet.balance = 0;
+            gameState.wallet.reputation = 0;
+            
+            document.getElementById('wallet-address').textContent = address;
+            document.getElementById('wallet-balance').textContent = gameState.wallet.balance;
+            document.getElementById('wallet-reputation').textContent = gameState.wallet.reputation;
+        }
+
+        // Update UI elements
+        function updateUI() {
+            // Update HUD
+            document.getElementById('health-value').textContent = gameState.player.health;
+            document.getElementById('fuel-value').textContent = gameState.player.fuel;
+            document.getElementById('speed-value').textContent = 
+                Math.sqrt(
+                    Math.pow(gameState.player.velocity.x, 2) + 
+                    Math.pow(gameState.player.velocity.y, 2) + 
+                    Math.pow(gameState.player.velocity.z, 2)
+                ).toFixed(2);
+            document.getElementById('location-value').textContent = 
+                `${gameState.player.position.x.toFixed(1)}, ${gameState.player.position.y.toFixed(1)}, ${gameState.player.position.z.toFixed(1)}`;
+            
+            // Update wallet info
+            document.getElementById('balance-value').textContent = gameState.wallet.balance;
+            document.getElementById('reputation-value').textContent = gameState.wallet.reputation;
+        }
+
+        // Add message to console
+        function addToConsole(message) {
+            const console = document.getElementById('console');
+            const div = document.createElement('div');
+            div.textContent = '> ' + message;
+            console.appendChild(div);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // Show notification
+        function showNotification(message, duration = 3000) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, duration);
+        }
+
+        // Modal functions
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Start game
+        function startGame(mode) {
+            const playerName = document.getElementById('player-name').value || 'Commander';
+            gameState.player.name = playerName;
+            gameState.online = (mode === 'online');
+            
+            document.getElementById('login-screen').style.display = 'none';
+            
+            if (gameState.online) {
+                addToConsole('Connecting to WEBXOS network...');
+                // Here you would connect to your MCP server
+                setTimeout(() => {
+                    addToConsole('Connected to WEBXOS network');
+                    showNotification('Online mode activated', 3000);
+                }, 2000);
+            }
+            
+            initGame();
+        }
+
+        // Mining functions
+        function toggleMining() {
+            if (gameState.mining) {
+                stopMining();
+            } else {
+                startMining();
+            }
+        }
+
+        function startMining() {
+            gameState.mining = true;
+            document.getElementById('mining-btn').textContent = 'STOP MINING';
+            showModal('mining-controls');
+            
+            addToConsole('Mining operation started');
+            
+            // Simulate mining progress
+            let progress = 0;
+            const miningInterval = setInterval(() => {
+                if (!gameState.mining) {
+                    clearInterval(miningInterval);
+                    return;
+                }
+                
+                progress += 5;
+                if (progress > 100) {
+                    progress = 0;
+                    // Add resources
+                    gameState.resources.unobtanium += 10;
+                    gameState.resources.crystals += Math.floor(Math.random() * 3);
+                    
+                    addToConsole('Mined 10 units of Unobtanium');
+                    showNotification('Resources added to inventory', 2000);
+                }
+                
+                document.getElementById('mining-progress').style.width = progress + '%';
+            }, 500);
+            
+            // Store interval ID to clear it later
+            gameState.miningInterval = miningInterval;
+        }
+
+        function stopMining() {
+            gameState.mining = false;
+            document.getElementById('mining-btn').textContent = 'MINE';
+            hideModal('mining-controls');
+            
+            if (gameState.miningInterval) {
+                clearInterval(gameState.miningInterval);
+            }
+            
+            addToConsole('Mining operation stopped');
+        }
+
+        // Agent functions
+        function selectAgent(index) {
+            gameState.selectedAgent = index;
+            addToConsole(`Selected agent: ${gameState.agents[index].name}`);
+        }
+
+        function commandAgent(action) {
+            if (gameState.selectedAgent === null) {
+                showNotification('Please select an agent first', 2000);
+                return;
+            }
+            
+            const agent = gameState.agents[gameState.selectedAgent];
+            agent.status = action;
+            
+            addToConsole(`Command sent to ${agent.name}: ${action}`);
+            showNotification(`${agent.name} is now ${action}`, 2000);
+            
+            // Here you would send the command to your MCP server in online mode
+        }
+
+        // Quantum link function
+        function activateQuantum() {
+            addToConsole('Activating quantum link...');
+            
+            // Simulate quantum link activation
+            setTimeout(() => {
+                // Generate some resources or other benefits
+                gameState.resources.crystals += 5;
+                gameState.wallet.balance += 25;
+                
+                addToConsole('Quantum link established! +5 Quantum Crystals, +25 $WEBXOS');
+                showNotification('Quantum link successful!', 3000);
+                
+                updateUI();
+            }, 2000);
+        }
+
+        // Market functions
+        function sellResource(resource, amount) {
+            let price = 0;
+            let available = 0;
+            
+            switch(resource) {
+                case 'unobtanium':
+                    price = 5;
+                    available = gameState.resources.unobtanium;
+                    break;
+                case 'crystals':
+                    price = 15;
+                    available = gameState.resources.crystals;
+                    break;
+            }
+            
+            if (available < amount) {
+                showNotification(`Not enough ${resource} to sell`, 2000);
+                return;
+            }
+            
+            // Update resources and balance
+            gameState.resources[resource] -= amount;
+            gameState.wallet.balance += price * amount;
+            
+            addToConsole(`Sold ${amount} ${resource} for ${price * amount} $WEBXOS`);
+            showNotification(`Transaction complete: +${price * amount} $WEBXOS`, 2000);
+            
+            updateUI();
+        }
+
+        function buyUpgrade(item) {
+            let cost = 0;
+            
+            switch(item) {
+                case 'drone':
+                    cost = 100;
+                    break;
+            }
+            
+            if (gameState.wallet.balance < cost) {
+                showNotification(`Not enough $WEBXOS for ${item} upgrade`, 2000);
+                return;
+            }
+            
+            // Process purchase
+            gameState.wallet.balance -= cost;
+            
+            addToConsole(`Purchased ${item} upgrade for ${cost} $WEBXOS`);
+            showNotification(`Upgrade installed: ${item}`, 2000);
+            
+            updateUI();
+        }
+
+        // Wallet functions
+        function generateCredentials() {
+            // Generate simple API credentials
+            const key = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const secret = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            
+            addToConsole(`API Key: ${key}`);
+            addToConsole(`API Secret: ${secret}`);
+            showNotification('API credentials generated', 3000);
+        }
+
+        function exportWallet() {
+            // Create a simple export object
+            const walletData = {
+                address: gameState.wallet.address,
+                balance: gameState.wallet.balance,
+                reputation: gameState.wallet.reputation,
+                resources: gameState.resources
+            };
+            
+            // Convert to string and "download"
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(walletData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "webxos_wallet.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            
+            addToConsole('Wallet data exported');
+            showNotification('Wallet exported successfully', 3000);
+        }
+
+        // Initialize the game when the window loads
+        window.onload = function() {
+            // Show login screen by default
+            document.getElementById('login-screen').style.display = 'block';
+        };
+    </script>
+</body>
+</html>
