@@ -1,0 +1,76 @@
+replicaCount: 2
+
+image:
+  backend:
+    repository: webxos-backend-gpu
+    tag: latest
+    pullPolicy: IfNotPresent
+  frontend:
+    repository: webxos-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+service:
+  backend:
+    type: ClusterIP
+    port: 8000
+  frontend:
+    type: ClusterIP
+    port: 3000
+
+resources:
+  limits:
+    nvidia.com/gpu: 1  # Request 1 GPU per pod
+    cpu: "1"
+    memory: "512Mi"
+  requests:
+    nvidia.com/gpu: 1
+    cpu: "500m"
+    memory: "256Mi"
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"  # Target GPU-enabled nodes
+
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+env:
+  backend:
+    - name: MONGODB_URI
+      value: "mongodb://mongodb:27017/webxos_rag"
+    - name: OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: webxos-secrets
+          key: openai-api-key
+    - name: NASA_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: webxos-secrets
+          key: nasa-api-key
+    - name: OBS_HOST
+      value: "obs-streaming"
+    - name: OBS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: webxos-secrets
+          key: obs-password
+
+prometheus:
+  enabled: true
+  scrapeInterval: 15s
+  gpuMetrics: true
+
+mongodb:
+  enabled: true
+  persistence:
+    enabled: false
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
