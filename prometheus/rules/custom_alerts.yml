@@ -1,0 +1,42 @@
+groups:
+  - name: mcp-custom-alerts
+    rules:
+      - alert: HighQuantumExecutionFailure
+        expr: rate(mcp_quantum_circuit_executions_total{status="failed"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: quantum-agent
+        annotations:
+          summary: "High quantum execution failure rate"
+          description: "More than 10% of quantum circuits failed in the last 5 minutes"
+
+      - alert: VideoFrameProcessingLag
+        expr: rate(mcp_video_processing_duration_seconds_bucket[5m]) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          service: video-service
+        annotations:
+          summary: "Video processing lag detected"
+          description: "95th percentile video processing latency exceeds 1 second"
+
+      - alert: RAGQueryOverload
+        expr: rate(mcp_rag_queries_total[5m]) > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: rag-service
+        annotations:
+          summary: "RAG query overload"
+          description: "More than 100 queries processed in the last 10 minutes"
+
+      - alert: TransportMessageSpike
+        expr: rate(mcp_transport_messages_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: transport-layer
+        annotations:
+          summary: "Transport message spike"
+          description: "More than 1000 messages processed in the last 5 minutes"
