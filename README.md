@@ -99,13 +99,12 @@ webxos-vial-mcp/
 
 This project is licensed under the MIT License
 
-## 📊 Front-end app Performance Metrics
+## 📊 $WEBXOS DAO Wallets: 
 
-| Metric | Low | High |
+| FORMAT | SECURITY | FEATURES |
 |--------|-------|--------|
-| API Response Time | < 100ms | < 200ms |
-| Memory Usage | 256MB | < 512MB |
-
+| .md wallet | OAUTH2.0 | 4x agents |
+| pytorch | 512 AES | quantum sync |
 
 <div align="center">
 
