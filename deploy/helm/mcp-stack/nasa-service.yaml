@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nasa-service
+  labels:
+    app: webxos-nasa
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: backend
+    - port: 3000
+      targetPort: 3000
+      name: frontend
+  selector:
+    app: webxos-nasa
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nasa-deployment
+  labels:
+    app: webxos-nasa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webxos-nasa
+  template:
+    metadata:
+      labels:
+        app: webxos-nasa
+    spec:
+      containers:
+      - name: nasa-backend
+        image: webxos-mcp-nasa:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: NASA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: webxos-secrets
+              key: nasa-api-key
+        - name: MONGODB_URI
+          value: "mongodb://mongodb:27017/webxos_rag"
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            nvidia.com/gpu: 1
+            cpu: "500m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      - name: nasa-frontend
+        image: webxos-frontend:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+          requests:
+            cpu: "250m"
+            memory: "128Mi"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nasa-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nasa-deployment
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
