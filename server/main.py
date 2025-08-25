@@ -3,6 +3,7 @@ from server.api.auth_endpoint import router as auth_router
 from server.services.nasa_service import router as nasa_router
 from server.services.spacex_service import router as spacex_router
 from server.services.github_service import router as github_router
+from server.services.langchain_service import router as langchain_router
 from server.webxos_wallet import WebXOSWallet
 from fastapi import Depends, HTTPException
 from server.api.auth_endpoint import verify_token
@@ -13,6 +14,7 @@ app.include_router(auth_router)
 app.include_router(nasa_router)
 app.include_router(spacex_router)
 app.include_router(github_router)
+app.include_router(langchain_router)
 
 # Wallet instance
 wallet_manager = WebXOSWallet(password="secure_wallet_password")
