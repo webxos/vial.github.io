@@ -1,0 +1,81 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nasa-monitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: webxos-nasa
+  endpoints:
+  - port: backend
+    path: /mcp/monitoring/metrics
+    interval: 15s
+  namespaceSelector:
+    matchNames:
+    - default
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nasa-monitoring-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'nasa'
+        static_configs:
+          - targets: ['nasa-service:8000']
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nasa-grafana
+  labels:
+    app: nasa-grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nasa-grafana
+  template:
+    metadata:
+      labels:
+        app: nasa-grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: webxos-secrets
+              key: grafana-password
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nasa-grafana-service
+  labels:
+    app: nasa-grafana
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: nasa-grafana
+  type: ClusterIP
