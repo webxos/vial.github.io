@@ -1,40 +1,65 @@
-name: CI Pipeline
+name: CI for WebXOS Vial MCP SDK
 
 on:
-  issues:
-    types: [opened, edited, reopened]
+  push:
+    branches:
+      - main
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches:
+      - main
 
 jobs:
-  ci:
+  test-and-build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Lint Code
-        run: npm run lint
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-      - name: Post CI Status
-        if: github.event.pull_request.number || github.event.issue.number
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          npm install
+          npm install obs-websocket-js ffmpeg-wasm canvas
+
+      - name: Run ESLint
+        run: npx eslint public/js/ --ext .js,.ts
+
+      - name: Run Pytest
+        run: python -m pytest tests/ -v --cov=server --cov-report=xml
+
+      - name: Build WASM Modules
+        run: |
+          cd server/wasm
+          npm run build
+          cd ../..
+
+      - name: Build Docker Image
+        run: docker build -f Dockerfile.enhanced -t webxos-mcp:test .
+
+      - name: Notify on Failure
+        if: failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number || 1;
             if (issueNumber) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: 'CI completed at 05:47 PM EDT.'
+                body: '🚨 CI failed! Check logs for details.'
               });
             } else {
-              console.log('No issue/PR context available, skipping comment');
+              console.log('No issue/PR context, skipping comment');
             }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        permissions:
-          issues: write
-          pull-requests: write
