@@ -1,41 +1,48 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import axios from 'axios';
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGPURenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+export class GalaxyCraftVisualizer {
+  constructor(containerId, token) {
+    this.container = document.getElementById(containerId);
+    this.token = token;
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.renderer = new THREE.WebGLRenderer();
+    this.stars = [];
+  }
 
-const controls = new OrbitControls(camera, renderer.domElement);
-camera.position.z = 5;
+  async init() {
+    try {
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.container.appendChild(this.renderer.domElement);
 
-const nodes = [];
-function addNode(id, type, position) {
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-  const node = new THREE.Mesh(geometry, material);
-  node.position.set(...position);
-  node.userData = { id, type };
-  scene.add(node);
-  nodes.push(node);
+      // Fetch galaxy data from API
+      const { data } = await axios.get(`${process.env.VIAL_API_URL}/mcp/galaxycraft/stars`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+
+      // Add stars
+      const starGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+      const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      data.stars.forEach(star => {
+        const starMesh = new THREE.Mesh(starGeometry, starMaterial);
+        starMesh.position.set(star.x, star.y, star.z);
+        this.scene.add(starMesh);
+        this.stars.push(starMesh);
+      });
+
+      this.camera.position.z = 50;
+      this.animate();
+    } catch (error) {
+      console.error('Failed to initialize GalaxyCraft visualizer:', error);
+    }
+  }
+
+  animate() {
+    requestAnimationFrame(() => this.animate());
+    this.stars.forEach(star => {
+      star.rotation.y += 0.01;
+    });
+    this.renderer.render(this.scene, this.camera);
+  }
 }
-
-function exportSVG() {
-  const svg = `<svg><rect x="0" y="0" width="100" height="100" fill="green"/></svg>`;
-  const blob = new Blob([svg], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'network.svg';
-  link.click();
-}
-
-const ws = new WebSocket('ws://localhost:8000/v1/mcp/ws?token=mock_token');
-ws.onmessage = (event) => {
-  const { channel, data } = JSON.parse(event.data);
-  console.log(`Update on ${channel}: ${data}`);
-};
-
-addNode('vial1', 'agent', [0, 0, 0]);
-renderer.render(scene, camera);
