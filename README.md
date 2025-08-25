@@ -1,4 +1,4 @@
-# 🌌 **WebXOS 2025 Vial MCP SDK: AI-Powered Quantum Frontier**
+# 🌌 **WebXOS 2025 Vial MCP SDK: AI-Powered Quantum Frontier (OPEN SOURCE BETA)**
 
 Welcome to the **WebXOS 2025 Vial Model Context Protocol (MCP) SDK**, a quantum-distributed, AI-orchestrated powerhouse hosted on GitHub! Powered by **Claude-Flow v2.0.0 Alpha**, **OpenAI Swarm**, and **CrewAI**, this SDK fuses 4x Vial agents, PyTorch cores, SQLAlchemy databases, and `.md` wallet functions into a versatile toolkit.
 
@@ -82,7 +82,7 @@ graph TB
     end
 ```
 
-## 📊 Repository Structure
+## 📊 Repository Structure (BETA DESIGN)
 
 ```
 webxos-vial-mcp/
@@ -162,7 +162,7 @@ npx crewai test --task optimize
 
 ## 🎮 Using the SDK
 
-### SVG Diagram Mode
+### SVG Diagram Mode (Coming Soon)
 
 The SVG Diagram Mode allows you to design and train 8-point quantum neural networks:
 
@@ -182,7 +182,7 @@ const quantumNetwork = {
 };
 ```
 
-### Dropship Mode
+### Dropship Mode Simulation Mode (Coming Soon)
 
 Dropship Mode provides REST API creation with OBS streaming integration:
 
@@ -235,17 +235,8 @@ type = "sqlalchemy"
 url = "sqlite:///./test.db"
 ```
 
-### Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NASA_API_KEY` | NASA API access key | `your_nasa_key` |
-| `OPENAI_API_KEY` | OpenAI API key | `your_openai_key` |
-| `OBS_WEBSOCKET_URL` | OBS WebSocket URL | `ws://localhost:4444` |
 
 ## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 1. **Fork the repository**
 2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
@@ -255,14 +246,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- 📚 [Documentation](https://github.com/webxos/webxos-vial-mcp/wiki)
-- 🐛 [Issue Tracker](https://github.com/webxos/webxos-vial-mcp/issues)
-- 💬 [Discord Community](https://discord.gg/webxos)
-- 📧 [Email Support](mailto:support@webxos.io)
+This project is licensed under the MIT License
 
 ## 🌟 Acknowledgments
 
@@ -275,14 +259,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-
-**✨ Join the Quantum AI Revolution! ✨**
-
-[![Star on GitHub](https://img.shields.io/github/stars/webxos/webxos-vial-mcp?style=for-the-badge)](https://github.com/webxos/webxos-vial-mcp/stargazers)
-[![Fork on GitHub](https://img.shields.io/github/forks/webxos/webxos-vial-mcp?style=for-the-badge)](https://github.com/webxos/webxos-vial-mcp/forks)
-[![MIT License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-
-</div>
 
 ## 🔄 Recent Updates
 
@@ -330,18 +306,8 @@ spec:
         - containerPort: 3000
 ```
 
-### Cloud Deployment
 
-We support deployment on all major cloud platforms:
 
-- **AWS**: ECS, EKS, or EC2 deployment
-- **Google Cloud**: GKE or Compute Engine
-- **Azure**: AKS or Virtual Machines
-- **DigitalOcean**: Droplets or Kubernetes
-
-Check our [Deployment Guide](https://github.com/webxos/webxos-vial-mcp/wiki/Deployment) for detailed instructions.
-
----
 
 <div align="center">
 
