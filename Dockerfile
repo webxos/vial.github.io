@@ -1,13 +1,16 @@
-```dockerfile
-FROM python:3.11-slim
-
+# Stage 1: Build WASM modules
+FROM node:18 AS wasm-builder
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN apt-get update && apt-get install -y nodejs npm
+COPY server/wasm/package.json server/wasm/package-lock.json ./server/wasm/
+RUN cd server/wasm && npm install && npm run build
+
+# Stage 2: Build Python app
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN npm ci && npm run build
-RUN pip install modelcontextprotocol qiskit qiskit-aer sqlalchemy alembic httpx torch psycopg2-binary
-RUN alembic upgrade head
-EXPOSE 8000
-CMD ["python", "server/mcp_server.py"]
-```
+COPY --from=wasm-builder /app/server/wasm/pkg ./server/wasm/pkg
+EXPOSE 3000 8000
+ENV PYTHONUNBUFFERED=1
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "3000"]
