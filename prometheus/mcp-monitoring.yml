@@ -1,0 +1,143 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 30s
+  external_labels:
+    environment: 'production'
+    cluster: 'mcp-space-cluster'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+scrape_configs:
+  # MCP Server Core Metrics
+  - job_name: 'mcp-server-core'
+    metrics_path: '/metrics/core'
+    static_configs:
+      - targets: ['mcp-server:3000']
+        labels:
+          component: 'mcp-server'
+          instance: 'mcp-primary'
+          service: 'model-context-protocol'
+    scrape_interval: 10s
+    scrape_timeout: 8s
+    honor_labels: true
+
+  # Astronomy Agent Metrics
+  - job_name: 'mcp-astronomy-agent'
+    metrics_path: '/metrics/astronomy'
+    static_configs:
+      - targets: ['astronomy-agent:4000']
+        labels:
+          component: 'astronomy-agent'
+          instance: 'astronomy-primary'
+          service: 'space-science'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(astronomy_.*)'
+        action: keep
+
+  # GIBS Visualization Agent
+  - job_name: 'mcp-gibs-agent'
+    metrics_path: '/metrics/gibs'
+    static_configs:
+      - targets: ['gibs-agent:4100']
+        labels:
+          component: 'gibs-agent'
+          instance: 'gibs-primary'
+          service: 'geospatial-data'
+    scrape_interval: 20s
+    scrape_timeout: 15s
+
+  # Quantum Computing Metrics
+  - job_name: 'mcp-quantum-agent'
+    metrics_path: '/metrics/quantum'
+    static_configs:
+      - targets: ['quantum-agent:4200']
+        labels:
+          component: 'quantum-agent'
+          instance: 'quantum-primary'
+          service: 'quantum-computing'
+    scrape_interval: 25s
+    scrape_timeout: 20s
+
+  # Database Metrics
+  - job_name: 'mcp-database'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['postgres:9187']  # Postgres Exporter
+        labels:
+          component: 'database'
+          instance: 'postgres-primary'
+          service: 'storage'
+    scrape_interval: 30s
+
+  # Redis Metrics
+  - job_name: 'mcp-redis'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['redis:9121']  # Redis Exporter
+        labels:
+          component: 'cache'
+          instance: 'redis-primary'
+          service: 'caching'
+    scrape_interval: 15s
+
+  # Node Exporter (System Metrics)
+  - job_name: 'mcp-node'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          component: 'infrastructure'
+          instance: 'server-node'
+          service: 'system'
+    scrape_interval: 15s
+
+  # Docker Container Metrics
+  - job_name: 'mcp-docker'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['docker-exporter:9323']
+        labels:
+          component: 'container-runtime'
+          instance: 'docker-engine'
+          service: 'orchestration'
+    scrape_interval: 20s
+
+  # Blackbox Exporter (HTTP Health Checks)
+  - job_name: 'mcp-blackbox-http'
+    metrics_path: '/probe'
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - 'http://mcp-server:3000/health'
+          - 'http://astronomy-agent:4000/health'
+          - 'http://gibs-agent:4100/health'
+          - 'http://quantum-agent:4200/health'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'blackbox-exporter:9115'
+
+  # Service Discovery via Consul
+  - job_name: 'mcp-consul-services'
+    consul_sd_configs:
+      - server: 'consul:8500'
+        services: ['mcp-server', 'astronomy-agent', 'gibs-agent', 'quantum-agent']
+    relabel_configs:
+      - source_labels: ['__meta_consul_service']
+        target_label: 'service'
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,environment=([^,]+),.*'
+        target_label: 'environment'
