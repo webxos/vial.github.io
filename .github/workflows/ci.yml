@@ -1,36 +1,57 @@
-name: CI
+name: CI Pipeline
+
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
-permissions:
-  contents: read
-  issues: write
+    branches: [main, develop]
+
 jobs:
-  lint-and-test:
+  build-and-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        requirements: [requirements-langchain-v1.txt, requirements-langchain-v2.txt]
+        python-version: ["3.11"]
+        node-version: ["18"]
+
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN }}
+      OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+      OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+      OAUTH_REDIRECT_URI: http://localhost:8000/mcp/auth/callback
+      WALLET_PASSWORD: ${{ secrets.WALLET_PASSWORD }}
+      VIAL_API_URL: http://localhost:8000
+
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Install base dependencies
+          python-version: ${{ matrix.python-version }}
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-mcp.txt
-      - name: Install LangChain dependencies
-        run: pip install -r ${{ matrix.requirements }}
-      - name: Run flake8
-        run: flake8 server/ examples/
-      - name: Run tests
-        run: pytest server/tests/ -v --junitxml=pytest-results.xml
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
+          pip install -r requirements.txt
+          pip install -r requirements-pytorch.txt --index-url https://download.pytorch.org/whl/cu121
+      - name: Install Node.js dependencies
+        run: npm install --legacy-peer-deps
+      - name: Run Python tests
+        run: pytest server/tests
+      - name: Run JavaScript tests
+        run: npm test
+      - name: Build frontend
+        run: npm run build
+      - name: Lint code
+        run: npm run lint
+      - name: Build Docker image
+        run: docker build -f build/dockerfiles/mcp-complete.Dockerfile -t webxos-mcp:latest .
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
         with:
-          name: test-results-${{ matrix.requirements }}
-          path: pytest-results.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
