@@ -1,45 +1,43 @@
-import os
-import logging
-from typing import Optional
-from pydantic import BaseModel
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.kdf.argon2 import Argon2ID
-from cryptography.exceptions import InvalidKey
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-logger = logging.getLogger(__name__)
-
-class EncryptionParams(BaseModel):
-    data: bytes
-    key: Optional[bytes] = None
-    iv: Optional[bytes] = None
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import os
+import base64
 
 class CryptoEngine:
-    def __init__(self):
-        self.key_derivator = Argon2ID(salt=os.urandom(16), memory_cost=65536, time_cost=3, parallelism=4)
+    def __init__(self, password: str = None):
+        # Derive key from password or generate random key
+        if password:
+            salt = os.urandom(16)
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            self.key = kdf.derive(password.encode())
+            self.salt = salt
+        else:
+            self.key = os.urandom(32)
+            self.salt = None
+        self.iv = os.urandom(12)  # GCM recommends 12-byte IV
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
-    def encrypt(self, params: EncryptionParams) -> EncryptionParams:
-        """Encrypt data with AES-256-GCM, derive key with Argon2id."""
-        try:
-            if not params.key:
-                params.key = self.key_derivator.derive(os.getenv("ENCRYPTION_SECRET", "").encode())
-            if not params.iv:
-                params.iv = os.urandom(12)
-            cipher = Cipher(algorithms.AES(params.key), modes.GCM(params.iv))
-            encryptor = cipher.encryptor()
-            ciphertext = encryptor.update(params.data) + encryptor.finalize()
-            return EncryptionParams(data=ciphertext, key=params.key, iv=params.iv)
-        except InvalidKey as e:
-            logger.error(f"Encryption failed: {str(e)}")
-            raise
+    def encrypt(self, data: str) -> str:
+        cipher = Cipher(algorithms.AES(self.key), modes.GCM(self.iv))
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(data.encode()) + encryptor.finalize()
+        return base64.b64encode(self.iv + ciphertext + encryptor.tag).decode()
 
-    def decrypt(self, params: EncryptionParams) -> bytes:
-        """Decrypt AES-256-GCM encrypted data."""
-        try:
-            cipher = Cipher(algorithms.AES(params.key), modes.GCM(params.iv))
-            decryptor = cipher.decryptor()
-            return decryptor.update(params.data) + decryptor.finalize()
-        except InvalidKey as e:
-            logger.error(f"Decryption failed: {str(e)}")
-            raise
+    def decrypt(self, encrypted_data: str) -> str:
+        data = base64.b64decode(encrypted_data)
+        iv, ciphertext, tag = data[:12], data[12:-16], data[-16:]
+        cipher = Cipher(algorithms.AES(self.key), modes.GCM(iv, tag))
+        decryptor = cipher.decryptor()
+        return (decryptor.update(ciphertext) + decryptor.finalize()).decode()
+
+    def save_key(self, filename: str):
+        with open(filename, 'wb') as f:
+            if self.salt:
+                f.write(self.salt + self.key)
+            else:
+                f.write(self.key)
