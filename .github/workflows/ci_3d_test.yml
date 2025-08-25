@@ -1,0 +1,19 @@
+name: CI 3D Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm install
+      - name: Run 3D tests
+        run: npm run test-3d
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
