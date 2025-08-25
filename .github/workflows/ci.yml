@@ -10,22 +10,27 @@ permissions:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        requirements: [requirements-langchain-v1.txt, requirements-langchain-v2.txt]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install dependencies
+      - name: Install base dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-mcp.txt
+      - name: Install LangChain dependencies
+        run: pip install -r ${{ matrix.requirements }}
       - name: Run flake8
         run: flake8 server/ examples/
       - name: Run tests
-        run: pytest server/tests/ -v
+        run: pytest server/tests/ -v --junitxml=pytest-results.xml
       - name: Upload test results
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.requirements }}
           path: pytest-results.xml
