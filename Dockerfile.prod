@@ -1,0 +1,28 @@
+# Stage 1: Build frontend
+FROM node:18 AS frontend-builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm install
+COPY public/ ./public/
+COPY src/ ./src/
+RUN npm run build
+
+# Stage 2: Build WASM modules
+FROM node:18 AS wasm-builder
+WORKDIR /app
+COPY server/wasm/package.json server/wasm/package-lock.json ./server/wasm/
+RUN cd server/wasm && npm install && npm run build
+
+# Stage 3: Build Python app
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=frontend-builder /app/build ./build
+COPY --from=wasm-builder /app/server/wasm/pkg ./server/wasm/pkg
+COPY server/ ./server/
+COPY src/ ./src/
+COPY .env ./
+EXPOSE 3000 8000
+ENV PYTHONUNBUFFERED=1
+CMD ["sh", "-c", "celery -A server.tasks.celery_app worker --loglevel=info & uvicorn server.main:app --host 0.0.0.0 --port 3000"]
